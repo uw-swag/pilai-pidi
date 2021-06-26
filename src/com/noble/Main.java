@@ -14,6 +14,7 @@ import java.io.*;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Paths;
+import java.util.Hashtable;
 import java.util.List;
 
 import static com.noble.util.XmlUtil.appendNodeLists;
@@ -68,20 +69,25 @@ public class Main {
             System.out.println("Converted to XML, beginning parsing ...");
             DocumentBuilder db = DocumentBuilderFactory.newInstance().newDocumentBuilder();
             Document doc = db.parse(new InputSource(new StringReader(result)));
-//            Object slice_profiles_info = new Object[]{};
+            Hashtable<String, SliceProfilesInfo> slice_profiles_info = new Hashtable<String, SliceProfilesInfo>();
             for(Node unit_node:asList(doc.getElementsByTagName("unit"))){
                 Node fileName = unit_node.getAttributes().getNamedItem("filename");
                 if(fileName!=null){
-//                    Object slice_profiles = new Object[]{};
                     String source_file_path = fileName.getNodeValue();
                     if(unit_node.getNodeType() != Node.ELEMENT_NODE){
                         continue;
                     }
+                    Hashtable<String, SliceProfile> slice_profiles = new Hashtable<String, SliceProfile>();
+                    analyze_source_unit_and_build_slices(unit_node, source_file_path, slice_profiles);
                     List<Node> function_nodes = find_function_nodes(unit_node);
-                    System.out.println(source_file_path);
-                    System.out.println(function_nodes.size());
+                    SliceProfilesInfo profile_info = new SliceProfilesInfo(slice_profiles,function_nodes,unit_node);
+//                    System.out.println(source_file_path);
+//                    System.out.println(function_nodes.size());
+                    slice_profiles_info.put(source_file_path,profile_info);
                 }
             }
+
+//      [TODO] return slice_profiles_info
 
 //            XMLInputFactory inputFactory = XMLInputFactory.newInstance();
 //            InputStream in = new FileInputStream("temp.xml");
@@ -105,6 +111,11 @@ public class Main {
         } catch (URISyntaxException | IOException | SAXException | ParserConfigurationException e) {
             e.printStackTrace();
         }
+    }
+
+    private static void analyze_source_unit_and_build_slices(Node unit_node, String source_file_path, Hashtable<String, SliceProfile> slice_profiles) {
+        SliceGenerator slice_generator = new SliceGenerator(unit_node,source_file_path,slice_profiles);
+        slice_generator.generate();
     }
 //    private static boolean isElementOfInterest(Node nNode)
 //    {
