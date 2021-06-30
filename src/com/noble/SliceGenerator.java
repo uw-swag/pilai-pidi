@@ -8,6 +8,36 @@ import java.util.*;
 
 import static com.noble.util.XmlUtil.asList;
 
+final class Encl_name_pos_tuple {
+    private final String var_name;
+    private final String function_name;
+    private final String file_name;
+    private final String defined_position;
+
+    public Encl_name_pos_tuple(String var_name, String function_name, String file_name, String defined_position) {
+        this.var_name = var_name;
+        this.function_name = function_name;
+        this.file_name = file_name;
+        this.defined_position = defined_position;
+    }
+
+    public String getVar_name() {
+        return var_name;
+    }
+
+    public String getFunction_name() {
+        return function_name;
+    }
+
+    public String getFile_name() {
+        return file_name;
+    }
+
+    public String getDefined_position() {
+        return defined_position;
+    }
+}
+
 final class cFunction{
     private final int arg_pos_index;
     private final String current_function_name;
@@ -513,8 +543,15 @@ public class SliceGenerator {
         }
     }
 
-    private void updateCFunctionsSliceProfile(String var_name, String cfunction_name, int arg_pos_index, Hashtable<String, Hashtable<String, SliceProfile>> local_variables) {
-
+    private void updateCFunctionsSliceProfile(String var_name, String cfunction_name, int arg_pos_index, Hashtable<String, Hashtable<String, SliceProfile>> slice_variables) {
+        SliceProfile slice_profile = slice_variables.get(var_name).get(var_name);
+        int n = slice_profile.cfunctions.length;
+        cFunction[] arrlist = new cFunction[n+1];
+        System.arraycopy(slice_profile.cfunctions, 0, arrlist, 0, n);
+        cFunction cFun = new cFunction(arg_pos_index,current_function_name,current_function_node);
+        arrlist[n] = cFun;
+        slice_profile.cfunctions = arrlist;
+        this.slice_profiles.put(cfunction_name,slice_profile);
     }
 
     private void analyzeIfStmt(Node stmt) {

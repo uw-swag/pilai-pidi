@@ -1,5 +1,7 @@
 package com.noble;
 
+import com.google.common.graph.GraphBuilder;
+import com.google.common.graph.MutableGraph;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -14,8 +16,7 @@ import java.io.*;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Paths;
-import java.util.Hashtable;
-import java.util.List;
+import java.util.*;
 
 import static com.noble.util.XmlUtil.appendNodeLists;
 import static com.noble.util.XmlUtil.asList;
@@ -36,6 +37,8 @@ final class OsUtils
 
 public class Main {
 
+    static LinkedList<SliceProfile> analyzed_profiles= new LinkedList<>();
+    private static MutableGraph<Encl_name_pos_tuple> DG = GraphBuilder.directed().build();
     private static final String projectLocation = "C:\\Users\\elbon\\IdeaProjects\\jni-example";
 
     public static void stringToDom(String xmlSource)
@@ -86,8 +89,39 @@ public class Main {
                     slice_profiles_info.put(source_file_path,profile_info);
                 }
             }
-
-//      [TODO] return slice_profiles_info
+            Hashtable<String, SliceProfilesInfo> java_slice_profiles_info = new Hashtable<>();
+            Hashtable<String, SliceProfilesInfo> cpp_slice_profiles_info = new Hashtable<>();
+            Enumeration<String> e = slice_profiles_info.keys();
+            while (e.hasMoreElements()) {
+                String key = e.nextElement();
+                //                !key.contains("/test/")
+                if(key.endsWith(".java")){
+                    java_slice_profiles_info.put(key,slice_profiles_info.get(key));
+                }
+                else{
+                    cpp_slice_profiles_info.put(key,slice_profiles_info.get(key));
+                }
+            }
+            Enumeration<String> profiles_to_analyze = java_slice_profiles_info.keys();
+            while (profiles_to_analyze.hasMoreElements()) {
+                String key = profiles_to_analyze.nextElement();
+                SliceProfilesInfo currentSlice = java_slice_profiles_info.get(key);
+                Enumeration<String> slices_to_analyze = currentSlice.slice_profiles.keys();
+                while (slices_to_analyze.hasMoreElements()) {
+                    String keyS = slices_to_analyze.nextElement();
+                    SliceProfile profile = currentSlice.slice_profiles.get(keyS);
+                    analyzed_profiles.add(profile);
+                    for (cFunction cfunction:profile.cfunctions
+                         ) {
+                        Encl_name_pos_tuple encl_name_pos_tuple = new Encl_name_pos_tuple(profile.var_name,cfunction.getCurrent_function_name(),profile.file_name,profile.defined_position);
+                        SliceProfile[] dependent_slice_profiles = find_dependent_slice_profiles(cfunction.getCurrent_function_name(),cfunction.getArg_pos_index(),profile.type_name,cfunction.getCurrent_function_node(),profiles_to_analyze);
+                        encl_name_pos_tuple = new Encl_name_pos_tuple(profile.var_name,profile.function_name,profile.file_name,profile.defined_position);
+                        DG.addNode(encl_name_pos_tuple);
+                    }
+//                    System.out.println(Arrays.toString(currentSlice.slice_profiles.get(keyS).cfunctions));
+                }
+            }
+//
 
 //            XMLInputFactory inputFactory = XMLInputFactory.newInstance();
 //            InputStream in = new FileInputStream("temp.xml");
@@ -111,6 +145,10 @@ public class Main {
         } catch (URISyntaxException | IOException | SAXException | ParserConfigurationException e) {
             e.printStackTrace();
         }
+    }
+
+    private static SliceProfile[] find_dependent_slice_profiles(String current_function_name, int arg_pos_index, String type_name, Node current_function_node, Enumeration<String> profiles_to_analyze) {
+        return new SliceProfile[]{};
     }
 
     private static void analyze_source_unit_and_build_slices(Node unit_node, String source_file_path, Hashtable<String, SliceProfile> slice_profiles) {
