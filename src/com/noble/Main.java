@@ -18,9 +18,7 @@ import java.net.URL;
 import java.nio.file.Paths;
 import java.util.*;
 
-import static com.noble.util.XmlUtil.appendNodeLists;
-import static com.noble.util.XmlUtil.asList;
-
+import static com.noble.util.XmlUtil.*;
 final class OsUtils
 {
     private static String OS = null;
@@ -114,7 +112,7 @@ public class Main {
                     for (cFunction cfunction:profile.cfunctions
                          ) {
                         Encl_name_pos_tuple encl_name_pos_tuple = new Encl_name_pos_tuple(profile.var_name,cfunction.getCurrent_function_name(),profile.file_name,profile.defined_position);
-                        SliceProfile[] dependent_slice_profiles = find_dependent_slice_profiles(cfunction.getCurrent_function_name(),cfunction.getArg_pos_index(),profile.type_name,cfunction.getCurrent_function_node(),profiles_to_analyze);
+                        SliceProfile[] dependent_slice_profiles = find_dependent_slice_profiles(cfunction.getCurrent_function_name(),cfunction.getArg_pos_index(),profile.type_name,cfunction.getCurrent_function_node(),java_slice_profiles_info);
                         encl_name_pos_tuple = new Encl_name_pos_tuple(profile.var_name,profile.function_name,profile.file_name,profile.defined_position);
                         DG.addNode(encl_name_pos_tuple);
                     }
@@ -147,8 +145,55 @@ public class Main {
         }
     }
 
-    private static SliceProfile[] find_dependent_slice_profiles(String current_function_name, int arg_pos_index, String type_name, Node current_function_node, Enumeration<String> profiles_to_analyze) {
-        return new SliceProfile[]{};
+    private static SliceProfile[] find_dependent_slice_profiles(String current_function_name, int arg_pos_index, String type_name, Node current_function_node, Hashtable<String, SliceProfilesInfo> java_slice_profiles_info) {
+        SliceProfile[] dependent_slice_profiles = new SliceProfile[]{};
+        Enumeration<String> profiles_to_analyze = java_slice_profiles_info.keys();
+        while (profiles_to_analyze.hasMoreElements()) {
+            String key = profiles_to_analyze.nextElement();
+            SliceProfilesInfo currentSlice = java_slice_profiles_info.get(key);
+            Enumeration<String> slices_to_analyze = currentSlice.slice_profiles.keys();
+            while (slices_to_analyze.hasMoreElements()) {
+                String keyS = slices_to_analyze.nextElement();
+                SliceProfile profile = currentSlice.slice_profiles.get(keyS);
+                analyzed_profiles.add(profile);
+                for (cFunction cfunction: find_possible_functions(currentSlice.function_nodes, current_function_name, arg_pos_index, current_function_node)
+                ) {
+
+//                    Encl_name_pos_tuple encl_name_pos_tuple = new Encl_name_pos_tuple(profile.var_name,cfunction.getCurrent_function_name(),profile.file_name,profile.defined_position);
+//                    SliceProfile[] dependent_slice_profiles = find_dependent_slice_profiles(cfunction.getCurrent_function_name(),cfunction.getArg_pos_index(),profile.type_name,cfunction.getCurrent_function_node(),profiles_to_analyze);
+//                    encl_name_pos_tuple = new Encl_name_pos_tuple(profile.var_name,profile.function_name,profile.file_name,profile.defined_position);
+//                    DG.addNode(encl_name_pos_tuple);
+                }
+//                    System.out.println(Arrays.toString(currentSlice.slice_profiles.get(keyS).cfunctions));
+            }
+        }
+        return dependent_slice_profiles;
+    }
+
+    private static LinkedList<cFunction> find_possible_functions(List<Node> function_nodes, String current_function_name, int arg_pos_index, Node current_function_node) {
+        LinkedList<cFunction> possible_functions = new LinkedList<>();
+        for (Node function:function_nodes) {
+            if(getNamePosTextPair(function).getName()!=current_function_name) continue;
+            List<Node> param = getNodeByName(function, "parameter");
+            if(param.size()==0 || arg_pos_index>param.size()) continue;
+            String param_name = getNamePosTextPair(param.get(arg_pos_index - 1)).getName();
+            if(param_name.isBlank()) continue;
+            if(!validate_function_against_call_expr(current_function_node, current_function_name, arg_pos_index-1, param)) continue;
+            possible_functions.add(new cFunction(arg_pos_index-1,current_function_name,current_function_node,param));
+        }
+        return possible_functions;
+    }
+
+    private static boolean validate_function_against_call_expr(Node current_function_node, String current_function_name, int i, List<Node> param) {
+        List<Node> call_argument_list;
+        for (Node call:getNodeByName(current_function_node,"call")){
+            String function_name = getNamePosTextPair(call).getName();
+            if(!current_function_name.equals(function_name)) continue;
+            call_argument_list = getNodeByName(call,"argument");
+            if(call_argument_list.size()!=param.size()) continue;
+            return true;
+        }
+        return false;
     }
 
     private static void analyze_source_unit_and_build_slices(Node unit_node, String source_file_path, Hashtable<String, SliceProfile> slice_profiles) {

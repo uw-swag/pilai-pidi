@@ -6,89 +6,7 @@ import org.w3c.dom.NodeList;
 
 import java.util.*;
 
-import static com.noble.util.XmlUtil.asList;
-
-final class Encl_name_pos_tuple {
-    private final String var_name;
-    private final String function_name;
-    private final String file_name;
-    private final String defined_position;
-
-    public Encl_name_pos_tuple(String var_name, String function_name, String file_name, String defined_position) {
-        this.var_name = var_name;
-        this.function_name = function_name;
-        this.file_name = file_name;
-        this.defined_position = defined_position;
-    }
-
-    public String getVar_name() {
-        return var_name;
-    }
-
-    public String getFunction_name() {
-        return function_name;
-    }
-
-    public String getFile_name() {
-        return file_name;
-    }
-
-    public String getDefined_position() {
-        return defined_position;
-    }
-}
-
-final class cFunction{
-    private final int arg_pos_index;
-    private final String current_function_name;
-    private final Node current_function_node;
-
-    cFunction(int arg_pos_index, String current_function_name, Node current_function_node) {
-        this.arg_pos_index = arg_pos_index;
-        this.current_function_name = current_function_name;
-        this.current_function_node = current_function_node;
-    }
-
-    public Node getCurrent_function_node() {
-        return current_function_node;
-    }
-
-    public String getCurrent_function_name() {
-        return current_function_name;
-    }
-
-    public int getArg_pos_index() {
-        return arg_pos_index;
-    }
-}
-final class NamePos {
-    private final String name;
-    private final String type;
-    private final String pos;
-    private final boolean is_pointer;
-    NamePos(String name, String type, String pos, boolean is_pointer) {
-        this.name = name;
-        this.type = type;
-        this.pos = pos;
-        this.is_pointer = is_pointer;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public String getPos() {
-        return pos;
-    }
-
-    public boolean is_pointer() {
-        return is_pointer;
-    }
-
-    public String getType() {
-        return type;
-    }
-}
+import static com.noble.util.XmlUtil.*;
 
 public class SliceGenerator {
     String GLOBAL;
@@ -111,72 +29,6 @@ public class SliceGenerator {
         this.current_function_name = "";
 //        this.current_function_node;
         this.GLOBAL = "GLOBAL";
-    }
-
-    private NamePos getNamePosTextPair(Node init_node) {
-        NodeList nodeList = init_node.getChildNodes();
-        NamePos namePos = new NamePos("", "", "", false);
-        boolean is_pointer = false;
-        Set<String> names = new HashSet<String>();
-            names.add("decl");
-//        System.out.println(init_node.getNodeName()+nodeList.getLength()+nodeList.item(0).getNodeName());
-        for (int count = 0; count < nodeList.getLength(); count++) {
-            Node tempNode = nodeList.item(count);
-
-            if (tempNode.getNodeType() == Node.ELEMENT_NODE
-                    && tempNode.hasAttributes()
-                    && tempNode.hasChildNodes()) {
-                if (tempNode.getNodeName().equals("name")) {
-                    String linePos = getNodePos(tempNode);
-                    if(tempNode.getNextSibling()!=null && tempNode.getNextSibling().getNodeType() == Node.ELEMENT_NODE)
-                        if (((Element) tempNode.getNextSibling()).getTagName().equals("modifier"))
-                            is_pointer = tempNode.getNextSibling().getNodeValue().equals("*")||tempNode.getNextSibling().getNodeValue().equals("&");
-                    StringBuilder varType = new StringBuilder();
-                    try {
-//                        NodeList typeList = tempNode.getParentNode().getChildNodes().item(0).getChildNodes();
-                        List<Node> typNode = getNodeByName(tempNode.getParentNode(),"type");
-                        if (!(typNode.size()<1)){
-                            NodeList typeList = typNode.get(0).getChildNodes();
-                            for (int c = 0; c < typeList.getLength(); c++) {
-                                Node tempType = typeList.item(c);
-                                if(tempType.getNodeName().equals("name")){
-                                    String Filler = "~";
-                                    if(varType.toString().equals("")) Filler = "";
-//                                if(tempType.getChildNodes().getLength()) std :: String [ERR]
-                                    if(tempType.getLastChild().getNodeType()==Node.ELEMENT_NODE)
-                                        varType.append(Filler).append(tempType.getLastChild().getFirstChild().getNodeValue());
-                                    else
-                                        varType.append(Filler).append(tempType.getLastChild().getNodeValue());
-                                }
-                            }
-                        }
-
-//                      varType = tempNode.getParentNode().getNextSibling().getNextSibling().getChildNodes().item(0).getNodeValue();
-                    }
-                    catch (NullPointerException | IndexOutOfBoundsException e){
-                        varType = new StringBuilder();
-                        e.printStackTrace();
-                    }
-                    if(tempNode.getFirstChild().getNodeType()==Node.ELEMENT_NODE)
-//                        tempNode.getFirstChild().getFirstChild().getNodeValue()
-                    {
-                        List<Node> nameChildren = getNodeByName(tempNode, "name");
-                        namePos = new NamePos(nameChildren.get(nameChildren.size()-1).getTextContent(), varType.toString(), linePos, is_pointer);
-                    } else
-                        namePos = new NamePos(tempNode.getFirstChild().getNodeValue(), varType.toString(), linePos, is_pointer);
-                    break;
-                }
-                else if (tempNode.getNodeName().equals("literal")){
-                    return new NamePos(tempNode.getTextContent(),tempNode.getAttributes().getNamedItem("type").getNodeValue(),getNodePos(tempNode),false);
-                }
-                else if(names.contains(tempNode.getNodeName())){
-                    return getNamePosTextPair(tempNode);
-                }
-            }
-        }
-        if (init_node.getNodeName().equals("name")&&namePos.getName().equals(""))
-            namePos = new NamePos(init_node.getFirstChild().getNodeValue(),"",getNodePos(init_node),false);
-        return namePos;
     }
 
     private String getNodePos(Node tempNode) {
@@ -225,37 +77,6 @@ public class SliceGenerator {
         eElement = (Element) unit_node;
         NodeList allChilds = eElement.getElementsByTagName(tag);
         return asList(allChilds);
-    }
-
-    private List<Node> getNodeByName(Node parent, String tag){
-        NodeList children = parent.getChildNodes();
-//        Set<Node> targetElements = new HashSet<Node>();
-        List<Node> namedNodes = new LinkedList<Node>(asList(children));
-
-        for(int x = namedNodes.size() - 1; x >= 0; x--)
-        {
-            if(!namedNodes.get(x).getNodeName().equals(tag))
-            namedNodes.remove(x);
-        }
-        if(namedNodes.size()<1){
-        for (int count = 0; count < children.getLength(); count++) {
-            Node childDeep = children.item(count);
-            if(childDeep.getNodeType()==Node.ELEMENT_NODE) {
-                NodeList deepChildren;
-                deepChildren = childDeep.getChildNodes();
-                List<Node> namedDeepNodes = new LinkedList<Node>(asList(deepChildren));
-                for(int x = namedDeepNodes.size() - 1; x >= 0; x--)
-                {
-                    if(!namedDeepNodes.get(x).getNodeName().equals(tag))
-                        namedDeepNodes.remove(x);
-                }
-                if(namedDeepNodes.size()>=1)
-                    return namedDeepNodes;
-            }
-        }
-        }
-
-        return  namedNodes;
     }
 
     public void generate(){
@@ -338,7 +159,7 @@ public class SliceGenerator {
     }
 
     private void analyzeGlobalDecl(Node nodeTemp) {
-        NamePos namePos = this.getNamePosTextPair(nodeTemp);
+        NamePos namePos = getNamePosTextPair(nodeTemp);
         String slice_key = namePos.getName() + "%" + this.GLOBAL + "%" + this.file_name;
         SliceProfile slice_profile = new SliceProfile(this.file_name, this.GLOBAL, namePos.getName(), namePos.getType(), namePos.getPos());
         this.slice_profiles.put(slice_key,slice_profile);
