@@ -2,7 +2,8 @@ package com.noble;
 
 import org.w3c.dom.Node;
 
-import javax.swing.text.html.parser.Element;
+import java.util.ArrayList;
+import java.util.Hashtable;
 
 public class SliceProfile {
     String file_name;
@@ -11,13 +12,13 @@ public class SliceProfile {
     String type_name;
     String defined_position;
     String[] pointers = new String[]{};
-    String[] used_positions = new String[]{};
+    ArrayList<SliceVariableAccess> used_positions = new ArrayList<SliceVariableAccess>();
     NamePos[] dependent_vars = new NamePos[]{};
-    cFunction[] cfunctions = new cFunction[]{};
+    Hashtable<String, cFunction> cfunctions = new Hashtable<>();
     Node function_node;
 
-    public SliceProfile(String file_name, String function_name, String var_name, String type_name, String defined_position, String[] used_positions,
-                        NamePos[] dependent_vars, String[] pointers, cFunction[] cfunctions, Node function_node) {
+    public SliceProfile(String file_name, String function_name, String var_name, String type_name, String defined_position, ArrayList<SliceVariableAccess> used_positions,
+                        NamePos[] dependent_vars, String[] pointers, Hashtable<String, cFunction> cfunctions, Node function_node) {
         this.file_name = file_name;
         this.function_name = function_name;
         this.var_name = var_name;

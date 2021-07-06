@@ -11,7 +11,7 @@ public final class XmlUtil {
         return n.getLength()==0?
                 Collections.<Node>emptyList(): new NodeListWrapper(n);
     }
-    private static String getNodePos(Node tempNode) {
+    public static String getNodePos(Node tempNode) {
         return tempNode.getAttributes().item(0).getNodeValue().split(":")[0];
     }
     public static List<Node> getNodeByName(Node parent, String tag){
@@ -108,7 +108,15 @@ public final class XmlUtil {
             namePos = new NamePos(init_node.getFirstChild().getNodeValue(),"",getNodePos(init_node),false);
         return namePos;
     }
-
+    public static boolean isIndexOutOfBounds(final List<Node> list, int index) {
+        return index < 0 || index >= list.size();
+    }
+    public static List<Node> find_all_nodes(Node unit_node, String tag) {
+        Element eElement;
+        eElement = (Element) unit_node;
+        NodeList allChilds = eElement.getElementsByTagName(tag);
+        return asList(allChilds);
+    }
     static final class NodeListWrapper extends AbstractList<Node>
             implements RandomAccess {
         private final NodeList list;
