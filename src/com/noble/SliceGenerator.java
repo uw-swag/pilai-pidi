@@ -155,7 +155,7 @@ public class SliceGenerator {
 
     private void analyzeGlobalDecl(Node nodeTemp) {
         NamePos namePos = getNamePosTextPair(nodeTemp);
-        String slice_key = namePos.getName() + "%" + this.GLOBAL + "%" + this.file_name;
+        String slice_key = namePos.getName() + "%" + namePos.getPos() + "%" + this.GLOBAL + "%" + this.file_name;
         SliceProfile slice_profile = new SliceProfile(this.file_name, this.GLOBAL, namePos.getName(), namePos.getType(), namePos.getPos());
         this.slice_profiles.put(slice_key,slice_profile);
         Hashtable<String, SliceProfile> nameProfile = new Hashtable<>();
@@ -243,7 +243,7 @@ public class SliceGenerator {
 
     private void analyzeDecl(Node decl){
         NamePos namePos = getNamePosTextPair(decl);
-        String slice_key = namePos.getName() + "%" + this.current_function_name + "%" + this.file_name;
+        String slice_key = namePos.getName() + "%" + namePos.getPos() + "%" + this.current_function_name + "%" + this.file_name;
         SliceProfile slice_profile = new SliceProfile(this.file_name, this.current_function_name, namePos.getName(), namePos.getType(), namePos.getPos(), this.current_function_node);
         this.slice_profiles.put(slice_key,slice_profile);
         Hashtable<String, SliceProfile> nameProfile = new Hashtable<>();

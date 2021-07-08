@@ -38,7 +38,7 @@ final class OsUtils
 public class Main {
 
     private static final String jni_native_method_modifier = "native";
-    private static final String projectLocation = "C:\\Users\\elbon\\IdeaProjects\\jni-example";
+    private static final String projectLocation = "/Users/kishanthan/Work/clones/jni-example";
 
     private static final Hashtable<String, SliceProfilesInfo> slice_profiles_info = new Hashtable<>();
     private static final Hashtable<String, SliceProfilesInfo> java_slice_profiles_info = new Hashtable<>();
@@ -56,14 +56,14 @@ public class Main {
     }
 
     public static void main(String[] args) {
-        String srcML = "ubuntu/srcml";
+        String srcML = "/usr/local/bin/srcml";
         if(OsUtils.isWindows()){
             srcML = "windows/srcml.exe";
         }
         URL res = Main.class.getClassLoader().getResource(srcML);
         try {
             assert res != null;
-            File file = Paths.get(res.toURI()).toFile();
+            File file = Paths.get(srcML).toFile();
             ProcessBuilder pb = new ProcessBuilder(file.getAbsolutePath(), projectLocation, "--position");
             Process process = pb.start();
             BufferedReader reader =
@@ -125,7 +125,7 @@ public class Main {
 
             print_violations();
 
-        } catch (URISyntaxException | IOException | SAXException | ParserConfigurationException e) {
+        } catch (IOException | SAXException | ParserConfigurationException e) {
             e.printStackTrace();
         }
     }
@@ -273,8 +273,8 @@ public class Main {
         ArrayList<NamePos> params = find_function_parameters(encl_function_node);
         int index = 0;
         for(NamePos par:params){
-            index++;
             if(par.getName().equals(jni_arg_name)) break;
+            index++;
         }
 //        TODO invalid
         int jni_arg_pos_index = index + 2;
@@ -284,7 +284,7 @@ public class Main {
         Enumeration<String> profiles_to_analyze = cpp_slice_profiles_info.keys();
         while (profiles_to_analyze.hasMoreElements()) {
             String file_path = profiles_to_analyze.nextElement();
-            SliceProfilesInfo profile_info = java_slice_profiles_info.get(file_path);
+            SliceProfilesInfo profile_info = cpp_slice_profiles_info.get(file_path);
             profile_info.function_nodes.forEach((func,function_node)->{
                 String function_name = func.getName();
                 if(!function_name.toLowerCase().endsWith(jni_function_search_str.toLowerCase(Locale.ROOT))) return;
@@ -309,7 +309,16 @@ public class Main {
     }
 
     private static boolean is_function_of_given_modifier(Node encl_function_node, String jni_native_method_modifier) {
-        return getNodeByName(encl_function_node,jni_native_method_modifier).size()>0;
+        List<Node> specifiers =  getNodeByName(encl_function_node,"specifier");
+        for (Node n : specifiers) {
+//            String nodeName = getNamePosTextPair(n).getName();
+            String nodeName = n.getTextContent();
+            if (jni_native_method_modifier.equals(nodeName)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static boolean has_no_edge(Encl_name_pos_tuple source_name_pos_tuple, Encl_name_pos_tuple target_name_pos_tuple) {

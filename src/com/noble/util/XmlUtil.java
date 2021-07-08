@@ -119,8 +119,9 @@ public final class XmlUtil {
     }
     public static ArrayList<NamePos> find_function_parameters(Node encl_function_node){
         ArrayList<NamePos> parameters = new ArrayList<>();
-        getNodeByName(encl_function_node,"decl").forEach(param->{
-            List<Node> name_node = getNodeByName(param,"name");
+        getNodeByName(getNodeByName(encl_function_node,"parameter_list").get(0), "parameter").forEach(param->{
+            Node paramDecl = getNodeByName(param, "decl").get(0);
+            List<Node> name_node = getNodeByName(paramDecl,"name");
             if(name_node.size()<1) parameters.add(new NamePos("NoNameParam","", String.valueOf(parameters.size()),false));
             else parameters.add(getNamePosTextPair(name_node.get(0)));
         });
