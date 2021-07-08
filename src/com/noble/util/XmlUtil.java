@@ -9,7 +9,7 @@ public final class XmlUtil {
     private XmlUtil(){}
     public static List<Node> asList(NodeList n) {
         return n.getLength()==0?
-                Collections.<Node>emptyList(): new NodeListWrapper(n);
+                Collections.emptyList(): new NodeListWrapper(n);
     }
     public static String getNodePos(Node tempNode) {
         return tempNode.getAttributes().item(0).getNodeValue().split(":")[0];
@@ -17,7 +17,7 @@ public final class XmlUtil {
     public static List<Node> getNodeByName(Node parent, String tag){
         NodeList children = parent.getChildNodes();
 //        Set<Node> targetElements = new HashSet<Node>();
-        List<Node> namedNodes = new LinkedList<Node>(asList(children));
+        List<Node> namedNodes = asList(children);
 
         for(int x = namedNodes.size() - 1; x >= 0; x--)
         {
@@ -30,7 +30,7 @@ public final class XmlUtil {
                 if(childDeep.getNodeType()==Node.ELEMENT_NODE) {
                     NodeList deepChildren;
                     deepChildren = childDeep.getChildNodes();
-                    List<Node> namedDeepNodes = new LinkedList<Node>(asList(deepChildren));
+                    List<Node> namedDeepNodes = new LinkedList<>(asList(deepChildren));
                     for(int x = namedDeepNodes.size() - 1; x >= 0; x--)
                     {
                         if(!namedDeepNodes.get(x).getNodeName().equals(tag))
@@ -48,7 +48,7 @@ public final class XmlUtil {
         NodeList nodeList = init_node.getChildNodes();
         NamePos namePos = new NamePos("", "", "", false);
         boolean is_pointer = false;
-        Set<String> names = new HashSet<String>();
+        Set<String> names = new HashSet<>();
         names.add("decl");
 //        System.out.println(init_node.getNodeName()+nodeList.getLength()+nodeList.item(0).getNodeName());
         for (int count = 0; count < nodeList.getLength(); count++) {
@@ -117,6 +117,15 @@ public final class XmlUtil {
         NodeList allChilds = eElement.getElementsByTagName(tag);
         return asList(allChilds);
     }
+    public static ArrayList<NamePos> find_function_parameters(Node encl_function_node){
+        ArrayList<NamePos> parameters = new ArrayList<>();
+        getNodeByName(encl_function_node,"decl").forEach(param->{
+            List<Node> name_node = getNodeByName(param,"name");
+            if(name_node.size()<1) parameters.add(new NamePos("NoNameParam","", String.valueOf(parameters.size()),false));
+            else parameters.add(getNamePosTextPair(name_node.get(0)));
+        });
+        return parameters;
+    }
     static final class NodeListWrapper extends AbstractList<Node>
             implements RandomAccess {
         private final NodeList list;
@@ -132,7 +141,7 @@ public final class XmlUtil {
     }
     public static List<Node> appendNodeLists(NodeList a, NodeList b, NodeList c)
     {
-        List<Node> nodes = new ArrayList<Node>();
+        List<Node> nodes = new ArrayList<>();
         int aSize = a.getLength();
         int bSize = b.getLength();
         int cSize = c.getLength();

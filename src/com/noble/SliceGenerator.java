@@ -23,7 +23,7 @@ public class SliceGenerator {
 
     enum DataAccessType
     {
-        BUFFER_READ, BUFFER_WRITE;
+        BUFFER_READ, BUFFER_WRITE
     }
 
     public SliceGenerator(Node unit_node, String file_name, Hashtable<String, SliceProfile> slice_profiles){
@@ -298,7 +298,7 @@ public class SliceGenerator {
         String slice_key = literal_val + "%" + pos + "%" + current_function_name + "%" + file_name;
         SliceProfile profile = new SliceProfile(file_name, current_function_name, literal_val, type_name, pos,current_function_node);
         slice_profiles.put(slice_key,profile);
-        Hashtable<String, SliceProfile> lvar = new Hashtable<String, SliceProfile>();
+        Hashtable<String, SliceProfile> lvar = new Hashtable<>();
         lvar.put(literal_val, profile);
         local_variables.put(literal_val,lvar);
         return new NamePos(literal_val,type_name,pos,false);
