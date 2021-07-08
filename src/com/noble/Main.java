@@ -16,7 +16,6 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.*;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.nio.file.Paths;
 import java.util.*;
 
@@ -26,20 +25,20 @@ final class OsUtils
     private static String OS = null;
     public static String getOsName()
     {
-        if(OS == null) { OS = System.getProperty("os.name"); }
+        if(OS == null) { OS = System.getProperty("os.name").toLowerCase(); }
         return OS;
     }
     public static boolean isWindows()
     {
-        return getOsName().startsWith("Windows");
+        return getOsName().contains("win");
     }
+    public static boolean isMac() {return getOsName().contains("mac");}
+    public static boolean isLinux() {return getOsName().contains("nix") || getOsName().contains("nux");}
 }
 
 public class Main {
 
     private static final String jni_native_method_modifier = "native";
-    private static final String projectLocation = "/Users/kishanthan/Work/clones/jni-example";
-
     private static final Hashtable<String, SliceProfilesInfo> slice_profiles_info = new Hashtable<>();
     private static final Hashtable<String, SliceProfilesInfo> java_slice_profiles_info = new Hashtable<>();
     private static final Hashtable<String, SliceProfilesInfo> cpp_slice_profiles_info = new Hashtable<>();
@@ -57,13 +56,23 @@ public class Main {
 
     public static void main(String[] args) {
         String srcML = "/usr/local/bin/srcml";
-        if(OsUtils.isWindows()){
-            srcML = "windows/srcml.exe";
-        }
-        URL res = Main.class.getClassLoader().getResource(srcML);
+        File file;
         try {
-            assert res != null;
-            File file = Paths.get(srcML).toFile();
+            String projectLocation;
+            if(OsUtils.isWindows()){
+                projectLocation = "C:\\Users\\elbon\\IdeaProjects\\jni-example";
+                srcML = "windows/srcml.exe";
+                file = Paths.get(Objects.requireNonNull(Main.class.getClassLoader().getResource(srcML)).toURI()).toFile();
+            }
+            else if(OsUtils.isLinux()){
+                projectLocation = "./";
+                srcML = "ubuntu/srcml";
+                file = Paths.get(Objects.requireNonNull(Main.class.getClassLoader().getResource(srcML)).toURI()).toFile();
+            }
+            else{
+                projectLocation = "/Users/kishanthan/Work/clones/jni-example";
+                file = Paths.get(srcML).toFile();
+            }
             ProcessBuilder pb = new ProcessBuilder(file.getAbsolutePath(), projectLocation, "--position");
             Process process = pb.start();
             BufferedReader reader =
@@ -125,7 +134,7 @@ public class Main {
 
             print_violations();
 
-        } catch (IOException | SAXException | ParserConfigurationException e) {
+        } catch (URISyntaxException | IOException | SAXException | ParserConfigurationException e) {
             e.printStackTrace();
         }
     }
@@ -311,13 +320,11 @@ public class Main {
     private static boolean is_function_of_given_modifier(Node encl_function_node, String jni_native_method_modifier) {
         List<Node> specifiers =  getNodeByName(encl_function_node,"specifier");
         for (Node n : specifiers) {
-//            String nodeName = getNamePosTextPair(n).getName();
             String nodeName = n.getTextContent();
             if (jni_native_method_modifier.equals(nodeName)) {
                 return true;
             }
         }
-
         return false;
     }
 
