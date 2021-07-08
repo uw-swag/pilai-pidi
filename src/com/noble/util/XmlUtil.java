@@ -17,7 +17,7 @@ public final class XmlUtil {
     public static List<Node> getNodeByName(Node parent, String tag){
         NodeList children = parent.getChildNodes();
 //        Set<Node> targetElements = new HashSet<Node>();
-        List<Node> namedNodes = asList(children);
+        List<Node> namedNodes = new LinkedList<Node>(asList(children));
 
         for(int x = namedNodes.size() - 1; x >= 0; x--)
         {

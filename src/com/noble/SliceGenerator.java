@@ -36,7 +36,7 @@ public class SliceGenerator {
         this.current_function_name = "";
         this.current_function_node = null;
         this.GLOBAL = "GLOBAL";
-        this.identifier_separator = "->";
+        this.identifier_separator = "[^\\w]+";
         this.src_type = null;
     }
 
@@ -362,11 +362,11 @@ public class SliceGenerator {
                 String slice_key = var_name + "%" + this.current_function_name + "%" + this.file_name;
                 if(var_name.equals("")) return var_name_pos_pair;
                 if (local_variables.containsKey(var_name)){
-                    updateCFunctionsSliceProfile(var_name,cfunction_name, cfunction_pos,arg_pos_index,local_variables,slice_key);
+                    updateCFunctionsSliceProfile(var_name,cfunction_name, cfunction_pos,arg_pos_index,"local_variables",slice_key);
                     if(!cfunction_identifier.equals("")) updateDVarSliceProfile(cfunction_identifier, var_name, var_pos, local_variables);
                 }
                 else if(global_variables.containsKey(var_name)){
-                    updateCFunctionsSliceProfile(var_name,cfunction_name, cfunction_pos,arg_pos_index,global_variables,slice_key);
+                    updateCFunctionsSliceProfile(var_name,cfunction_name, cfunction_pos,arg_pos_index,"global_variables",slice_key);
                     if(!cfunction_identifier.equals("")) updateDVarSliceProfile(cfunction_identifier, var_name, var_pos, global_variables);
                 }
                 else if(is_literal_expr(expr)){
@@ -387,14 +387,18 @@ public class SliceGenerator {
         }
     }
 
-    private void updateCFunctionsSliceProfile(String var_name, String cfunction_name, String cfunction_pos, int arg_pos_index, Hashtable<String, Hashtable<String, SliceProfile>> slice_variables, String slice_key) {
+    private void updateCFunctionsSliceProfile(String var_name, String cfunction_name, String cfunction_pos, int arg_pos_index, String slice_variables_string, String slice_key) {
+        Hashtable<String, Hashtable<String, SliceProfile>> slice_variables;
+        if(slice_variables_string.equals("local_variables")) slice_variables = local_variables;
+        else slice_variables = global_variables;
         SliceProfile slice_profile = slice_variables.get(var_name).get(var_name);
         cFunction cFun = new cFunction(arg_pos_index, current_function_name, cfunction_pos,current_function_node);
         slice_profile.cfunctions.put(cfunction_name,cFun);
         slice_profiles.put(slice_key,slice_profile);
         Hashtable<String, SliceProfile> body = slice_variables.get(var_name);
         body.put(var_name, slice_profile);
-        slice_variables.put(var_name, body);
+        if(slice_variables_string.equals("local_variables")) local_variables.put(var_name, body);
+        else global_variables.put(var_name, body);
 //        TODO pass by value ? confused
     }
 

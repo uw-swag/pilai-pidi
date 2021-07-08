@@ -99,7 +99,8 @@ public class Main {
             Enumeration<String> e = slice_profiles_info.keys();
             while (e.hasMoreElements()) {
                 String key = e.nextElement();
-                if(key.endsWith(".java") && !key.contains("/test/")){
+                if(key.endsWith(".java")){
+//                    && !key.contains("/test/")
                     java_slice_profiles_info.put(key,slice_profiles_info.get(key));
                 }
                 else{
