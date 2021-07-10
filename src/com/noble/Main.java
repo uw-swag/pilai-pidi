@@ -18,6 +18,8 @@ import java.io.*;
 import java.net.URISyntaxException;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.noble.util.XmlUtil.*;
 final class OsUtils
@@ -167,6 +169,7 @@ public class Main {
 
     private static void analyze_slice_profile(SliceProfile profile, Hashtable<String, SliceProfilesInfo> raw_profiles_info) {
         analyzed_profiles.add(profile);
+        System.out.println(profile.function_name);
 
 //                  step-01 : analyse cfunctions of the slice variable
 
@@ -200,6 +203,7 @@ public class Main {
             SliceProfile dvar_slice_profile = source_slice_profiles.get(key);
             Encl_name_pos_tuple dvar_name_pos_tuple = new Encl_name_pos_tuple(dvar_slice_profile.var_name, dvar_slice_profile.function_name, dvar_slice_profile.file_name, dvar_slice_profile.defined_position);
             if(has_no_edge(encl_name_pos_tuple,dvar_name_pos_tuple)){
+                if(analyzed_profiles.contains(dvar_slice_profile)) return;
                 analyze_slice_profile(dvar_slice_profile,raw_profiles_info);
             }
         }
@@ -231,6 +235,12 @@ public class Main {
 
     private static void analyze_cfunction(String cfunction_name, String cfunction_pos, int arg_pos_index, String var_type_name, Node encl_function_node, Encl_name_pos_tuple encl_name_pos_tuple, Hashtable<String, SliceProfilesInfo> slice_profiles_info) {
         LinkedList <SliceProfile> dependent_slice_profiles = find_dependent_slice_profiles(cfunction_name, arg_pos_index, var_type_name, encl_function_node, slice_profiles_info);
+        dependent_slice_profiles.forEach(dep_profile->{
+            Encl_name_pos_tuple dep_name_pos_tuple = new Encl_name_pos_tuple(dep_profile.var_name, dep_profile.function_name, dep_profile.file_name, dep_profile.defined_position);
+//            if(!has_no_edge(encl_name_pos_tuple,dep_name_pos_tuple)) return;
+            if(analyzed_profiles.contains(dep_profile)) return;
+            analyze_slice_profile(dep_profile, slice_profiles_info);
+        });
         if(dependent_slice_profiles.size()<1){
             if(cfunction_name.equals("strcpy") || cfunction_name.equals("strncpy") || cfunction_name.equals("memcpy")){
                 DG.addNode(encl_name_pos_tuple);
@@ -238,39 +248,25 @@ public class Main {
                 cErrors.add("Use of " + cfunction_name + " at " + cfunction_pos);
                 detected_violations.put(encl_name_pos_tuple, cErrors);
             }
-            return;
         }
-
-        dependent_slice_profiles.forEach(dep_profile->{
-            Encl_name_pos_tuple dep_name_pos_tuple = new Encl_name_pos_tuple(dep_profile.var_name, dep_profile.function_name, dep_profile.file_name, dep_profile.defined_position);
-            if(!has_no_edge(encl_name_pos_tuple,dep_name_pos_tuple)) return;
-            if(analyzed_profiles.contains(dep_profile)) return;
-            analyze_slice_profile(dep_profile, slice_profiles_info);
-        });
     }
 
-    private static LinkedList<SliceProfile> find_dependent_slice_profiles(String current_function_name, int arg_pos_index, String type_name, Node current_function_node, Hashtable<String, SliceProfilesInfo> java_slice_profiles_info) {
+    private static LinkedList<SliceProfile> find_dependent_slice_profiles(String cfunction_name, int arg_pos_index, String type_name, Node current_function_node, Hashtable<String, SliceProfilesInfo> java_slice_profiles_info) {
         LinkedList <SliceProfile> dependent_slice_profiles = new LinkedList<>();
         Enumeration<String> profiles_to_analyze = java_slice_profiles_info.keys();
         while (profiles_to_analyze.hasMoreElements()) {
-            String keyP = profiles_to_analyze.nextElement();
-            SliceProfilesInfo currentSlice = java_slice_profiles_info.get(keyP);
-            Enumeration<String> slices_to_analyze = currentSlice.slice_profiles.keys();
-            while (slices_to_analyze.hasMoreElements()) {
-                String keyS = slices_to_analyze.nextElement();
-                SliceProfile profile = currentSlice.slice_profiles.get(keyS);
-                analyzed_profiles.add(profile);
-                for (cFunction cfunction: find_possible_functions(currentSlice.function_nodes, current_function_name, arg_pos_index, current_function_node)
+            String file_path = profiles_to_analyze.nextElement();
+            SliceProfilesInfo profile_info = java_slice_profiles_info.get(file_path);
+                for (cFunction cfunction: find_possible_functions(profile_info.function_nodes, cfunction_name, arg_pos_index, current_function_node)
                 ) {
                     NamePos param = getNamePosTextPair(cfunction.getFunc_args().get(arg_pos_index - 1));
                     String param_name = param.getName();
                     String param_pos = param.getPos();
-                    String key = param_name + "%" + param_pos + "%" + current_function_name + "%" + keyS;
-                    if(!currentSlice.slice_profiles.containsKey(key)) continue;
-                    dependent_slice_profiles.add(currentSlice.slice_profiles.get(key));
+                    String key = param_name + "%" + param_pos + "%" + cfunction_name + "%" + file_path;
+                    if(!profile_info.slice_profiles.containsKey(key)) continue;
+                    dependent_slice_profiles.add(profile_info.slice_profiles.get(key));
                 }
             }
-        }
         return dependent_slice_profiles;
     }
 
@@ -285,7 +281,6 @@ public class Main {
             if(par.getName().equals(jni_arg_name)) break;
             index++;
         }
-//        TODO invalid
         int jni_arg_pos_index = index + 2;
         String clazz_name = getNodeByName(getNodeByName(encl_unit_node,"class").get(0),"name").get(0).getTextContent();
         String jni_function_search_str = "_" + clazz_name + "_" + jni_function_name;
@@ -294,11 +289,15 @@ public class Main {
         while (profiles_to_analyze.hasMoreElements()) {
             String file_path = profiles_to_analyze.nextElement();
             SliceProfilesInfo profile_info = cpp_slice_profiles_info.get(file_path);
-            profile_info.function_nodes.forEach((func,function_node)->{
+//            profile_info.function_nodes.forEach((func,function_node)->{
+            Enumeration<NamePos> functions_to_analyze = profile_info.function_nodes.keys();
+            while (functions_to_analyze.hasMoreElements()) {
+                NamePos func = functions_to_analyze.nextElement();
+                Node function_node = profile_info.function_nodes.get(func);
                 String function_name = func.getName();
-                if(!function_name.toLowerCase().endsWith(jni_function_search_str.toLowerCase(Locale.ROOT))) return;
+                if(!function_name.toLowerCase().endsWith(jni_function_search_str.toLowerCase())) continue;
                 ArrayList<NamePos> function_args = find_function_parameters(function_node);
-                if(function_args.size()<1 || jni_arg_pos_index>function_args.size()) return;
+                if(function_args.size()<1 || jni_arg_pos_index>function_args.size()) continue;
                 NamePos arg = function_args.get(jni_arg_pos_index);
                 String key = arg.getName() + "%" + arg.getPos() +"%" + function_name + "%" + file_path;
                 SliceProfile possible_slice_profile = null;
@@ -306,14 +305,15 @@ public class Main {
                 while (profiles_prob.hasMoreElements()) {
                     String cpp_profile_id = profiles_prob.nextElement();
                     SliceProfile cpp_profile = profile_info.slice_profiles.get(cpp_profile_id);
-                    if(cpp_profile_id.equals(key)) possible_slice_profile = cpp_profile;
+                    if(cpp_profile_id.equals(key)) {possible_slice_profile = cpp_profile; break;}
                 }
-                if(possible_slice_profile == null) return;
+                if(possible_slice_profile == null) continue;
                 Encl_name_pos_tuple analyzed_name_pos_tuple = new Encl_name_pos_tuple(possible_slice_profile.var_name, possible_slice_profile.function_name, possible_slice_profile.file_name, possible_slice_profile.defined_position);
-                if (has_no_edge(encl_name_pos_tuple, analyzed_name_pos_tuple)) return;
-                if (analyzed_profiles.contains(possible_slice_profile)) return;
+//TODO FIX both has_no_edge
+//                if (has_no_edge(encl_name_pos_tuple, analyzed_name_pos_tuple)) continue;
+                if (analyzed_profiles.contains(possible_slice_profile)) continue;
                 analyze_slice_profile(possible_slice_profile,cpp_slice_profiles_info);
-            });
+            }
         }
     }
 
@@ -361,7 +361,9 @@ public class Main {
             if(call_argument_list.size()!=param.size()) continue;
             return true;
         }
-        return false;
+        return true;
+//        TODO FIX
+//        return false;
     }
 
     private static void analyze_source_unit_and_build_slices(Node unit_node, String source_file_path, Hashtable<String, SliceProfile> slice_profiles) {
@@ -377,17 +379,17 @@ public class Main {
 
     private static Hashtable<NamePos, Node> find_function_nodes(Node unit_node) {
         Hashtable<NamePos, Node> function_nodes = new Hashtable<>();
-        Element eElement = (Element) unit_node;
-//        NodeList nList = unit_node.getChildNodes();
-//        Stream<Node> nodeStream = IntStream.range(0, nList.getLength()).mapToObj(nList::item);
-//        Stream<Node> filterStream = nodeStream.filter(Main::isElementOfInterest);
-//        return  filterStream.collect(Collectors.toList()) ;
+//        Element eElement = (Element) unit_node;
+        List<Node> fun1 = getNodeByName(unit_node,"function");
+        List<Node> fun2 = getNodeByName(unit_node,"function_decl");
+        List<Node> fun3 = getNodeByName(unit_node,"constructor");
+        List<Node> fun4 = getNodeByName(unit_node,"destructor");
 
-        NodeList fun1 = eElement.getElementsByTagName("function");
-        NodeList fun2 = eElement.getElementsByTagName("function_decl");
-        NodeList fun3 = eElement.getElementsByTagName("constructor");
+        List<Node> funList = Stream.of(fun1, fun2, fun3, fun4)
+                .flatMap(Collection::stream)
+                .collect(Collectors.toList());
 
-        for(Node node:appendNodeLists(fun1,fun2,fun3)){
+        for(Node node:funList){
             function_nodes.put(getNamePosTextPair(node),node);
         }
         return function_nodes;
