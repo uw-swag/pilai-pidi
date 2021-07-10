@@ -1,13 +1,11 @@
 package com.noble;
 
-import com.google.common.graph.GraphBuilder;
-import com.google.common.graph.MutableGraph;
-import com.google.common.graph.Traverser;
+import org.jgrapht.*;
+import org.jgrapht.alg.shortestpath.BellmanFordShortestPath;
+import org.jgrapht.graph.*;
 
 import org.w3c.dom.Document;
-import org.w3c.dom.Element;
 import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
@@ -44,10 +42,15 @@ public class Main {
     private static final Hashtable<String, SliceProfilesInfo> slice_profiles_info = new Hashtable<>();
     private static final Hashtable<String, SliceProfilesInfo> java_slice_profiles_info = new Hashtable<>();
     private static final Hashtable<String, SliceProfilesInfo> cpp_slice_profiles_info = new Hashtable<>();
-    private static final MutableGraph<Encl_name_pos_tuple> DG = GraphBuilder.directed().build();
+    private static final Graph<Encl_name_pos_tuple, DefaultEdge> DG = new DefaultDirectedGraph<>(DefaultEdge.class);
     public static final Hashtable<Encl_name_pos_tuple,ArrayList<String>> detected_violations = new Hashtable<>();
 
     static LinkedList<SliceProfile> analyzed_profiles= new LinkedList<>();
+
+    public static List<Encl_name_pos_tuple> shortestBellman(Graph<Encl_name_pos_tuple, DefaultEdge> directedGraph, Encl_name_pos_tuple a, Encl_name_pos_tuple b) {
+        BellmanFordShortestPath<Encl_name_pos_tuple, DefaultEdge> bellmanFordShortestPath = new BellmanFordShortestPath<>(directedGraph);
+        return bellmanFordShortestPath.getPath(a, b).getVertexList();
+    }
 
     public static void stringToDom(String xmlSource)
             throws IOException {
@@ -143,8 +146,8 @@ public class Main {
 
     private static void print_violations() {
         ArrayList<Encl_name_pos_tuple> source_nodes = new ArrayList<>();
-        for(Encl_name_pos_tuple node:DG.nodes()){
-            if (DG.inDegree(node) == 0)
+        for(Encl_name_pos_tuple node:DG.vertexSet()){
+            if (DG.inDegreeOf(node) == 0)
             source_nodes.add(node);
         }
         int violations_count = 0;
@@ -155,8 +158,8 @@ public class Main {
                 ArrayList<String> violations = detected_violations.get(violated_node_pos_pair);
                 System.out.println("Possible out-of-bounds operation path");
 //                TODO shortest path
-                if(DG.hasEdgeConnecting(source_node, violated_node_pos_pair)){
-                    Traverser.forGraph(DG).depthFirstPostOrder(source_node)
+                if(!DG.getAllEdges(source_node,violated_node_pos_pair).isEmpty()){
+                    shortestBellman(DG,source_node, violated_node_pos_pair)
                             .forEach(x->System.out.print(x + " -> "));
                 }
                 violations.forEach(violation-> System.out.println("Reason : "+violation));
@@ -186,7 +189,7 @@ public class Main {
             analyze_cfunction(cfunction_name, cfunction_pos, arg_pos_index, profile.type_name, encl_function_node, encl_name_pos_tuple, raw_profiles_info);
         }
         encl_name_pos_tuple = new Encl_name_pos_tuple(profile.var_name,profile.function_name,profile.file_name,profile.defined_position);
-        DG.addNode(encl_name_pos_tuple);
+        DG.addVertex(encl_name_pos_tuple);
 
 //                  step-02 : analyze data dependent vars of the slice variable
 
@@ -237,13 +240,14 @@ public class Main {
         LinkedList <SliceProfile> dependent_slice_profiles = find_dependent_slice_profiles(cfunction_name, arg_pos_index, var_type_name, encl_function_node, slice_profiles_info);
         dependent_slice_profiles.forEach(dep_profile->{
             Encl_name_pos_tuple dep_name_pos_tuple = new Encl_name_pos_tuple(dep_profile.var_name, dep_profile.function_name, dep_profile.file_name, dep_profile.defined_position);
+//TODO FIX both has_no_edge
 //            if(!has_no_edge(encl_name_pos_tuple,dep_name_pos_tuple)) return;
             if(analyzed_profiles.contains(dep_profile)) return;
             analyze_slice_profile(dep_profile, slice_profiles_info);
         });
         if(dependent_slice_profiles.size()<1){
             if(cfunction_name.equals("strcpy") || cfunction_name.equals("strncpy") || cfunction_name.equals("memcpy")){
-                DG.addNode(encl_name_pos_tuple);
+                DG.addVertex(encl_name_pos_tuple);
                 ArrayList<String> cErrors = new ArrayList<>();
                 cErrors.add("Use of " + cfunction_name + " at " + cfunction_pos);
                 detected_violations.put(encl_name_pos_tuple, cErrors);
@@ -330,8 +334,12 @@ public class Main {
 
     private static boolean has_no_edge(Encl_name_pos_tuple source_name_pos_tuple, Encl_name_pos_tuple target_name_pos_tuple) {
         if(source_name_pos_tuple == target_name_pos_tuple) return false;
-        if(DG.hasEdgeConnecting(source_name_pos_tuple,target_name_pos_tuple)) return false;
-        DG.putEdge(source_name_pos_tuple,target_name_pos_tuple);
+        if(!DG.containsVertex(source_name_pos_tuple))
+        DG.addVertex(source_name_pos_tuple);
+        if(!DG.containsVertex(target_name_pos_tuple))
+        DG.addVertex(target_name_pos_tuple);
+        if(DG.containsEdge(source_name_pos_tuple,target_name_pos_tuple)) return false;
+        DG.addEdge(source_name_pos_tuple,target_name_pos_tuple);
         return true;
     }
 

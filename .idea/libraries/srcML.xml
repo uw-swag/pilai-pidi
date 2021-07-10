@@ -3,7 +3,7 @@
     <CLASSES />
     <JAVADOC />
     <NATIVE>
-      <root url="file://$PROJECT_DIR$/src/resources" />
+      <root url="file://$PROJECT_DIR$/src/main/java/resources" />
     </NATIVE>
     <SOURCES />
   </library>
