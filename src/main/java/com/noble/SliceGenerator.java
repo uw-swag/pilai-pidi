@@ -423,7 +423,6 @@ public class SliceGenerator {
         body.put(var_name, slice_profile);
         if(slice_variables_string.equals("local_variables")) local_variables.put(var_name, body);
         else global_variables.put(var_name, body);
-//        TODO pass by value ? confused
     }
 
     private void analyzeIfStmt(Node stmt) {
@@ -439,17 +438,23 @@ public class SliceGenerator {
     }
 
     private void analyzeConditionBlock(Node stmt) {
-        analyzeCompoundExpr(getNodeByName(stmt,"condition").get(0));
-        analyzeBlock(getNodeByName(stmt,"block").get(0));
+        List<Node> condition = getNodeByName(stmt, "condition");
+        if(condition.size()>0) analyzeCompoundExpr(condition.get(0));
+        List<Node> block = getNodeByName(stmt, "block");
+        if(block.size()>0) analyzeBlock(block.get(0));
 
     }
 
     private void analyzeReturnStmt(Node stmt) {
-        analyzeExpr(getNodeByName(stmt,"expr").get(0).getChildNodes().item(0));
+        List<Node> expr = getNodeByName(stmt, "expr");
+        if(expr.size()>0)
+        analyzeExpr(expr.get(0).getChildNodes().item(0));
     }
 
     private void analyzeElseBlock(Node node) {
-        analyzeBlock(getNodeByName(node,"block").get(0));
+        List<Node> block = getNodeByName(node, "block");
+        if(block.size()>0)
+        analyzeBlock(block.get(0));
     }
 
     private void analyzeForStmt(Node stmt) {
@@ -458,9 +463,18 @@ public class SliceGenerator {
     }
 
     private void analyzeControl(Node control) {
-        analyzeDecl(getNodeByName(getNodeByName(control,"init").get(0),"decl").get(0));
-        analyzeConditionExpr(getNodeByName(control,"condition").get(0));
-        analyzeExpr(getNodeByName(control,"incr").get(0));
+        List<Node> init = getNodeByName(control, "init");
+        if(init.size()>0){
+            List<Node> decl = getNodeByName(init.get(0), "decl");
+            if(decl.size()>0)
+                analyzeDecl(decl.get(0));
+        }
+        List<Node> condition = getNodeByName(control, "condition");
+        if(condition.size()>0)
+        analyzeConditionExpr(condition.get(0));
+        List<Node> incr = getNodeByName(control, "incr");
+        if(incr.size()>0)
+        analyzeExpr(incr.get(0));
     }
 
     private void analyzeWhileStmt(Node stmt) {
@@ -486,13 +500,16 @@ public class SliceGenerator {
     }
 
     private void analyzeCompoundExpr(Node init_expr) {
-        List<Node> exprs = asList(getNodeByName(init_expr, "expr").get(0).getChildNodes());
-        if(is_assignment_expr(exprs)){
-            analyzeAssignmentExpr(asList(exprs.get(0).getChildNodes()));
-        }
-        else{
-            for(Node expr:exprs){
-                analyzeExpr(expr);
+
+        List<Node> expr1 = getNodeByName(init_expr, "expr");
+        if(expr1.size()>0) {
+            List<Node> exprs = asList(expr1.get(0).getChildNodes());
+            if (is_assignment_expr(exprs)) {
+                analyzeAssignmentExpr(exprs);
+            } else {
+                for (Node expr : exprs) {
+                    analyzeExpr(expr);
+                }
             }
         }
 //      TODO check for pointers and update slice profiles
@@ -500,7 +517,7 @@ public class SliceGenerator {
 
     private void analyzeAssignmentExpr(List<Node> exprs) {
         NamePos lhs_expr_name_pos_pair = analyzeExpr(exprs.get(0));
-        NamePos rhs_expr_name_pos_pair = analyzeExpr(exprs.get(exprs.size()-1));
+        NamePos rhs_expr_name_pos_pair = analyzeExpr(exprs.get(4));
         String lhs_expr_var_name = lhs_expr_name_pos_pair.getName();
         String rhs_expr_var_name = rhs_expr_name_pos_pair.getName();
         if(lhs_expr_var_name == null || rhs_expr_var_name == null || lhs_expr_var_name.equals(rhs_expr_var_name)) return;
@@ -525,12 +542,6 @@ public class SliceGenerator {
         SliceVariableAccess var_access = new SliceVariableAccess();
         var_access.addWrite_positions(buffer_write_pos_tuple);
         l_var_profile.used_positions.add(var_access);
-//        if (local_variables.containsKey(lhs_expr_var_name)){
-//        TODO check pass by value
-//        }
-//        else{
-//
-//        }
     }
 
     private boolean isBufferWriteExpr(Node expr) {
@@ -578,12 +589,8 @@ public class SliceGenerator {
 
 
     private boolean is_assignment_expr(List<Node> exprs) {
-        List<Node> expr = getNodeByName(exprs.get(0),"operator");
-        if (exprs.get(0).getLastChild().getNodeName().equals("call"))return false;
-        if (expr.size()<1){
-            return false;
-        }
-        Node operator_expr = expr.get(0);
+        if(exprs.size()!=5) return false;
+        Node operator_expr = exprs.get(2);
         return operator_expr.getNodeName().equals("operator")&& operator_expr.getFirstChild().getNodeValue().equals("=");
     }
 

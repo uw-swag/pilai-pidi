@@ -14,5 +14,6 @@
     <orderEntry type="library" name="guava-30.1.1-jre" level="project" />
     <orderEntry type="library" name="Maven: org.jgrapht:jgrapht-core:1.5.1" level="project" />
     <orderEntry type="library" name="Maven: org.jheaps:jheaps:0.13" level="project" />
+    <orderEntry type="library" name="Maven: commons-io:commons-io:2.6" level="project" />
   </component>
 </module>

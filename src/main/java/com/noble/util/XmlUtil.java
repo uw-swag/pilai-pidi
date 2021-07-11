@@ -4,6 +4,7 @@ import java.util.*;
 
 import com.noble.NamePos;
 import org.w3c.dom.*;
+//import static com.noble.util.RecursionLimiter.emerge;
 
 public final class XmlUtil {
     private XmlUtil(){}
@@ -14,36 +15,61 @@ public final class XmlUtil {
     public static String getNodePos(Node tempNode) {
         return tempNode.getAttributes().item(0).getNodeValue().split(":")[0];
     }
-    public static List<Node> getNodeByName(Node parent, String tag){
-        NodeList children = parent.getChildNodes();
-//        Set<Node> targetElements = new HashSet<Node>();
-        List<Node> namedNodes = new LinkedList<Node>(asList(children));
+//    public static List<Node> getNodeByName(Node parent, String tag){
+//        NodeList children = parent.getChildNodes();
+////        Set<Node> targetElements = new HashSet<Node>();
+//        List<Node> namedNodes = new LinkedList<Node>(asList(children));
+//
+//        for(int x = namedNodes.size() - 1; x >= 0; x--)
+//        {
+//            if(!namedNodes.get(x).getNodeName().equals(tag))
+//                namedNodes.remove(x);
+//        }
+//        if(namedNodes.size()<1){
+//            for (int count = 0; count < children.getLength(); count++) {
+//                Node childDeep = children.item(count);
+//                if(childDeep.getNodeType()==Node.ELEMENT_NODE) {
+//                    NodeList deepChildren;
+//                    deepChildren = childDeep.getChildNodes();
+//                    List<Node> namedDeepNodes = new LinkedList<>(asList(deepChildren));
+//                    for(int x = namedDeepNodes.size() - 1; x >= 0; x--)
+//                    {
+//                        if(!namedDeepNodes.get(x).getNodeName().equals(tag))
+//                            namedDeepNodes.remove(x);
+//                    }
+//                    if(namedDeepNodes.size()>=1)
+//                        return namedDeepNodes;
+//                }
+//            }
+//        }
+//
+//        return  namedNodes;
+//    }
 
+    public static List<Node> getNodeByName(Node parent, String tag) {
+        NodeList children = parent.getChildNodes();
+        List<Node> namedNodes = new LinkedList<>(asList(children));
         for(int x = namedNodes.size() - 1; x >= 0; x--)
         {
             if(!namedNodes.get(x).getNodeName().equals(tag))
                 namedNodes.remove(x);
         }
-        if(namedNodes.size()<1){
-            for (int count = 0; count < children.getLength(); count++) {
-                Node childDeep = children.item(count);
-                if(childDeep.getNodeType()==Node.ELEMENT_NODE) {
-                    NodeList deepChildren;
-                    deepChildren = childDeep.getChildNodes();
-                    List<Node> namedDeepNodes = new LinkedList<>(asList(deepChildren));
-                    for(int x = namedDeepNodes.size() - 1; x >= 0; x--)
-                    {
-                        if(!namedDeepNodes.get(x).getNodeName().equals(tag))
-                            namedDeepNodes.remove(x);
-                    }
-                    if(namedDeepNodes.size()>=1)
-                        return namedDeepNodes;
-                }
+        if (namedNodes.size()>0) {
+            return namedNodes;
+        }
+        NodeList deep = parent.getChildNodes();
+        for (int i = 0, len = deep.getLength(); i < len; i++) {
+            if (deep.item(i).getNodeType() == Node.ELEMENT_NODE) {
+                Node childElement = deep.item(i);
+                List<Node> attr = getNodeByName(childElement, tag);
+                if ( attr.size()>0)
+                    return attr;
             }
         }
 
-        return  namedNodes;
+        return namedNodes;
     }
+
     public static NamePos getNamePosTextPair(Node init_node) {
         NodeList nodeList = init_node.getChildNodes();
         NamePos namePos = new NamePos("", "", "", false);

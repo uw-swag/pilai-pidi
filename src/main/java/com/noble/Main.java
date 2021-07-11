@@ -1,6 +1,8 @@
 package com.noble;
 
+import org.apache.commons.io.IOUtils;
 import org.jgrapht.*;
+import org.jgrapht.alg.shortestpath.AllDirectedPaths;
 import org.jgrapht.alg.shortestpath.BellmanFordShortestPath;
 import org.jgrapht.graph.*;
 
@@ -14,10 +16,13 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.*;
 import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+//import static com.noble.util.RecursionLimiter.emerge;
 
 import static com.noble.util.XmlUtil.*;
 final class OsUtils
@@ -52,7 +57,7 @@ public class Main {
         return bellmanFordShortestPath.getPath(a, b).getVertexList();
     }
 
-    public static void stringToDom(String xmlSource)
+    public static void inspectXML(String xmlSource)
             throws IOException {
         java.io.FileWriter fw = new java.io.FileWriter("temp.xml");
         fw.write(xmlSource);
@@ -60,12 +65,17 @@ public class Main {
     }
 
     public static void main(String[] args) {
+        long start = System.currentTimeMillis();
         String srcML = "/usr/local/bin/srcml";
         File file;
         try {
             String projectLocation;
             if(OsUtils.isWindows()){
-                projectLocation = "C:\\Users\\elbon\\IdeaProjects\\jni-example";
+                projectLocation =
+//                        "C:\\Users\\elbon\\Documents\\GitHub\\sipdroid-master";
+                        "C:\\Users\\elbon\\Documents\\GitHub\\sipmin";
+//                        "C:\\Users\\elbon\\IdeaProjects\\jni-example-master";
+
                 srcML = "windows/srcml.exe";
                 file = Paths.get(Objects.requireNonNull(Main.class.getClassLoader().getResource(srcML)).toURI()).toFile();
             }
@@ -79,17 +89,19 @@ public class Main {
                 file = Paths.get(srcML).toFile();
             }
             ProcessBuilder pb = new ProcessBuilder(file.getAbsolutePath(), projectLocation, "--position");
-            Process process = pb.start();
-            BufferedReader reader =
-                    new BufferedReader(new InputStreamReader(process.getInputStream()));
-            StringBuilder builder = new StringBuilder();
-            String line;
-            while ( (line = reader.readLine()) != null) {
-                builder.append(line);
-                builder.append(System.getProperty("line.separator"));
-            }
-            String result = builder.toString();
-            stringToDom(result);
+//            Process process = pb.start();
+//            BufferedReader reader =
+//                    new BufferedReader(new InputStreamReader(process.getInputStream()));
+//            StringBuilder builder = new StringBuilder();
+//            String line;
+//            while ( (line = reader.readLine()) != null) {
+//                builder.append(line);
+//                builder.append(System.getProperty("line.separator"));
+//            }
+//            String result = builder.toString();
+            String result = IOUtils.toString(pb.start().getInputStream(), StandardCharsets.UTF_8);
+
+            inspectXML(result);
             System.out.println("Converted to XML, beginning parsing ...");
             DocumentBuilder db = DocumentBuilderFactory.newInstance().newDocumentBuilder();
             Document doc = db.parse(new InputSource(new StringReader(result)));
@@ -138,6 +150,8 @@ public class Main {
             }
 
             print_violations();
+            long end = System.currentTimeMillis();
+            System.out.println("Completed in " + (end - start) + "ms");
 
         } catch (URISyntaxException | IOException | SAXException | ParserConfigurationException e) {
             e.printStackTrace();
@@ -156,14 +170,16 @@ public class Main {
             while (violationE.hasMoreElements()) {
                 Encl_name_pos_tuple violated_node_pos_pair = violationE.nextElement();
                 ArrayList<String> violations = detected_violations.get(violated_node_pos_pair);
-                System.out.println("Possible out-of-bounds operation path");
-//                TODO shortest path
-                if(!DG.getAllEdges(source_node,violated_node_pos_pair).isEmpty()){
-                    shortestBellman(DG,source_node, violated_node_pos_pair)
-                            .forEach(x->System.out.print(x + " -> "));
+                AllDirectedPaths allDirectedPaths = new AllDirectedPaths(DG);
+                List<GraphPath<Encl_name_pos_tuple,DefaultEdge>> requiredPath = allDirectedPaths.getAllPaths(source_node, violated_node_pos_pair, true, null);
+                if(!requiredPath.isEmpty()){
+                    System.out.println("Possible out-of-bounds operation path");
+                    requiredPath.forEach(x->System.out.print(x + " -> "));
+//                    shortestBellman(DG,source_node, violated_node_pos_pair)
+//                            .forEach(x->System.out.print(x + " -> "));
+                    violations.forEach(violation-> System.out.println("Reason : "+violation));
+                    violations_count = violations_count + violations.size();
                 }
-                violations.forEach(violation-> System.out.println("Reason : "+violation));
-                violations_count = violations.size();
             }
         }
         System.out.println("No of files analyzed "+ java_slice_profiles_info.size());
@@ -172,7 +188,11 @@ public class Main {
 
     private static void analyze_slice_profile(SliceProfile profile, Hashtable<String, SliceProfilesInfo> raw_profiles_info) {
         analyzed_profiles.add(profile);
-        System.out.println(profile.function_name);
+//        try{
+//            emerge();
+//        } catch (Exception e) {
+//            return;
+//        }
 
 //                  step-01 : analyse cfunctions of the slice variable
 
@@ -189,6 +209,7 @@ public class Main {
             analyze_cfunction(cfunction_name, cfunction_pos, arg_pos_index, profile.type_name, encl_function_node, encl_name_pos_tuple, raw_profiles_info);
         }
         encl_name_pos_tuple = new Encl_name_pos_tuple(profile.var_name,profile.function_name,profile.file_name,profile.defined_position);
+        if (!DG.containsVertex(encl_name_pos_tuple))
         DG.addVertex(encl_name_pos_tuple);
 
 //                  step-02 : analyze data dependent vars of the slice variable
@@ -206,7 +227,6 @@ public class Main {
             SliceProfile dvar_slice_profile = source_slice_profiles.get(key);
             Encl_name_pos_tuple dvar_name_pos_tuple = new Encl_name_pos_tuple(dvar_slice_profile.var_name, dvar_slice_profile.function_name, dvar_slice_profile.file_name, dvar_slice_profile.defined_position);
             if(has_no_edge(encl_name_pos_tuple,dvar_name_pos_tuple)){
-                if(analyzed_profiles.contains(dvar_slice_profile)) return;
                 analyze_slice_profile(dvar_slice_profile,raw_profiles_info);
             }
         }
@@ -240,8 +260,7 @@ public class Main {
         LinkedList <SliceProfile> dependent_slice_profiles = find_dependent_slice_profiles(cfunction_name, arg_pos_index, var_type_name, encl_function_node, slice_profiles_info);
         dependent_slice_profiles.forEach(dep_profile->{
             Encl_name_pos_tuple dep_name_pos_tuple = new Encl_name_pos_tuple(dep_profile.var_name, dep_profile.function_name, dep_profile.file_name, dep_profile.defined_position);
-//TODO FIX both has_no_edge
-//            if(!has_no_edge(encl_name_pos_tuple,dep_name_pos_tuple)) return;
+            if(!has_no_edge(encl_name_pos_tuple,dep_name_pos_tuple)) return;
             if(analyzed_profiles.contains(dep_profile)) return;
             analyze_slice_profile(dep_profile, slice_profiles_info);
         });
@@ -313,8 +332,7 @@ public class Main {
                 }
                 if(possible_slice_profile == null) continue;
                 Encl_name_pos_tuple analyzed_name_pos_tuple = new Encl_name_pos_tuple(possible_slice_profile.var_name, possible_slice_profile.function_name, possible_slice_profile.file_name, possible_slice_profile.defined_position);
-//TODO FIX both has_no_edge
-//                if (has_no_edge(encl_name_pos_tuple, analyzed_name_pos_tuple)) continue;
+                if (!has_no_edge(encl_name_pos_tuple, analyzed_name_pos_tuple)) continue;
                 if (analyzed_profiles.contains(possible_slice_profile)) continue;
                 analyze_slice_profile(possible_slice_profile,cpp_slice_profiles_info);
             }
@@ -333,12 +351,23 @@ public class Main {
     }
 
     private static boolean has_no_edge(Encl_name_pos_tuple source_name_pos_tuple, Encl_name_pos_tuple target_name_pos_tuple) {
-        if(source_name_pos_tuple == target_name_pos_tuple) return false;
+        if(source_name_pos_tuple.equals(target_name_pos_tuple)) return false;
         if(!DG.containsVertex(source_name_pos_tuple))
         DG.addVertex(source_name_pos_tuple);
         if(!DG.containsVertex(target_name_pos_tuple))
         DG.addVertex(target_name_pos_tuple);
-        if(DG.containsEdge(source_name_pos_tuple,target_name_pos_tuple)) return false;
+
+//        if(DG.containsEdge(source_name_pos_tuple,target_name_pos_tuple)) return false;
+//        if(!DG.containsVertex(target_name_pos_tuple))
+//        for( Encl_name_pos_tuple node : DG.vertexSet()){
+//           if (node.equals(target_name_pos_tuple)){
+//               target_name_pos_tuple = node;
+//               break;
+//            }
+//        }
+        if(DG.containsEdge(source_name_pos_tuple,target_name_pos_tuple))
+            return false;
+
         DG.addEdge(source_name_pos_tuple,target_name_pos_tuple);
         return true;
     }
@@ -369,9 +398,7 @@ public class Main {
             if(call_argument_list.size()!=param.size()) continue;
             return true;
         }
-        return true;
-//        TODO FIX
-//        return false;
+        return false;
     }
 
     private static void analyze_source_unit_and_build_slices(Node unit_node, String source_file_path, Hashtable<String, SliceProfile> slice_profiles) {
