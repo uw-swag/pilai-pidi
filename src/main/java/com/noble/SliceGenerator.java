@@ -516,11 +516,19 @@ public class SliceGenerator {
     }
 
     private void analyzeAssignmentExpr(List<Node> exprs) {
-        NamePos lhs_expr_name_pos_pair = analyzeExpr(exprs.get(0));
-        NamePos rhs_expr_name_pos_pair = analyzeExpr(exprs.get(4));
+        Node lhs_expr = exprs.get(0);
+        Node rhs_expr = exprs.get(4);
+
+        NamePos lhs_expr_name_pos_pair = analyzeExpr(lhs_expr);
+        NamePos rhs_expr_name_pos_pair = analyzeExpr(rhs_expr);
+
         String lhs_expr_var_name = lhs_expr_name_pos_pair.getName();
         String rhs_expr_var_name = rhs_expr_name_pos_pair.getName();
+        String lhs_expr_pos = lhs_expr_name_pos_pair.getPos();
+        String rhs_expr_pos = rhs_expr_name_pos_pair.getPos();
+
         if(lhs_expr_var_name == null || rhs_expr_var_name == null || lhs_expr_var_name.equals(rhs_expr_var_name)) return;
+
         if (local_variables.containsKey(rhs_expr_var_name)){
             updateDVarSliceProfile(lhs_expr_var_name,rhs_expr_var_name,"local_variables");
         }
@@ -528,8 +536,9 @@ public class SliceGenerator {
             updateDVarSliceProfile(lhs_expr_var_name,rhs_expr_var_name,"global_variables");
         }
 
-        boolean is_buffer_write = isBufferWriteExpr(exprs.get(0));
+        boolean is_buffer_write = isBufferWriteExpr(lhs_expr);
         if(!is_buffer_write) return;
+
         SliceProfile l_var_profile = null;
         if (local_variables.containsKey(lhs_expr_var_name)){
             l_var_profile = local_variables.get(lhs_expr_var_name).get(lhs_expr_var_name);
@@ -537,11 +546,32 @@ public class SliceGenerator {
         else if(global_variables.containsKey(lhs_expr_var_name)){
             l_var_profile = global_variables.get(lhs_expr_var_name).get(lhs_expr_var_name);
         }
+
         if(l_var_profile==null)return;
-        Tuple buffer_write_pos_tuple = new Tuple(DataAccessType.BUFFER_WRITE, lhs_expr_name_pos_pair.getPos());
+
+        Tuple buffer_write_pos_tuple = new Tuple(DataAccessType.BUFFER_WRITE, lhs_expr_pos);
         SliceVariableAccess var_access = new SliceVariableAccess();
         var_access.addWrite_positions(buffer_write_pos_tuple);
         l_var_profile.used_positions.add(var_access);
+        l_var_profile.setUsed_positions(l_var_profile.used_positions);
+
+//        TODO @=[]=================>
+//          Duplicates - iterations - dataflow in plugin
+        for(Tuple access:var_access.write_positions){
+            if(SliceGenerator.DataAccessType.BUFFER_WRITE == access.access_type){
+                System.out.println("Buffer write at " + access.access_pos);
+            }
+        }
+// TODO do i need to manually update this
+//        used positions not reflecting
+//        String slice_key = lhs_expr_var_name + "%" + lhs_expr_name_pos_pair.getPos() + "%" + this.current_function_name + "%" + this.file_name;
+//        slice_profiles.put(slice_key,l_var_profile);
+////        Hashtable<String, SliceProfile> body;
+////        if(profile_type.equals("local_variables")) body = local_variables.get(lhs_expr_var_name);
+//        else body = global_variables.get(lhs_expr_var_name);
+//        body.put(lhs_expr_var_name, l_var_profile);
+//        if(profile_type.equals("local_variables")) local_variables.put(lhs_expr_var_name, body);
+//        else global_variables.put(lhs_expr_var_name, body);
     }
 
     private boolean isBufferWriteExpr(Node expr) {

@@ -1,12 +1,16 @@
 package com.noble.util;
 
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.noble.NamePos;
 import org.w3c.dom.*;
 //import static com.noble.util.RecursionLimiter.emerge;
 
 public final class XmlUtil {
+    public static List<Node> MasterList;
+
     private XmlUtil(){}
     public static List<Node> asList(NodeList n) {
         return n.getLength()==0?
@@ -68,6 +72,32 @@ public final class XmlUtil {
         }
 
         return namedNodes;
+    }
+    public static List<Node> getNodeByName(Node parent, String tag, Boolean all) {
+        MasterList = Collections.emptyList();
+        return getNodesByName(parent, tag, all);
+    }
+    private static List<Node> getNodesByName(Node parent, String tag, Boolean all) {
+        NodeList children = parent.getChildNodes();
+        List<Node> namedNodes = new LinkedList<>(asList(children));
+        for(int x = namedNodes.size() - 1; x >= 0; x--)
+        {
+            if(!namedNodes.get(x).getNodeName().equals(tag))
+                namedNodes.remove(x);
+        }
+        if (namedNodes.size()>0) {
+            MasterList = Stream.of(MasterList, namedNodes)
+                    .flatMap(Collection::stream)
+                    .collect(Collectors.toList());
+        }
+        NodeList deep = parent.getChildNodes();
+        for (int i = 0, len = deep.getLength(); i < len; i++) {
+            if (deep.item(i).getNodeType() == Node.ELEMENT_NODE) {
+                Node childElement = deep.item(i);
+                getNodesByName(childElement, tag, all);
+            }
+        }
+        return MasterList;
     }
 
     public static NamePos getNamePosTextPair(Node init_node) {

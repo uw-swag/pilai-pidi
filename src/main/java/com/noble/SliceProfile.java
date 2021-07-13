@@ -12,6 +12,11 @@ public class SliceProfile {
     String type_name;
     String defined_position;
     String[] pointers = new String[]{};
+
+    public void setUsed_positions(ArrayList<SliceVariableAccess> used_positions) {
+        this.used_positions = used_positions;
+    }
+
     ArrayList<SliceVariableAccess> used_positions = new ArrayList<SliceVariableAccess>();
     NamePos[] dependent_vars = new NamePos[]{};
     Hashtable<String, cFunction> cfunctions = new Hashtable<>();

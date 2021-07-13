@@ -173,8 +173,10 @@ public class Main {
                 AllDirectedPaths allDirectedPaths = new AllDirectedPaths(DG);
                 List<GraphPath<Encl_name_pos_tuple,DefaultEdge>> requiredPath = allDirectedPaths.getAllPaths(source_node, violated_node_pos_pair, true, null);
                 if(!requiredPath.isEmpty()){
-                    System.out.println("Possible out-of-bounds operation path");
-                    requiredPath.forEach(x->System.out.print(x + " -> "));
+                    System.out.print("Possible out-of-bounds operation path : ");
+
+                    requiredPath.get(0).getVertexList().forEach(x->System.out.print(x + " -> "));
+                    System.out.println();
 //                    shortestBellman(DG,source_node, violated_node_pos_pair)
 //                            .forEach(x->System.out.print(x + " -> "));
                     violations.forEach(violation-> System.out.println("Reason : "+violation));
@@ -202,7 +204,7 @@ public class Main {
             String cfunction_name = cfunction_k.nextElement();
             cFunction cfunction = profile.cfunctions.get(cfunction_name);
             int arg_pos_index = cfunction.getArg_pos_index();
-            String cfunction_pos = cfunction.getCurrent_function_pos();
+            String cfunction_pos = cfunction.getCfunction_pos();
             String encl_function_name = cfunction.getCurrent_function_name();
             Node encl_function_node = cfunction.getCurrent_function_node();
             encl_name_pos_tuple = new Encl_name_pos_tuple(profile.var_name,encl_function_name,profile.file_name,profile.defined_position);
@@ -282,7 +284,7 @@ public class Main {
             SliceProfilesInfo profile_info = java_slice_profiles_info.get(file_path);
                 for (cFunction cfunction: find_possible_functions(profile_info.function_nodes, cfunction_name, arg_pos_index, current_function_node)
                 ) {
-                    NamePos param = getNamePosTextPair(cfunction.getFunc_args().get(arg_pos_index - 1));
+                    NamePos param = cfunction.getFunc_args().get(arg_pos_index-1);
                     String param_name = param.getName();
                     String param_pos = param.getPos();
                     String key = param_name + "%" + param_pos + "%" + cfunction_name + "%" + file_path;
@@ -372,30 +374,36 @@ public class Main {
         return true;
     }
 
-    private static LinkedList<cFunction> find_possible_functions(Hashtable<NamePos, Node> function_nodes, String current_function_name, int arg_pos_index, Node current_function_node) {
+    private static LinkedList<cFunction> find_possible_functions(Hashtable<NamePos, Node> function_nodes, String cfunction_name, int arg_pos_index, Node encl_function_node) {
         LinkedList<cFunction> possible_functions = new LinkedList<>();
         Enumeration<NamePos> e = function_nodes.keys();
         while (e.hasMoreElements()) {
             NamePos key = e.nextElement();
-            Node function = function_nodes.get(key);
-            if(!key.getName().equals(current_function_name)) continue;
-            List<Node> param = getNodeByName(function, "parameter");
-            if(param.size()==0 || arg_pos_index>param.size()) continue;
-            String param_name = getNamePosTextPair(param.get(arg_pos_index - 1)).getName();
-            if(param_name.isBlank()) continue;
-            if(!validate_function_against_call_expr(current_function_node, current_function_name, arg_pos_index-1, param)) continue;
-            possible_functions.add(new cFunction(arg_pos_index-1,current_function_name,"",current_function_node,param));
+            Node possible_function_node = function_nodes.get(key);
+            String function_name = key.getName();
+            if(!function_name.equals(cfunction_name)) continue;
+            
+            ArrayList<NamePos> func_args = find_function_parameters(possible_function_node);
+            if(func_args.size()==0 || arg_pos_index>func_args.size()) continue;
+
+            int arg_index = arg_pos_index -1;
+            String param_name = func_args.get(arg_index).getName();
+            if(param_name.equals("")) continue;
+
+            if(!validate_function_against_call_expr(encl_function_node, cfunction_name, arg_index, func_args)) continue;
+
+            possible_functions.add(new cFunction(arg_index,function_name,"",encl_function_node,func_args));
         }
         return possible_functions;
     }
 
-    private static boolean validate_function_against_call_expr(Node current_function_node, String current_function_name, int i, List<Node> param) {
+    private static boolean validate_function_against_call_expr(Node encl_function_node, String cfunction_name, int arg_index, ArrayList<NamePos> func_args) {
         List<Node> call_argument_list;
-        for (Node call:getNodeByName(current_function_node,"call")){
+        for (Node call:getNodeByName(encl_function_node,"call",true)){
             String function_name = getNamePosTextPair(call).getName();
-            if(!current_function_name.equals(function_name)) continue;
-            call_argument_list = getNodeByName(call,"argument");
-            if(call_argument_list.size()!=param.size()) continue;
+            if(!cfunction_name.equals(function_name)) continue;
+            call_argument_list = getNodeByName(getNodeByName(call, "argument_list").get(0),"argument");
+            if(call_argument_list.size()!=func_args.size()) continue;
             return true;
         }
         return false;
@@ -415,10 +423,10 @@ public class Main {
     private static Hashtable<NamePos, Node> find_function_nodes(Node unit_node) {
         Hashtable<NamePos, Node> function_nodes = new Hashtable<>();
 //        Element eElement = (Element) unit_node;
-        List<Node> fun1 = getNodeByName(unit_node,"function");
-        List<Node> fun2 = getNodeByName(unit_node,"function_decl");
-        List<Node> fun3 = getNodeByName(unit_node,"constructor");
-        List<Node> fun4 = getNodeByName(unit_node,"destructor");
+        List<Node> fun1 = getNodeByName(unit_node,"function", true);
+        List<Node> fun2 = getNodeByName(unit_node,"function_decl", true);
+        List<Node> fun3 = getNodeByName(unit_node,"constructor", true);
+        List<Node> fun4 = getNodeByName(unit_node,"destructor", true);
 
         List<Node> funList = Stream.of(fun1, fun2, fun3, fun4)
                 .flatMap(Collection::stream)
