@@ -256,7 +256,7 @@ public class SliceGenerator {
         for(Node expr: init_expr){
             NamePos expr_var_name_pos_pair = analyzeExpr(expr);
             String expr_var_name = expr_var_name_pos_pair.getName();
-            String expr_var_pos = expr_var_name_pos_pair.getPos();
+//            String expr_var_pos = expr_var_name_pos_pair.getPos();
             if(expr_var_name.equals("")) return;
             if (local_variables.containsKey(expr_var_name)){
                 updateDVarSliceProfile(namePos.getName(), expr_var_name, "local_variables");
@@ -274,7 +274,7 @@ public class SliceGenerator {
             for(Node expr: asList(expr_temp_f.get(0).getChildNodes())){
                 NamePos expr_var_name_pos_pair = analyzeExpr(expr);
                 String expr_var_name = expr_var_name_pos_pair.getName();
-                String expr_var_pos = expr_var_name_pos_pair.getPos();
+//                String expr_var_pos = expr_var_name_pos_pair.getPos();
                 if(expr_var_name.equals("")) return;
                 if (local_variables.containsKey(expr_var_name)){
                     updateDVarSliceProfile(namePos.getName(), expr_var_name, "local_variables");
@@ -375,7 +375,7 @@ public class SliceGenerator {
             local_variables.put(cfunction_identifier,cfprofile);
         }
 
-        NamePos var_name_pos_pair = getNamePos(call, cfunction_name, cfunction_pos, cfunction_identifier);
+        NamePos todo_prevent_return = getNamePos(call, cfunction_name, cfunction_pos, cfunction_identifier);
         return new NamePos(cfunction_identifier,"",cfunction_pos,false);
     }
 
@@ -533,7 +533,7 @@ public class SliceGenerator {
         String lhs_expr_var_name = lhs_expr_name_pos_pair.getName();
         String rhs_expr_var_name = rhs_expr_name_pos_pair.getName();
         String lhs_expr_pos = lhs_expr_name_pos_pair.getPos();
-        String rhs_expr_pos = rhs_expr_name_pos_pair.getPos();
+//        String rhs_expr_pos = rhs_expr_name_pos_pair.getPos();
 
         if(lhs_expr_var_name == null || rhs_expr_var_name == null || lhs_expr_var_name.equals(rhs_expr_var_name)) return;
 
@@ -581,8 +581,8 @@ public class SliceGenerator {
         SliceProfile profile = slice_variables.get(r_var_name).get(r_var_name);
         String l_var_encl_function_name = current_function_name;
 
-        SliceProfile l_var_profile = null;
-        String l_var_defined_pos = null;
+        SliceProfile l_var_profile;
+        String l_var_defined_pos;
         if (global_variables.containsKey(l_var_name)){
             l_var_encl_function_name = GLOBAL;
             l_var_profile = global_variables.get(l_var_name).get(l_var_name);
