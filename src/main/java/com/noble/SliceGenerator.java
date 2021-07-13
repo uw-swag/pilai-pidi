@@ -293,8 +293,7 @@ public class SliceGenerator {
                 case "literal":
                     return analyzeLiteralExpr(expr_e);
                 case "operator":
-                    analyzeOperatorExpr(expr_e);
-                    break;
+                    return analyzeOperatorExpr(expr_e);
                 case "ternary":
                     analyzeTernaryExpr(expr_e);
                     break;
@@ -322,9 +321,13 @@ public class SliceGenerator {
         return new NamePos(literal_val,type_name,pos,false);
     }
 
-    private void analyzeOperatorExpr(Node expr) {
-//      TODO no effect
-        NamePos returnable = new NamePos(expr.getTextContent(),"",getNodePos(expr),false);
+    private NamePos analyzeOperatorExpr(Node expr) {
+//        TODO needs checking
+        String text;
+        List<Node> specificOp = getNodeByName(expr.getParentNode(), "name");
+        if(specificOp.size()<1) text = getNamePosTextPair(expr.getParentNode()).getName();
+        else text = specificOp.get(0).getTextContent();
+        return new NamePos(text.split(identifier_separator)[0],"",getNodePos(expr),false);
     }
 
     private void analyzeTryBlock(Node stmt) {
