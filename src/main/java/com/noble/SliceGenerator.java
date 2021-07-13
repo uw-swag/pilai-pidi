@@ -372,6 +372,11 @@ public class SliceGenerator {
             local_variables.put(cfunction_identifier,cfprofile);
         }
 
+        NamePos var_name_pos_pair = getNamePos(call, cfunction_name, cfunction_pos, cfunction_identifier);
+        return new NamePos(cfunction_identifier,"",cfunction_pos,false);
+    }
+
+    private NamePos getNamePos(Node call, String cfunction_name, String cfunction_pos, String cfunction_identifier) {
         List<Node> argument_list = getNodeByName(getNodeByName(call, "argument_list").get(0),"argument");
         int arg_pos_index = 0;
         for(Node arg_expr:argument_list){
@@ -383,11 +388,11 @@ public class SliceGenerator {
                 String slice_key = var_name + "%" + var_pos + "%" + this.current_function_name + "%" + this.file_name;
                 if(var_name.equals("")) return var_name_pos_pair;
                 if (local_variables.containsKey(var_name)){
-                    updateCFunctionsSliceProfile(var_name,cfunction_name, cfunction_pos,arg_pos_index,"local_variables",slice_key);
+                    updateCFunctionsSliceProfile(var_name, cfunction_name, cfunction_pos,arg_pos_index,"local_variables",slice_key);
                     if(!cfunction_identifier.equals("")) updateDVarSliceProfile(cfunction_identifier, var_name, "local_variables");
                 }
                 else if(global_variables.containsKey(var_name)){
-                    updateCFunctionsSliceProfile(var_name,cfunction_name, cfunction_pos,arg_pos_index,"global_variables",slice_key);
+                    updateCFunctionsSliceProfile(var_name, cfunction_name, cfunction_pos,arg_pos_index,"global_variables",slice_key);
                     if(!cfunction_identifier.equals("")) updateDVarSliceProfile(cfunction_identifier, var_name, "global_variables");
                 }
                 else if(is_literal_expr(expr)){
@@ -399,7 +404,7 @@ public class SliceGenerator {
                 }
             }
         }
-        return new NamePos(cfunction_identifier,"",cfunction_pos,false);
+        return null;
     }
 
     private void analyzeCastExpr(Node cast_expr) {
@@ -554,24 +559,6 @@ public class SliceGenerator {
         var_access.addWrite_positions(buffer_write_pos_tuple);
         l_var_profile.used_positions.add(var_access);
         l_var_profile.setUsed_positions(l_var_profile.used_positions);
-
-//        TODO @=[]=================>
-//          Duplicates - iterations - dataflow in plugin
-        for(Tuple access:var_access.write_positions){
-            if(SliceGenerator.DataAccessType.BUFFER_WRITE == access.access_type){
-                System.out.println("Buffer write at " + access.access_pos);
-            }
-        }
-// TODO do i need to manually update this
-//        used positions not reflecting
-//        String slice_key = lhs_expr_var_name + "%" + lhs_expr_name_pos_pair.getPos() + "%" + this.current_function_name + "%" + this.file_name;
-//        slice_profiles.put(slice_key,l_var_profile);
-////        Hashtable<String, SliceProfile> body;
-////        if(profile_type.equals("local_variables")) body = local_variables.get(lhs_expr_var_name);
-//        else body = global_variables.get(lhs_expr_var_name);
-//        body.put(lhs_expr_var_name, l_var_profile);
-//        if(profile_type.equals("local_variables")) local_variables.put(lhs_expr_var_name, body);
-//        else global_variables.put(lhs_expr_var_name, body);
     }
 
     private boolean isBufferWriteExpr(Node expr) {

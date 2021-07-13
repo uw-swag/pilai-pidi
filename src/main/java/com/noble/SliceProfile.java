@@ -12,15 +12,14 @@ public class SliceProfile {
     String type_name;
     String defined_position;
     String[] pointers = new String[]{};
-
-    public void setUsed_positions(ArrayList<SliceVariableAccess> used_positions) {
-        this.used_positions = used_positions;
-    }
-
     ArrayList<SliceVariableAccess> used_positions = new ArrayList<SliceVariableAccess>();
     NamePos[] dependent_vars = new NamePos[]{};
     Hashtable<String, cFunction> cfunctions = new Hashtable<>();
     Node function_node;
+
+    public void setUsed_positions(ArrayList<SliceVariableAccess> used_positions) {
+        this.used_positions = used_positions;
+    }
 
     public SliceProfile(String file_name, String function_name, String var_name, String type_name, String defined_position, ArrayList<SliceVariableAccess> used_positions,
                         NamePos[] dependent_vars, String[] pointers, Hashtable<String, cFunction> cfunctions, Node function_node) {

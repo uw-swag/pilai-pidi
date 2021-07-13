@@ -248,7 +248,11 @@ public class Main {
             for(SliceVariableAccess var_access:profile.used_positions){
                 for(Tuple access:var_access.write_positions){
                     if(SliceGenerator.DataAccessType.BUFFER_WRITE == access.access_type){
-                        ArrayList<String> currentArr = new ArrayList<>(detected_violations.get(encl_name_pos_tuple));
+                        ArrayList<String> currentArr;
+                        if(detected_violations.containsKey(encl_name_pos_tuple))
+                        currentArr = new ArrayList<>(detected_violations.get(encl_name_pos_tuple));
+                        else
+                        currentArr = new ArrayList<>();
                         currentArr.add("Buffer write at " + access.access_pos);
                         detected_violations.put(encl_name_pos_tuple,currentArr);
                     }
