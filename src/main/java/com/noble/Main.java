@@ -72,8 +72,8 @@ public class Main {
             String projectLocation;
             if(OsUtils.isWindows()){
                 projectLocation =
-//                        "C:\\Users\\elbon\\Documents\\GitHub\\sipdroid-master";
-                        "C:\\Users\\elbon\\Documents\\GitHub\\sipmin";
+                        "C:\\Users\\elbon\\Documents\\GitHub\\sipdroid-master";
+//                        "C:\\Users\\elbon\\Documents\\GitHub\\sipmin";
 //                        "C:\\Users\\elbon\\IdeaProjects\\jni-example-master";
 
                 srcML = "windows/srcml.exe";
@@ -151,7 +151,7 @@ public class Main {
 
             print_violations();
             long end = System.currentTimeMillis();
-            System.out.println("Completed in " + (end - start) + "ms");
+            System.out.println("Completed in " + (end - start)/1000 + "s");
 
         } catch (URISyntaxException | IOException | SAXException | ParserConfigurationException e) {
             e.printStackTrace();
