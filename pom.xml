@@ -5,8 +5,8 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.noble</groupId>
-    <artifactId>srcBuggy</artifactId>
-    <version>1.0.1</version>
+    <artifactId>srcbuggy</artifactId>
+    <version>1.0.2</version>
     <packaging>jar</packaging>
 
     <name>srcBuggy</name>
