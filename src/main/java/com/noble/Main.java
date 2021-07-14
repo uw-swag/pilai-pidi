@@ -44,12 +44,12 @@ public class Main {
 //        return bellmanFordShortestPath.getPath(a, b).getVertexList();
 //    }
 
-    public static void inspectXML(String xmlSource)
-            throws IOException {
-        java.io.FileWriter fw = new java.io.FileWriter("temp.xml");
-        fw.write(xmlSource);
-        fw.close();
-    }
+//    public static void inspectXML(String xmlSource)
+//            throws IOException {
+//        java.io.FileWriter fw = new java.io.FileWriter("temp.xml");
+//        fw.write(xmlSource);
+//        fw.close();
+//    }
 
     public static void main(String[] args) {
         long start = System.currentTimeMillis();
@@ -91,7 +91,7 @@ public class Main {
 
             String result = IOUtils.toString(pb.start().getInputStream(), StandardCharsets.UTF_8);
 
-            inspectXML(result);
+//            inspectXML(result);
             System.out.println("Converted to XML, beginning parsing ...");
             DocumentBuilder db = DocumentBuilderFactory.newInstance().newDocumentBuilder();
             Document doc = db.parse(new InputSource(new StringReader(result)));
