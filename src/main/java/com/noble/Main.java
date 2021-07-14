@@ -17,9 +17,14 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.*;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystemNotFoundException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.spi.FileSystemProvider;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -54,28 +59,39 @@ public class Main {
     public static void main(String[] args) {
         long start = System.currentTimeMillis();
         String projectLocation=null;
-        String srcML;
-        File file=null;
+        String srcML = null;
+        File file;
+
         try {
+
+            URI uri = Objects.requireNonNull(Main.class.getClassLoader().getResource("windows/srcml.exe")).toURI();
+            if("jar".equals(uri.getScheme())){
+                for (FileSystemProvider provider: FileSystemProvider.installedProviders()) {
+                    if (provider.getScheme().equalsIgnoreCase("jar")) {
+                        try {
+                            provider.getFileSystem(uri);
+                        } catch (FileSystemNotFoundException e) {
+                            // in this case we need to initialize it first:
+                            provider.newFileSystem(uri, Collections.emptyMap());
+                        }
+                    }
+                }
+            }
 
             if(args.length>1){
                 projectLocation = args[0];
                 srcML = args[1];
-                file = Paths.get(srcML).toFile();
             }
             else if(args.length==1){
                 projectLocation = args[0];
                 if(OsUtils.isWindows()){
                     srcML = "windows/srcml.exe";
-                    file = Paths.get(Objects.requireNonNull(Main.class.getClassLoader().getResource(srcML)).toURI()).toFile();
                 }
                 else if(OsUtils.isLinux()){
                     srcML = "ubuntu/srcml";
-                    file = Paths.get(Objects.requireNonNull(Main.class.getClassLoader().getResource(srcML)).toURI()).toFile();
                 }
                 else if(OsUtils.isMac()){
                     srcML = "/usr/local/bin/srcml";
-                    file = Paths.get(srcML).toFile();
                 }
                 else {
                     System.err.println("Please specify location of srcML, binary not included for current OS");
@@ -87,6 +103,14 @@ public class Main {
                 System.exit(1);
             }
 
+            Path zipPath = Paths.get(Objects.requireNonNull(Main.class.getClassLoader().getResource(srcML)).toURI());
+            InputStream in = Files.newInputStream(zipPath);
+            file = File.createTempFile("PREFIX", "SUFFIX");
+            file.deleteOnExit();
+            try (FileOutputStream out = new FileOutputStream(file))
+            {
+                IOUtils.copy(in, out);
+            }
             ProcessBuilder pb = new ProcessBuilder(file.getAbsolutePath(), projectLocation, "--position");
 
             String result = IOUtils.toString(pb.start().getInputStream(), StandardCharsets.UTF_8);
