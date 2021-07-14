@@ -34,20 +34,4 @@ final class Encl_name_pos_tuple {
         this.file_name = file_name;
         this.defined_position = defined_position;
     }
-
-    public String getVar_name() {
-        return var_name;
-    }
-
-    public String getFunction_name() {
-        return function_name;
-    }
-
-    public String getFile_name() {
-        return file_name;
-    }
-
-    public String getDefined_position() {
-        return defined_position;
-    }
 }

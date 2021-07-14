@@ -11,6 +11,7 @@ public class Tuple {
         this.access_pos = access_pos;
     }
 
+    @SuppressWarnings("unused")
     public Tuple(int inDegree, Encl_name_pos_tuple node) {
         this.inDegree = inDegree;
         this.node = node;

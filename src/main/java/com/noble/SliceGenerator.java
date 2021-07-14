@@ -23,7 +23,7 @@ public class SliceGenerator {
 
     enum DataAccessType
     {
-        BUFFER_READ, BUFFER_WRITE
+        @SuppressWarnings("unused") BUFFER_READ, BUFFER_WRITE
     }
 
     public SliceGenerator(Node unit_node, String file_name, Hashtable<String, SliceProfile> slice_profiles){
@@ -254,16 +254,7 @@ public class SliceGenerator {
         List<Node> init_expr = asList(expr_temp.get(0).getChildNodes());
 
         for(Node expr: init_expr){
-            NamePos expr_var_name_pos_pair = analyzeExpr(expr);
-            String expr_var_name = expr_var_name_pos_pair.getName();
-//            String expr_var_pos = expr_var_name_pos_pair.getPos();
-            if(expr_var_name.equals("")) return;
-            if (local_variables.containsKey(expr_var_name)){
-                updateDVarSliceProfile(namePos.getName(), expr_var_name, "local_variables");
-            }
-            else if(global_variables.containsKey(expr_var_name)){
-                updateDVarSliceProfile(namePos.getName(), expr_var_name, "global_variables");
-            }
+            if (analyze_update(namePos, expr)) return;
         }
         List<Node> argument_list_temp = getNodeByName(decl, "argument_list");
         if(argument_list_temp.size()<1) return;
@@ -272,19 +263,23 @@ public class SliceGenerator {
             List<Node> expr_temp_f = getNodeByName(arg_expr, "expr");
             if(expr_temp_f.size()<1)continue;
             for(Node expr: asList(expr_temp_f.get(0).getChildNodes())){
-                NamePos expr_var_name_pos_pair = analyzeExpr(expr);
-                String expr_var_name = expr_var_name_pos_pair.getName();
-//                String expr_var_pos = expr_var_name_pos_pair.getPos();
-                if(expr_var_name.equals("")) return;
-                if (local_variables.containsKey(expr_var_name)){
-                    updateDVarSliceProfile(namePos.getName(), expr_var_name, "local_variables");
-                }
-                else if(global_variables.containsKey(expr_var_name)){
-                    updateDVarSliceProfile(namePos.getName(), expr_var_name, "global_variables");
-                }
+                if (analyze_update(namePos, expr)) return;
             }
         }
 
+    }
+
+    private boolean analyze_update(NamePos namePos, Node expr) {
+        NamePos expr_var_name_pos_pair = analyzeExpr(expr);
+        String expr_var_name = expr_var_name_pos_pair.getName();
+//                String expr_var_pos = expr_var_name_pos_pair.getPos();
+        if (expr_var_name.equals("")) return true;
+        if (local_variables.containsKey(expr_var_name)) {
+            updateDVarSliceProfile(namePos.getName(), expr_var_name, "local_variables");
+        } else if (global_variables.containsKey(expr_var_name)) {
+            updateDVarSliceProfile(namePos.getName(), expr_var_name, "global_variables");
+        }
+        return false;
     }
 
     private NamePos analyzeExpr(Node expr_e) {
@@ -358,6 +353,7 @@ public class SliceGenerator {
         analyzeCompoundExpr(stmt);
     }
 
+    @SuppressWarnings("unused")
     private NamePos analyzeCallExpr(Node call) {
         NamePos cfunction_details = getNamePosTextPair(call);
         String cfunction_name = cfunction_details.getName();

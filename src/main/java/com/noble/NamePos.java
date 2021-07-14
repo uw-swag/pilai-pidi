@@ -21,6 +21,7 @@ public final class NamePos {
         return pos;
     }
 
+    @SuppressWarnings("unused")
     public boolean is_pointer() {
         return is_pointer;
     }

@@ -3,7 +3,6 @@ package com.noble;
 import org.w3c.dom.Node;
 
 import java.util.Hashtable;
-import java.util.List;
 
 public class SliceProfilesInfo {
     Hashtable<String, SliceProfile> slice_profiles;

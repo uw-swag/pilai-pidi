@@ -3,7 +3,7 @@ package com.noble;
 import org.apache.commons.io.IOUtils;
 import org.jgrapht.*;
 import org.jgrapht.alg.shortestpath.AllDirectedPaths;
-import org.jgrapht.alg.shortestpath.BellmanFordShortestPath;
+//import org.jgrapht.alg.shortestpath.BellmanFordShortestPath;
 import org.jgrapht.graph.*;
 
 import org.w3c.dom.Document;
@@ -52,10 +52,10 @@ public class Main {
 
     static LinkedList<SliceProfile> analyzed_profiles= new LinkedList<>();
 
-    public static List<Encl_name_pos_tuple> shortestBellman(Graph<Encl_name_pos_tuple, DefaultEdge> directedGraph, Encl_name_pos_tuple a, Encl_name_pos_tuple b) {
-        BellmanFordShortestPath<Encl_name_pos_tuple, DefaultEdge> bellmanFordShortestPath = new BellmanFordShortestPath<>(directedGraph);
-        return bellmanFordShortestPath.getPath(a, b).getVertexList();
-    }
+//    public static List<Encl_name_pos_tuple> shortestBellman(Graph<Encl_name_pos_tuple, DefaultEdge> directedGraph, Encl_name_pos_tuple a, Encl_name_pos_tuple b) {
+//        BellmanFordShortestPath<Encl_name_pos_tuple, DefaultEdge> bellmanFordShortestPath = new BellmanFordShortestPath<>(directedGraph);
+//        return bellmanFordShortestPath.getPath(a, b).getVertexList();
+//    }
 
     public static void inspectXML(String xmlSource)
             throws IOException {
@@ -66,28 +66,40 @@ public class Main {
 
     public static void main(String[] args) {
         long start = System.currentTimeMillis();
-        String srcML = "/usr/local/bin/srcml";
-        File file;
+        String projectLocation=null;
+        String srcML;
+        File file=null;
         try {
-            String projectLocation;
-            if(OsUtils.isWindows()){
-                projectLocation =
-                        "C:\\Users\\elbon\\Documents\\GitHub\\sipdroid-master";
-//                        "C:\\Users\\elbon\\Documents\\GitHub\\sipmin";
-//                        "C:\\Users\\elbon\\IdeaProjects\\jni-example-master";
 
-                srcML = "windows/srcml.exe";
-                file = Paths.get(Objects.requireNonNull(Main.class.getClassLoader().getResource(srcML)).toURI()).toFile();
-            }
-            else if(OsUtils.isLinux()){
-                projectLocation = "./";
-                srcML = "ubuntu/srcml";
-                file = Paths.get(Objects.requireNonNull(Main.class.getClassLoader().getResource(srcML)).toURI()).toFile();
-            }
-            else{
-                projectLocation = "/Users/kishanthan/Work/clones/jni-example";
+            if(args.length>1){
+                projectLocation = args[0];
+                srcML = args[1];
                 file = Paths.get(srcML).toFile();
             }
+            else if(args.length==1){
+                projectLocation = args[0];
+                if(OsUtils.isWindows()){
+                    srcML = "windows/srcml.exe";
+                    file = Paths.get(Objects.requireNonNull(Main.class.getClassLoader().getResource(srcML)).toURI()).toFile();
+                }
+                else if(OsUtils.isLinux()){
+                    srcML = "ubuntu/srcml";
+                    file = Paths.get(Objects.requireNonNull(Main.class.getClassLoader().getResource(srcML)).toURI()).toFile();
+                }
+                else if(OsUtils.isMac()){
+                    srcML = "/usr/local/bin/srcml";
+                    file = Paths.get(srcML).toFile();
+                }
+                else {
+                    System.err.println("Please specify location of srcML, binary not included for current OS");
+                    System.exit(1);
+                }
+            }
+            else {
+                System.err.println("Please specify location of project to be analysed");
+                System.exit(1);
+            }
+
             ProcessBuilder pb = new ProcessBuilder(file.getAbsolutePath(), projectLocation, "--position");
 //            Process process = pb.start();
 //            BufferedReader reader =
@@ -170,7 +182,7 @@ public class Main {
             while (violationE.hasMoreElements()) {
                 Encl_name_pos_tuple violated_node_pos_pair = violationE.nextElement();
                 ArrayList<String> violations = detected_violations.get(violated_node_pos_pair);
-                AllDirectedPaths allDirectedPaths = new AllDirectedPaths(DG);
+                AllDirectedPaths<Encl_name_pos_tuple,DefaultEdge> allDirectedPaths = new AllDirectedPaths<>(DG);
                 List<GraphPath<Encl_name_pos_tuple,DefaultEdge>> requiredPath = allDirectedPaths.getAllPaths(source_node, violated_node_pos_pair, true, null);
                 if(!requiredPath.isEmpty()){
                     System.out.print("Possible out-of-bounds operation path : ");
@@ -280,6 +292,7 @@ public class Main {
         }
     }
 
+    @SuppressWarnings("unused")
     private static LinkedList<SliceProfile> find_dependent_slice_profiles(String cfunction_name, int arg_pos_index, String type_name, Node current_function_node, Hashtable<String, SliceProfilesInfo> java_slice_profiles_info) {
         LinkedList <SliceProfile> dependent_slice_profiles = new LinkedList<>();
         Enumeration<String> profiles_to_analyze = java_slice_profiles_info.keys();
@@ -401,6 +414,7 @@ public class Main {
         return possible_functions;
     }
 
+    @SuppressWarnings("unused")
     private static boolean validate_function_against_call_expr(Node encl_function_node, String cfunction_name, int arg_index, ArrayList<NamePos> func_args) {
         List<Node> call_argument_list;
         for (Node call:getNodeByName(encl_function_node,"call",true)){
