@@ -1,5 +1,7 @@
 package com.noble;
 
+import com.noble.models.*;
+import com.noble.util.OsUtils;
 import org.apache.commons.io.IOUtils;
 import org.jgrapht.*;
 import org.jgrapht.alg.shortestpath.AllDirectedPaths;
@@ -25,21 +27,6 @@ import java.util.stream.Stream;
 //import static com.noble.util.RecursionLimiter.emerge;
 
 import static com.noble.util.XmlUtil.*;
-final class OsUtils
-{
-    private static String OS = null;
-    public static String getOsName()
-    {
-        if(OS == null) { OS = System.getProperty("os.name").toLowerCase(); }
-        return OS;
-    }
-    public static boolean isWindows()
-    {
-        return getOsName().contains("win");
-    }
-    public static boolean isMac() {return getOsName().contains("mac");}
-    public static boolean isLinux() {return getOsName().contains("nix") || getOsName().contains("nux");}
-}
 
 public class Main {
 
@@ -101,16 +88,7 @@ public class Main {
             }
 
             ProcessBuilder pb = new ProcessBuilder(file.getAbsolutePath(), projectLocation, "--position");
-//            Process process = pb.start();
-//            BufferedReader reader =
-//                    new BufferedReader(new InputStreamReader(process.getInputStream()));
-//            StringBuilder builder = new StringBuilder();
-//            String line;
-//            while ( (line = reader.readLine()) != null) {
-//                builder.append(line);
-//                builder.append(System.getProperty("line.separator"));
-//            }
-//            String result = builder.toString();
+
             String result = IOUtils.toString(pb.start().getInputStream(), StandardCharsets.UTF_8);
 
             inspectXML(result);
@@ -259,7 +237,7 @@ public class Main {
         if(profile.file_name.endsWith(".cpp")||profile.file_name.endsWith(".c")||profile.file_name.endsWith(".cc")){
             for(SliceVariableAccess var_access:profile.used_positions){
                 for(Tuple access:var_access.write_positions){
-                    if(SliceGenerator.DataAccessType.BUFFER_WRITE == access.access_type){
+                    if(DataAccessType.BUFFER_WRITE == access.access_type){
                         ArrayList<String> currentArr;
                         if(detected_violations.containsKey(encl_name_pos_tuple))
                         currentArr = new ArrayList<>(detected_violations.get(encl_name_pos_tuple));
@@ -455,10 +433,5 @@ public class Main {
         }
         return function_nodes;
     }
-//    public static native String srcml();
-//
-//    public static void main(String[] args) {
-//        System.out.println(srcml());
-//    }
 
 }

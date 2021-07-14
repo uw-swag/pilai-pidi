@@ -1,10 +1,10 @@
-package com.noble;
+package com.noble.models;
 
 import org.w3c.dom.Node;
 
 import java.util.ArrayList;
 
-final class cFunction {
+public final class cFunction {
 
     private final int arg_pos_index;
     private final String cfunction_pos;

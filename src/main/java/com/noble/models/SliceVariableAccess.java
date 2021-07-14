@@ -1,4 +1,4 @@
-package com.noble;
+package com.noble.models;
 
 import java.util.ArrayList;
 

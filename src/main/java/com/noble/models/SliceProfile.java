@@ -1,4 +1,4 @@
-package com.noble;
+package com.noble.models;
 
 import org.w3c.dom.Node;
 
@@ -6,16 +6,17 @@ import java.util.ArrayList;
 import java.util.Hashtable;
 
 public class SliceProfile {
-    String file_name;
-    String function_name;
-    String var_name;
-    String type_name;
-    String defined_position;
+    public String file_name;
+    public String function_name;
+    public String var_name;
+    public String type_name;
+    public String defined_position;
+    public ArrayList<SliceVariableAccess> used_positions = new ArrayList<>();
+    public NamePos[] dependent_vars = new NamePos[]{};
+    public Hashtable<String, cFunction> cfunctions = new Hashtable<>();
+    public Node function_node;
+
     String[] pointers = new String[]{};
-    ArrayList<SliceVariableAccess> used_positions = new ArrayList<>();
-    NamePos[] dependent_vars = new NamePos[]{};
-    Hashtable<String, cFunction> cfunctions = new Hashtable<>();
-    Node function_node;
 
     public void setUsed_positions(ArrayList<SliceVariableAccess> used_positions) {
         this.used_positions = used_positions;

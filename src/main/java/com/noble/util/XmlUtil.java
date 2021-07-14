@@ -4,13 +4,16 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.noble.NamePos;
+import com.noble.models.NamePos;
 import org.w3c.dom.*;
 //import static com.noble.util.RecursionLimiter.emerge;
 
 public final class XmlUtil {
     public static List<Node> MasterList;
-
+    public enum DataAccessType
+    {
+        @SuppressWarnings("unused") BUFFER_READ, BUFFER_WRITE
+    }
     private XmlUtil(){}
     public static List<Node> asList(NodeList n) {
         return n.getLength()==0?
@@ -51,13 +54,7 @@ public final class XmlUtil {
 //    }
 
     public static List<Node> getNodeByName(Node parent, String tag) {
-        NodeList children = parent.getChildNodes();
-        List<Node> namedNodes = new LinkedList<>(asList(children));
-        for(int x = namedNodes.size() - 1; x >= 0; x--)
-        {
-            if(!namedNodes.get(x).getNodeName().equals(tag))
-                namedNodes.remove(x);
-        }
+        List<Node> namedNodes = getNodesBase(parent, tag);
         if (namedNodes.size()>0) {
             return namedNodes;
         }
@@ -77,14 +74,11 @@ public final class XmlUtil {
         MasterList = Collections.emptyList();
         return getNodesByName(parent, tag, all);
     }
+
+    @SuppressWarnings("unused")
     private static List<Node> getNodesByName(Node parent, String tag, Boolean all) {
-        NodeList children = parent.getChildNodes();
-        List<Node> namedNodes = new LinkedList<>(asList(children));
-        for(int x = namedNodes.size() - 1; x >= 0; x--)
-        {
-            if(!namedNodes.get(x).getNodeName().equals(tag))
-                namedNodes.remove(x);
-        }
+
+        List<Node> namedNodes = getNodesBase(parent, tag);
         if (namedNodes.size()>0) {
             MasterList = Stream.of(MasterList, namedNodes)
                     .flatMap(Collection::stream)
@@ -98,6 +92,17 @@ public final class XmlUtil {
             }
         }
         return MasterList;
+    }
+
+    private static List<Node> getNodesBase(Node parent, String tag) {
+        NodeList children = parent.getChildNodes();
+        List<Node> namedNodes = new LinkedList<>(asList(children));
+        for(int x = namedNodes.size() - 1; x >= 0; x--)
+        {
+            if(!namedNodes.get(x).getNodeName().equals(tag))
+                namedNodes.remove(x);
+        }
+        return namedNodes;
     }
 
     public static NamePos getNamePosTextPair(Node init_node) {
@@ -195,29 +200,5 @@ public final class XmlUtil {
         public int size() {
             return list.getLength();
         }
-    }
-    public static List<Node> appendNodeLists(NodeList a, NodeList b, NodeList c)
-    {
-        List<Node> nodes = new ArrayList<>();
-        int aSize = a.getLength();
-        int bSize = b.getLength();
-        int cSize = c.getLength();
-        if(aSize>0)
-        {
-            for (int i = 0; i < aSize; i++)
-                nodes.add(a.item(i));
-        }
-        if(bSize>0)
-        {
-            for (int i = 0; i < bSize; i++)
-                nodes.add(b.item(i));
-        }
-        if(cSize>0)
-        {
-            for (int i = 0; i < bSize; i++)
-                nodes.add(c.item(i));
-        }
-
-        return nodes;
     }
 }

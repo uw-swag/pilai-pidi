@@ -1,5 +1,6 @@
 package com.noble.util;
 
+@SuppressWarnings("unused")
 public class RecursionLimiter {
     public static int maxLevel = 10;
 

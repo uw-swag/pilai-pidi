@@ -1,10 +1,10 @@
-package com.noble;
+package com.noble.models;
 
-final class Encl_name_pos_tuple {
-    private final String var_name;
-    private final String function_name;
-    private final String file_name;
-    private final String defined_position;
+public final class Encl_name_pos_tuple {
+    public final String var_name;
+    public final String function_name;
+    public final String file_name;
+    public final String defined_position;
 
     @Override
     public String toString() {

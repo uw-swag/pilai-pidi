@@ -1,4 +1,4 @@
-package com.noble;
+package com.noble.models;
 
 public final class NamePos {
     private final String name;

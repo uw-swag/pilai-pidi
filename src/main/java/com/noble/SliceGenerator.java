@@ -1,5 +1,6 @@
 package com.noble;
 
+import com.noble.models.*;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
@@ -20,11 +21,6 @@ public class SliceGenerator {
     String file_name;
     String current_function_name;
     Node current_function_node;
-
-    enum DataAccessType
-    {
-        @SuppressWarnings("unused") BUFFER_READ, BUFFER_WRITE
-    }
 
     public SliceGenerator(Node unit_node, String file_name, Hashtable<String, SliceProfile> slice_profiles){
         this.unit_node = unit_node;
