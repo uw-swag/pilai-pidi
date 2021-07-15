@@ -14,6 +14,7 @@ public final class OsUtils {
         return getOsName().contains("win");
     }
 
+    @SuppressWarnings("unused")
     public static boolean isMac() {
         return getOsName().contains("mac");
     }

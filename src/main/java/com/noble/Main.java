@@ -61,6 +61,7 @@ public class Main {
         String projectLocation=null;
         String srcML = null;
         File file;
+        File tempLoc = null;
 
         try {
 
@@ -89,9 +90,7 @@ public class Main {
                 }
                 else if(OsUtils.isLinux()){
                     srcML = "ubuntu/srcml";
-                }
-                else if(OsUtils.isMac()){
-                    srcML = "/usr/local/bin/srcml";
+//                    tempLoc = new File(".");
                 }
                 else {
                     System.err.println("Please specify location of srcML, binary not included for current OS");
@@ -102,16 +101,22 @@ public class Main {
                 System.err.println("Please specify location of project to be analysed");
                 System.exit(1);
             }
-
-            Path zipPath = Paths.get(Objects.requireNonNull(Main.class.getClassLoader().getResource(srcML)).toURI());
-            InputStream in = Files.newInputStream(zipPath);
-            file = File.createTempFile("PREFIX", "SUFFIX");
-            file.deleteOnExit();
-            try (FileOutputStream out = new FileOutputStream(file))
-            {
-                IOUtils.copy(in, out);
+            ProcessBuilder pb;
+            if(args.length>1){
+                pb = new ProcessBuilder(srcML, projectLocation, "--position");
             }
-            ProcessBuilder pb = new ProcessBuilder(file.getAbsolutePath(), projectLocation, "--position");
+            else{
+                Path zipPath = Paths.get(Objects.requireNonNull(Main.class.getClassLoader().getResource(srcML)).toURI());
+                InputStream in = Files.newInputStream(zipPath);
+                //noinspection ConstantConditions
+                file = File.createTempFile("PREFIX", "SUFFIX", tempLoc);
+                file.deleteOnExit();
+                try (FileOutputStream out = new FileOutputStream(file))
+                {
+                    IOUtils.copy(in, out);
+                }
+                pb = new ProcessBuilder(file.getAbsolutePath(), projectLocation, "--position");
+            }
 
             String result = IOUtils.toString(pb.start().getInputStream(), StandardCharsets.UTF_8);
 
@@ -193,13 +198,14 @@ public class Main {
                     System.out.println();
 //                    shortestBellman(DG,source_node, violated_node_pos_pair)
 //                            .forEach(x->System.out.print(x + " -> "));
-                    violations.forEach(violation-> System.out.println("Reason : "+violation));
+                    violations.forEach(violation-> System.err.println("Reason : "+violation));
                     violations_count = violations_count + violations.size();
                 }
             }
         }
         System.out.println("No of files analyzed "+ java_slice_profiles_info.size());
         System.out.println("Detected violations "+ violations_count);
+        if(violations_count>0) System.exit(1);
     }
 
     private static void analyze_slice_profile(SliceProfile profile, Hashtable<String, SliceProfilesInfo> raw_profiles_info) {
