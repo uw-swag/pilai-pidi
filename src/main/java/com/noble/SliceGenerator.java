@@ -7,7 +7,12 @@ import org.w3c.dom.NodeList;
 import java.util.*;
 
 import static com.noble.util.XmlUtil.*;
+import static com.noble.util.XmlUtil.asList;
+import static com.noble.util.XmlUtil.find_all_nodes;
 import static com.noble.util.XmlUtil.getNamePosTextPair;
+import static com.noble.util.XmlUtil.getNodeByName;
+import static com.noble.util.XmlUtil.getNodePos;
+import static com.noble.util.XmlUtil.isIndexOutOfBounds;
 
 public class SliceGenerator {
     String GLOBAL;

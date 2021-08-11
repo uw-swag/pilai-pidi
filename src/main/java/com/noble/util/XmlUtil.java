@@ -4,7 +4,11 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.noble.models.Encl_name_pos_tuple;
 import com.noble.models.NamePos;
+import com.noble.models.SliceProfilesInfo;
+import org.jgrapht.Graph;
+import org.jgrapht.graph.DefaultEdge;
 import org.w3c.dom.*;
 //import static com.noble.util.RecursionLimiter.emerge;
 
@@ -199,6 +203,36 @@ public final class XmlUtil {
         }
         public int size() {
             return list.getLength();
+        }
+    }
+    
+    public static final class MyResult {
+        private final ArrayList<Encl_name_pos_tuple> first;
+        private final Hashtable<Encl_name_pos_tuple,ArrayList<String>> second;
+        private final Hashtable<String, SliceProfilesInfo> java_slice_profiles_info;
+        private Graph<Encl_name_pos_tuple, DefaultEdge> dg;
+
+        public MyResult(ArrayList<Encl_name_pos_tuple> first, Hashtable<Encl_name_pos_tuple, ArrayList<String>> second, Hashtable<String, SliceProfilesInfo> java_slice_profiles_info, Graph<Encl_name_pos_tuple, DefaultEdge> dg) {
+            this.first = first;
+            this.second = second;
+            this.java_slice_profiles_info = java_slice_profiles_info;
+            this.dg = dg;
+        }
+
+        public ArrayList<Encl_name_pos_tuple> getSource_nodes() {
+            return first;
+        }
+
+        public Hashtable<Encl_name_pos_tuple, ArrayList<String>> getDetected_violations() {
+            return second;
+        }
+
+        public Hashtable<String, SliceProfilesInfo> getJava_slice_profiles_info() {
+            return java_slice_profiles_info;
+        }
+
+        public Graph<Encl_name_pos_tuple, DefaultEdge> getDg() {
+            return dg;
         }
     }
 }
