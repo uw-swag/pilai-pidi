@@ -2,12 +2,14 @@ package com.noble;
 
 import com.noble.models.*;
 import com.noble.util.OsUtils;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
-import org.jgrapht.*;
+import org.jgrapht.Graph;
+import org.jgrapht.GraphPath;
 import org.jgrapht.alg.shortestpath.AllDirectedPaths;
-//import org.jgrapht.alg.shortestpath.BellmanFordShortestPath;
-import org.jgrapht.graph.*;
-
+import org.jgrapht.graph.DefaultDirectedGraph;
+import org.jgrapht.graph.DefaultEdge;
+import org.jgrapht.nio.dot.DOTExporter;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.xml.sax.InputSource;
@@ -19,26 +21,24 @@ import javax.xml.parsers.ParserConfigurationException;
 import java.io.*;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.FileSystemNotFoundException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-//import static com.noble.util.RecursionLimiter.emerge;
-
 import static com.noble.util.XmlUtil.*;
-import static com.noble.util.XmlUtil.asList;
-import static com.noble.util.XmlUtil.find_function_parameters;
-import static com.noble.util.XmlUtil.getNamePosTextPair;
-import static com.noble.util.XmlUtil.getNodeByName;
+
+//import org.jgrapht.alg.shortestpath.BellmanFordShortestPath;
+//import static com.noble.util.RecursionLimiter.emerge;
 
 public class Main {
 
+    private static final String mode = "not_testing";
+    private static final Boolean check_buffer = true;
+    private static final List<String> buffer_error_functions  = Arrays.asList("strcat","strdup","strncat","strcmp","strncmp","strcpy","strncpy","strlen","strchr","strrchr","index","rindex","strpbrk","strspn","strcspn","strstr","strtok","memccpy","memchr","memmove","memcpy","memcmp","memset","bcopy","bzero","bcmp");
     private static final String jni_native_method_modifier = "native";
     private static final Hashtable<String, SliceProfilesInfo> slice_profiles_info = new Hashtable<>();
     private static final Hashtable<String, SliceProfilesInfo> java_slice_profiles_info = new Hashtable<>();
@@ -60,7 +60,12 @@ public class Main {
 //        fw.close();
 //    }
 
-    public static Hashtable<String, Set<List<Encl_name_pos_tuple>>> main(String[] args) {
+    public static void main(String[] args) {
+        nonCLI(args);
+    }
+
+    @SuppressWarnings("UnusedReturnValue")
+    public static Hashtable<String, Set<List<Encl_name_pos_tuple>>> nonCLI(String[] args) {
         long start = System.currentTimeMillis();
         String projectLocation=null;
         String srcML = null;
@@ -159,21 +164,37 @@ public class Main {
 
 //            analyze_sources
 
-            Enumeration<String> profiles_to_analyze = java_slice_profiles_info.keys();
-            while (profiles_to_analyze.hasMoreElements()) {
-                String file_path = profiles_to_analyze.nextElement();
-                SliceProfilesInfo currentSlice = java_slice_profiles_info.get(file_path);
-                Enumeration<String> slices_to_analyze = currentSlice.slice_profiles.keys();
-                while (slices_to_analyze.hasMoreElements()) {
-                    String profile_id = slices_to_analyze.nextElement();
-                    SliceProfile profile = currentSlice.slice_profiles.get(profile_id);
-                    if(analyzed_profiles.contains(profile)) continue;
-                    analyze_slice_profile(profile, java_slice_profiles_info);
+            //noinspection ConstantConditions
+            if(mode.equals("testing")){
+//            start from cpp slice profiles [testing]
+                System.out.println("Beginning test...");
+                for (SliceProfilesInfo currentSlice : cpp_slice_profiles_info.values()) {
+                    for (SliceProfile profile : currentSlice.slice_profiles.values()) {
+                        if(analyzed_profiles.contains(profile)) continue;
+                        analyze_slice_profile(profile, cpp_slice_profiles_info);
+                    }
+                }
+            }
+            else{
+                Enumeration<String> profiles_to_analyze = java_slice_profiles_info.keys();
+                while (profiles_to_analyze.hasMoreElements()) {
+                    String file_path = profiles_to_analyze.nextElement();
+                    SliceProfilesInfo currentSlice = java_slice_profiles_info.get(file_path);
+                    Enumeration<String> slices_to_analyze = currentSlice.slice_profiles.keys();
+                    while (slices_to_analyze.hasMoreElements()) {
+                        String profile_id = slices_to_analyze.nextElement();
+                        SliceProfile profile = currentSlice.slice_profiles.get(profile_id);
+                        if(analyzed_profiles.contains(profile)) continue;
+                        analyze_slice_profile(profile, java_slice_profiles_info);
+                    }
                 }
             }
 
             long end = System.currentTimeMillis();
             System.out.println("Completed in " + (end - start)/1000 + "s");
+            //noinspection ConstantConditions
+            if(mode.equals("testing"))
+                export_graph(DG);
             return print_violations();
 
         } catch (URISyntaxException | IOException | SAXException | ParserConfigurationException e) {
@@ -181,6 +202,23 @@ public class Main {
         }
         return null;
     }
+
+    private static void export_graph(Graph<Encl_name_pos_tuple, DefaultEdge> dg) throws IOException {
+        System.out.println("Exporting graph...");
+        DOTExporter<Encl_name_pos_tuple, DefaultEdge> exporter2=new DOTExporter<>(Encl_name_pos_tuple::toString);
+        StringWriter writer = new StringWriter();
+        exporter2.exportGraph(dg, writer);
+        final File file = new File(FileSystems.getDefault().getPath(".").toString(), "graph.dot");
+        FileUtils.writeStringToFile(file, writer.toString(), Charset.defaultCharset());
+    }
+
+//    public static void inspectXML(String xmlSource)
+//            throws IOException {
+//        java.io.FileWriter fw = new java.io.FileWriter("temp.xml");
+//        fw.write(xmlSource);
+//        fw.close();
+//    }
+
     private static Hashtable<String, Set<List<Encl_name_pos_tuple>>> print_violations() {
         Hashtable<String, Set<List<Encl_name_pos_tuple>>> tempTable = new Hashtable<>();
         ArrayList<Encl_name_pos_tuple> source_nodes = new ArrayList<>();
@@ -197,11 +235,7 @@ public class Main {
                 AllDirectedPaths<Encl_name_pos_tuple,DefaultEdge> allDirectedPaths = new AllDirectedPaths<>(DG);
                 List<GraphPath<Encl_name_pos_tuple,DefaultEdge>> requiredPath = allDirectedPaths.getAllPaths(source_node, violated_node_pos_pair, true, null);
                 if(!requiredPath.isEmpty()){
-                    System.out.print("Possible out-of-bounds operation path : ");
-                    StringBuilder vPath = new StringBuilder();
                     List<Encl_name_pos_tuple> vertexList = requiredPath.get(0).getVertexList();
-                    vertexList.forEach(x-> vPath.append(x).append(" -> "));
-                    System.out.println(vPath);
 //                    shortestBellman(DG,source_node, violated_node_pos_pair)
 //                            .forEach(x->System.out.print(x + " -> "));
                     violations.forEach(violation-> {
@@ -212,13 +246,31 @@ public class Main {
                             currentArray = new HashSet<>();
                         currentArray.add(vertexList);
                         tempTable.put(violation,currentArray);
-                        System.err.println("Reason : "+violation);
                     });
                     violations_count = violations_count + violations.size();
                 }
             }
         }
-        System.out.println("No of files analyzed "+ java_slice_profiles_info.size());
+
+
+        Enumeration<String> violations_print = tempTable.keys();
+        while (violations_print.hasMoreElements()) {
+            String violation = violations_print.nextElement();
+            Set<List<Encl_name_pos_tuple>> current_violation = tempTable.get(violation);
+            System.err.println(violation);
+            current_violation.forEach(v-> {
+//                if(v.toString().contains("C:/Users/elbon/Documents/GitHub/skia/src/core/SkImageFilter.cpp"))
+//                {
+                    System.err.print("Possible out-of-bounds operation path : ");
+                    StringBuilder vPath = new StringBuilder();
+                    v.forEach(x-> vPath.append(x).append(" -> "));
+                    System.err.println(vPath);
+//                }
+
+            });
+        }
+
+        System.out.println("No of files analyzed " + (java_slice_profiles_info.size()+cpp_slice_profiles_info.size()));
         System.out.println("Detected violations "+ violations_count);
 //        if(violations_count>0) System.exit(1);
         return tempTable;
@@ -226,11 +278,6 @@ public class Main {
 
     private static void analyze_slice_profile(SliceProfile profile, Hashtable<String, SliceProfilesInfo> raw_profiles_info) {
         analyzed_profiles.add(profile);
-//        try{
-//            emerge();
-//        } catch (Exception e) {
-//            return;
-//        }
 
 //                  step-01 : analyse cfunctions of the slice variable
 
@@ -280,6 +327,7 @@ public class Main {
 
 //                  step-04 : check and add buffer reads and writes for this profile
 
+        if(check_buffer)
         if(profile.file_name.endsWith(".cpp")||profile.file_name.endsWith(".c")||profile.file_name.endsWith(".cc")){
             for(SliceVariableAccess var_access:profile.used_positions){
                 for(Tuple access:var_access.write_positions){
@@ -307,10 +355,11 @@ public class Main {
             analyze_slice_profile(dep_profile, slice_profiles_info);
         });
         if(dependent_slice_profiles.size()<1){
-            if(cfunction_name.equals("strcpy") || cfunction_name.equals("strncpy") || cfunction_name.equals("memcpy")){
+            if(buffer_error_functions.contains(cfunction_name)){
                 DG.addVertex(encl_name_pos_tuple);
                 ArrayList<String> cErrors = new ArrayList<>();
                 cErrors.add("Use of " + cfunction_name + " at " + cfunction_pos);
+//                if(cfunction_pos.equals("137")||cfunction_pos.equals("138")||cfunction_pos.equals("139"))
                 detected_violations.put(encl_name_pos_tuple, cErrors);
             }
         }

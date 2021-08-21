@@ -8,7 +8,13 @@ public final class Encl_name_pos_tuple {
 
     @Override
     public String toString() {
-        return this.var_name + "," + this.function_name + "," + this.file_name + "," + this.defined_position;
+        String mode = "not_testing";
+        String ret_test = "XXXX" + this.var_name + "XXXX" + this.function_name + "XXXX" + this.file_name.replaceAll(":","COLON").replaceAll("\\.","DOT").replaceAll("/","SLASH") + "XXXX" + this.defined_position;
+        //noinspection ConstantConditions
+        if(!mode.equals("testing"))
+            return this.var_name + "," + this.function_name + "," + this.file_name + "," + this.defined_position;
+        else
+            return ret_test.replaceAll("\\W","");
     }
 
     @Override

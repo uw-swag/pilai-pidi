@@ -12,7 +12,7 @@ import static com.noble.util.XmlUtil.find_all_nodes;
 import static com.noble.util.XmlUtil.getNamePosTextPair;
 import static com.noble.util.XmlUtil.getNodeByName;
 import static com.noble.util.XmlUtil.getNodePos;
-import static com.noble.util.XmlUtil.isIndexOutOfBounds;
+import static com.noble.util.XmlUtil.noob;
 
 public class SliceGenerator {
     String GLOBAL;
@@ -93,17 +93,20 @@ public class SliceGenerator {
     }
 
     private void analyzeNamespace(Node namespace_node){
-        List<Node> block = getNodeByName(namespace_node, "block");
-        analyzeCPPSource(block.get(0));
+        if(namespace_node==null) return;
+        Node block = noob(getNodeByName(namespace_node, "block"), 0);
+        if(block==null) return;
+        analyzeCPPSource(block);
     }
 
     private void analyzeStruct(Node struct_node){
+        if(struct_node==null) return;
 //        List<Node> block = getNodeByName(struct_node, "block");
 //      TODO analyze struct body
         NamePos struct_type_name_pos = getNamePosTextPair(struct_node);
         String struct_type_name = struct_type_name_pos.getType();
         if (struct_type_name.equals("")) return;
-        Node struct_var_name_pos_temp = getNodeByName(struct_node, "decl").get(0);
+        Node struct_var_name_pos_temp = noob(getNodeByName(struct_node, "decl"),0);
         NamePos struct_var_name_pos = getNamePosTextPair(struct_var_name_pos_temp);
         if(struct_var_name_pos.getName().equals("")) return;
         String struct_var_name = struct_var_name_pos.getName();
@@ -121,6 +124,7 @@ public class SliceGenerator {
 //    }
 
     private void analyzeJavaClass(Node class_node) {
+        if(class_node==null) return;
         NodeList nodeList = class_node.getChildNodes();
         NodeList doc= null;
         for (int count = 0; count < nodeList.getLength(); count++) {
@@ -155,6 +159,7 @@ public class SliceGenerator {
     }
 
     private void analyzeGlobalDecl(Node nodeTemp) {
+        if(nodeTemp==null) return;
         NamePos namePos = getNamePosTextPair(nodeTemp);
         String slice_key = namePos.getName() + "%" + namePos.getPos() + "%" + this.GLOBAL + "%" + this.file_name;
         SliceProfile slice_profile = new SliceProfile(this.file_name, this.GLOBAL, namePos.getName(), namePos.getType(), namePos.getPos());
@@ -165,15 +170,16 @@ public class SliceGenerator {
     }
 
     private void analyzeStaticBlock(Node static_block) {
-        List<Node> block = getNodeByName(static_block, "block");
+        if(static_block==null) return;
         current_function_name = GLOBAL;
         current_function_node = static_block;
-        analyzeBlock(block.get(0));
+        analyzeBlock(noob(getNodeByName(static_block, "block"),0));
         current_function_name = null;
         current_function_node = null;
     }
 
     private void analyzeExternFunction(Node extern_node) {
+        if(extern_node==null) return;
         NodeList doc = extern_node.getChildNodes();
         for (int count = 0; count < doc.getLength(); count++) {
             Node node = doc.item(count);
@@ -186,6 +192,7 @@ public class SliceGenerator {
     }
 
     private void analyzeFunction(Node function) {
+        if(function==null) return;
         NamePos function_name = getNamePosTextPair(function);
         this.current_function_name = function_name.getName();
         this.current_function_node = function;
@@ -193,56 +200,58 @@ public class SliceGenerator {
         for (Node node : param) {
             analyzeParam(node);
         }
-        List<Node> block_list = getNodeByName(function, "block");
-        if(block_list.size()>0) {
-            Node block = block_list.get(0);
-            analyzeBlock(block);
-        }
+        analyzeBlock(noob(getNodeByName(function, "block"),0));
         this.current_function_name = null;
         this.current_function_node = null;
     }
 
     private void analyzeBlock(Node block) {
-        NodeList iterBlock = getNodeByName(block, "block_content").get(0).getChildNodes();
-        for(Node stmt : asList(iterBlock)){
-            String stmt_tag = stmt.getNodeName();
-            switch (stmt_tag) {
-                case "expr_stmt":
-                    analyzeExprStmt(stmt);
-                    break;
-                case "decl_stmt":
-                    analyzeDeclStmt(stmt);
-                    break;
-                case "if_stmt":
-                    analyzeIfStmt(stmt);
-                    break;
-                case "for":
-                    analyzeForStmt(stmt);
-                    break;
-                case "while":
-                    analyzeWhileStmt(stmt);
-                    break;
-                case "return":
-                    analyzeReturnStmt(stmt);
-                    break;
-                case "try":
-                    analyzeTryBlock(stmt);
-                    break;
-                case "switch":
-                    analyzeSwitchStmt(stmt);
-                    break;
-                case "case":
-                    analyzeCaseStmt(stmt);
-                    break;
+        if(block==null) return;
+        Node iterNode = noob(getNodeByName(block, "block_content"), 0);
+        if(iterNode!=null){
+            NodeList iterBlock = iterNode.getChildNodes();
+            for(Node stmt : asList(iterBlock)){
+                String stmt_tag = stmt.getNodeName();
+                switch (stmt_tag) {
+                    case "expr_stmt":
+                        analyzeExprStmt(stmt);
+                        break;
+                    case "decl_stmt":
+                        analyzeDeclStmt(stmt);
+                        break;
+                    case "if_stmt":
+                        analyzeIfStmt(stmt);
+                        break;
+                    case "for":
+                        analyzeForStmt(stmt);
+                        break;
+                    case "while":
+                        analyzeWhileStmt(stmt);
+                        break;
+                    case "return":
+                        analyzeReturnStmt(stmt);
+                        break;
+                    case "try":
+                        analyzeTryBlock(stmt);
+                        break;
+                    case "switch":
+                        analyzeSwitchStmt(stmt);
+                        break;
+                    case "case":
+                        analyzeCaseStmt(stmt);
+                        break;
+                }
             }
         }
     }
 
     private void analyzeDeclStmt(Node stmt) {
-        analyzeDecl(getNodeByName(stmt,"decl").get(0));
+        if(stmt==null) return;
+        analyzeDecl(noob(getNodeByName(stmt,"decl"),0));
     }
 
     private void analyzeDecl(Node decl){
+        if(decl==null) return;
         NamePos namePos = getNamePosTextPair(decl);
         String slice_key = namePos.getName() + "%" + namePos.getPos() + "%" + this.current_function_name + "%" + this.file_name;
         SliceProfile slice_profile = new SliceProfile(this.file_name, this.current_function_name, namePos.getName(), namePos.getType(), namePos.getPos(), this.current_function_node);
@@ -251,19 +260,21 @@ public class SliceGenerator {
         nameProfile.put(namePos.getName(),slice_profile);
         local_variables.put(namePos.getName(),nameProfile);
         List<Node> expr_temp = getNodeByName(decl, "expr");
-        if(expr_temp.size() <1) return;
-        List<Node> init_expr = asList(expr_temp.get(0).getChildNodes());
+        Node init_node = noob(expr_temp, 0);
+        if(init_node == null) return;
+        List<Node> init_expr = asList(init_node.getChildNodes());
 
         for(Node expr: init_expr){
             if (analyze_update(namePos, expr)) return;
         }
-        List<Node> argument_list_temp = getNodeByName(decl, "argument_list");
-        if(argument_list_temp.size()<1) return;
-        List<Node> argument_list = getNodeByName(argument_list_temp.get(0),"argument");
+        Node argument_list_temp = noob(getNodeByName(decl, "argument_list"),0);
+        if(argument_list_temp==null) return;
+        List<Node> argument_list = getNodeByName(argument_list_temp,"argument");
         for (Node arg_expr: argument_list){
             List<Node> expr_temp_f = getNodeByName(arg_expr, "expr");
-            if(expr_temp_f.size()<1)continue;
-            for(Node expr: asList(expr_temp_f.get(0).getChildNodes())){
+            Node expr_temp_node = noob(expr_temp_f, 0);
+            if(expr_temp_node==null)continue;
+            for(Node expr: asList(expr_temp_node.getChildNodes())){
                 if (analyze_update(namePos, expr)) return;
             }
         }
@@ -284,6 +295,7 @@ public class SliceGenerator {
     }
 
     private NamePos analyzeExpr(Node expr_e) {
+        if(expr_e!=null){
             String expr_tag = expr_e.getNodeName();
             switch (expr_tag) {
                 case "literal":
@@ -301,6 +313,7 @@ public class SliceGenerator {
                 case "name":
                     return getNamePosTextPair(expr_e);
             }
+        }
         return new NamePos("","","",false);
     }
 
@@ -320,37 +333,34 @@ public class SliceGenerator {
     private NamePos analyzeOperatorExpr(Node expr) {
 //        TODO needs checking
         String text;
-        List<Node> specificOp = getNodeByName(expr.getParentNode(), "name");
-        if(specificOp.size()<1) text = getNamePosTextPair(expr.getParentNode()).getName();
-        else text = specificOp.get(0).getTextContent();
+        Node specificOpNode = noob(getNodeByName(expr.getParentNode(), "name"),0);
+        if(specificOpNode==null) text = getNamePosTextPair(expr.getParentNode()).getName();
+        else text = specificOpNode.getTextContent();
         return new NamePos(text.split(identifier_separator)[0],"",getNodePos(expr),false);
     }
 
     private void analyzeTryBlock(Node stmt) {
-        List<Node> block;
-        block = getNodeByName(stmt,"block");
-        if(isIndexOutOfBounds(block,0)) return;
-        analyzeBlock(block.get(0));
-        block = getNodeByName(stmt,"catch");
-        if(isIndexOutOfBounds(block,0)) return;
-        analyzeCatchBlock(block.get(0));
+        if(stmt==null) return;
+        analyzeBlock(noob(getNodeByName(stmt,"block"),0));
+        analyzeCatchBlock(noob(getNodeByName(stmt,"catch"),0));
     }
 
     private void analyzeCatchBlock(Node catch_block) {
+        if(catch_block==null) return;
         List<Node> param = getNodeByName(catch_block, "parameter");
         for (Node node : param) {
             analyzeParam(node);
         }
-        List<Node> block = getNodeByName(catch_block, "block");
-        if(isIndexOutOfBounds(block,0)) return;
-        analyzeBlock(block.get(0));
+        analyzeBlock(noob(getNodeByName(catch_block,"block"),0));
     }
 
     private void analyzeSwitchStmt(Node stmt) {
+        if(stmt==null) return;
         analyzeConditionBlock(stmt);
     }
 
     private void analyzeCaseStmt(Node stmt) {
+        if(stmt==null) return;
         analyzeCompoundExpr(stmt);
     }
 
@@ -361,7 +371,7 @@ public class SliceGenerator {
         String cfunction_pos = cfunction_details.getPos();
 
         String cfunction_identifier = call.getTextContent().split(identifier_separator)[0];
-        if(!local_variables.containsKey(cfunction_identifier) || !global_variables.containsKey(cfunction_identifier))
+        if(!local_variables.containsKey(cfunction_identifier) && !global_variables.containsKey(cfunction_identifier))
         {
             String cfunction_slice_identifier = cfunction_identifier + "%" + cfunction_pos;
             String cfunc_slice_key = cfunction_slice_identifier + "%" + current_function_name + "%" + file_name;
@@ -377,11 +387,15 @@ public class SliceGenerator {
     }
 
     private NamePos getNamePos(Node call, String cfunction_name, String cfunction_pos, String cfunction_identifier) {
-        List<Node> argument_list = getNodeByName(getNodeByName(call, "argument_list").get(0),"argument");
+        Node argument_node = noob(getNodeByName(call, "argument_list"),0);
+        if(argument_node==null) return null;
+        List<Node> argument_list = getNodeByName(argument_node,"argument");
         int arg_pos_index = 0;
         for(Node arg_expr:argument_list){
          arg_pos_index = arg_pos_index + 1;
-            for(Node expr:asList(getNodeByName(arg_expr,"expr").get(0).getChildNodes())){
+            Node argument_c_node = noob(getNodeByName(arg_expr, "expr"),0);
+            if(argument_c_node==null) return null;
+            for(Node expr:asList(argument_c_node.getChildNodes())){
                 NamePos var_name_pos_pair = analyzeExpr(expr);
                 String var_name = var_name_pos_pair.getName();
                 String var_pos = var_name_pos_pair.getPos();
@@ -407,11 +421,36 @@ public class SliceGenerator {
         return null;
     }
 
+//
+//    argument_list = cast_expr.findall(
+//            "./src:argument_list/src:argument", namespaces)
+//            for _, arg_expr in enumerate(argument_list):
+//            for expr in arg_expr.findall("./src:expr/*", namespaces):
+//            self.analyzeExpr(expr)
+
+//    if len(argument_list) == 2:
+//            return self.analyzeExpr(argument_list[1].find("./src:expr/", namespaces))
+//    else:
+//            for index, arg_expr in enumerate(argument_list):
+//            for expr in arg_expr.findall("./src:expr/*", namespaces):
+//            self.analyzeExpr(expr)
+
+    //
     private void analyzeCastExpr(Node cast_expr) {
-        List<Node> argument_list = getNodeByName(getNodeByName(cast_expr, "argument_list").get(0),"argument");
-        for(Node arg_expr:argument_list){
-            for(Node expr:asList(getNodeByName(arg_expr,"expr").get(0).getChildNodes())){
-                analyzeExpr(expr);
+        if(cast_expr==null) return;
+        Node cast_node = noob(getNodeByName(cast_expr, "argument_list"),0);
+        if(cast_node==null)return;
+        List<Node> argument_list = getNodeByName(cast_node,"argument");
+        if(argument_list.size() == 2){
+            analyzeExpr(noob(getNodeByName(argument_list.get(1),"expr"),0));
+        }
+        else{
+            for(Node arg_expr:argument_list){
+                Node arg_expr_node = noob(getNodeByName(arg_expr,"expr"),0);
+                if(arg_expr_node==null)return;
+                for(Node expr:asList(arg_expr_node.getChildNodes())){
+                    analyzeExpr(expr);
+                }
             }
         }
     }
@@ -431,84 +470,83 @@ public class SliceGenerator {
     }
 
     private void analyzeIfStmt(Node stmt) {
-        analyzeIfBlock(getNodeByName(stmt,"if").get(0));
-        List<Node> elseB = getNodeByName(stmt, "else");
-        if(elseB.size()>0)
-        analyzeElseBlock(elseB.get(0));
+        if(stmt==null) return;
+        analyzeIfBlock(noob(getNodeByName(stmt,"if"),0));
+        analyzeElseBlock(noob(getNodeByName(stmt, "else"),0));
 
     }
 
     private void analyzeIfBlock(Node stmt){
+        if(stmt==null) return;
         analyzeConditionBlock(stmt);
     }
 
     private void analyzeConditionBlock(Node stmt) {
-        List<Node> condition = getNodeByName(stmt, "condition");
-        if(condition.size()>0) analyzeCompoundExpr(condition.get(0));
-        List<Node> block = getNodeByName(stmt, "block");
-        if(block.size()>0) analyzeBlock(block.get(0));
-
+        if(stmt==null) return;
+        analyzeCompoundExpr(noob(getNodeByName(stmt, "condition"),0));
+        analyzeBlock(noob(getNodeByName(stmt, "block"),0));
     }
 
     private void analyzeReturnStmt(Node stmt) {
-        List<Node> expr = getNodeByName(stmt, "expr");
-        if(expr.size()>0)
-        analyzeExpr(expr.get(0).getChildNodes().item(0));
+        if(stmt==null) return;
+        Node expr = noob(getNodeByName(stmt, "expr"),0);
+        if(expr!=null)
+        analyzeExpr(expr.getChildNodes().item(0));
     }
 
     private void analyzeElseBlock(Node node) {
-        List<Node> block = getNodeByName(node, "block");
-        if(block.size()>0)
-        analyzeBlock(block.get(0));
+        if(node==null) return;
+        analyzeBlock(noob(getNodeByName(node, "block"),0));
     }
 
     private void analyzeForStmt(Node stmt) {
-        analyzeControl(getNodeByName(stmt,"control").get(0));
-        analyzeBlock(getNodeByName(stmt,"block").get(0));
+        if(stmt==null) return;
+        analyzeControl(noob(getNodeByName(stmt,"control"),0));
+        analyzeBlock(noob(getNodeByName(stmt,"block"),0));
     }
 
     private void analyzeControl(Node control) {
-        List<Node> init = getNodeByName(control, "init");
-        if(init.size()>0){
-            List<Node> decl = getNodeByName(init.get(0), "decl");
-            if(decl.size()>0)
-                analyzeDecl(decl.get(0));
+        if(control==null) return;
+        Node init = noob(getNodeByName(control, "init"),0);
+        if(init!=null){
+            analyzeDecl(noob(getNodeByName(init, "decl"),0));
         }
-        List<Node> condition = getNodeByName(control, "condition");
-        if(condition.size()>0)
-        analyzeConditionExpr(condition.get(0));
-        List<Node> incr = getNodeByName(control, "incr");
-        if(incr.size()>0)
-        analyzeExpr(incr.get(0));
+        analyzeConditionExpr(noob(getNodeByName(control, "condition"),0));
+        analyzeExpr(noob(getNodeByName(control, "incr"),0));
     }
 
     private void analyzeWhileStmt(Node stmt) {
+        if(stmt==null) return;
         analyzeConditionBlock(stmt);
     }
 
     private void analyzeConditionExpr(Node condition) {
+        if(condition==null) return;
         analyzeCompoundExpr(condition);
     }
 
     private void analyzeTernaryExpr(Node expr) {
-        analyzeConditionExpr(getNodeByName(expr,"condition").get(0));
-        analyzeCompoundExpr(getNodeByName(expr,"then").get(0));
-        analyzeCompoundExpr(getNodeByName(expr,"else").get(0));
+        if(expr==null) return;
+        analyzeConditionExpr(noob(getNodeByName(expr,"condition"),0));
+        analyzeCompoundExpr(noob(getNodeByName(expr,"then"),0));
+        analyzeCompoundExpr(noob(getNodeByName(expr,"else"),0));
     }
 
     private void analyzeParam(Node param) {
-        analyzeDecl(getNodeByName(param,"decl").get(0));
+        if(param==null) return;
+        analyzeDecl(noob(getNodeByName(param, "decl"),0));
     }
 
     private void analyzeExprStmt(Node expr_stmt){
+        if(expr_stmt==null) return;
         analyzeCompoundExpr(expr_stmt);
     }
 
     private void analyzeCompoundExpr(Node init_expr) {
-
-        List<Node> expr1 = getNodeByName(init_expr, "expr");
-        if(expr1.size()>0) {
-            List<Node> exprs = asList(expr1.get(0).getChildNodes());
+        if(init_expr==null) return;
+        Node expr1 = noob(getNodeByName(init_expr, "expr"),0);
+        if(expr1!=null) {
+            List<Node> exprs = asList(expr1.getChildNodes());
             if (is_assignment_expr(exprs)) {
                 analyzeAssignmentExpr(exprs);
             } else {
@@ -521,6 +559,7 @@ public class SliceGenerator {
     }
 
     private void analyzeAssignmentExpr(List<Node> exprs) {
+        if(exprs.size()<5) return;
         Node lhs_expr = exprs.get(0);
         Node rhs_expr = exprs.get(4);
 
@@ -563,9 +602,8 @@ public class SliceGenerator {
 
     private boolean isBufferWriteExpr(Node expr) {
         if(!expr.getNodeName().equals("name")) return false;
-        List<Node> comp_temp = getNodeByName(expr, "index");
-        if(comp_temp.size()<1) return false;
-        Node comp_tag2 = comp_temp.get(0);
+        Node comp_tag2 = noob(getNodeByName(expr, "index"),0);
+        if(comp_tag2==null) return false;
         List<Node> comp = getNodeByName(comp_tag2,"expr");
         return comp.size()>0;
     }
@@ -603,7 +641,6 @@ public class SliceGenerator {
         if(slice_variables_string.equals("local_variables")) local_variables.put(r_var_name, body);
         else global_variables.put(r_var_name, body);
     }
-
 
     private boolean is_assignment_expr(List<Node> exprs) {
         if(exprs.size()!=5) return false;

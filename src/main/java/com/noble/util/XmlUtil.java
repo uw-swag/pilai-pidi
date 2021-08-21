@@ -13,6 +13,7 @@ import org.w3c.dom.*;
 //import static com.noble.util.RecursionLimiter.emerge;
 
 public final class XmlUtil {
+
     public static List<Node> MasterList;
     public enum DataAccessType
     {
@@ -58,6 +59,7 @@ public final class XmlUtil {
 //    }
 
     public static List<Node> getNodeByName(Node parent, String tag) {
+
         List<Node> namedNodes = getNodesBase(parent, tag);
         if (namedNodes.size()>0) {
             return namedNodes;
@@ -110,8 +112,9 @@ public final class XmlUtil {
     }
 
     public static NamePos getNamePosTextPair(Node init_node) {
-        NodeList nodeList = init_node.getChildNodes();
         NamePos namePos = new NamePos("", "", "", false);
+        if(init_node==null) return namePos;
+        NodeList nodeList = init_node.getChildNodes();
         boolean is_pointer = false;
         Set<String> names = new HashSet<>();
         names.add("decl");
@@ -125,7 +128,7 @@ public final class XmlUtil {
                 if (tempNode.getNodeName().equals("name")) {
                     String linePos = getNodePos(tempNode);
                     if(tempNode.getNextSibling()!=null && tempNode.getNextSibling().getNodeType() == Node.ELEMENT_NODE)
-                        if (((Element) tempNode.getNextSibling()).getTagName().equals("modifier"))
+                        if (((Element) tempNode.getNextSibling()).getTagName().equals("modifier") && tempNode.getNextSibling().getNodeValue()!=null)
                             is_pointer = tempNode.getNextSibling().getNodeValue().equals("*")||tempNode.getNextSibling().getNodeValue().equals("&");
                     StringBuilder varType = new StringBuilder();
                     try {
@@ -173,8 +176,9 @@ public final class XmlUtil {
             namePos = new NamePos(init_node.getFirstChild().getNodeValue(),"",getNodePos(init_node),false);
         return namePos;
     }
-    public static boolean isIndexOutOfBounds(final List<Node> list, int index) {
-        return index < 0 || index >= list.size();
+    public static Node noob(final List<Node> list, int index) {
+        if (index < 0 || index >= list.size()) return null;
+        else return list.get(index);
     }
     public static List<Node> find_all_nodes(Node unit_node, String tag) {
         Element eElement;
@@ -184,7 +188,9 @@ public final class XmlUtil {
     }
     public static ArrayList<NamePos> find_function_parameters(Node encl_function_node){
         ArrayList<NamePos> parameters = new ArrayList<>();
-        getNodeByName(getNodeByName(encl_function_node,"parameter_list").get(0), "parameter").forEach(param->{
+        Node parameter_list = noob(getNodeByName(encl_function_node, "parameter_list"), 0);
+        if (parameter_list == null) return  parameters;
+        getNodeByName(parameter_list, "parameter").forEach(param->{
             Node paramDecl = getNodeByName(param, "decl").get(0);
             List<Node> name_node = getNodeByName(paramDecl,"name");
             if(name_node.size()<1) parameters.add(new NamePos("NoNameParam","", String.valueOf(parameters.size()),false));
@@ -205,12 +211,13 @@ public final class XmlUtil {
             return list.getLength();
         }
     }
-    
+
+    @SuppressWarnings("unused")
     public static final class MyResult {
         private final ArrayList<Encl_name_pos_tuple> first;
         private final Hashtable<Encl_name_pos_tuple,ArrayList<String>> second;
         private final Hashtable<String, SliceProfilesInfo> java_slice_profiles_info;
-        private Graph<Encl_name_pos_tuple, DefaultEdge> dg;
+        private final Graph<Encl_name_pos_tuple, DefaultEdge> dg;
 
         public MyResult(ArrayList<Encl_name_pos_tuple> first, Hashtable<Encl_name_pos_tuple, ArrayList<String>> second, Hashtable<String, SliceProfilesInfo> java_slice_profiles_info, Graph<Encl_name_pos_tuple, DefaultEdge> dg) {
             this.first = first;
