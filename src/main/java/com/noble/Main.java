@@ -61,11 +61,7 @@ public class Main {
 //    }
 
     public static void main(String[] args) {
-        nonCLI(args);
-    }
-
-    @SuppressWarnings("UnusedReturnValue")
-    public static Hashtable<String, Set<List<Encl_name_pos_tuple>>> nonCLI(String[] args) {
+//        nonCLI(args);
         long start = System.currentTimeMillis();
         String projectLocation=null;
         String srcML = null;
@@ -100,6 +96,8 @@ public class Main {
                 else if(OsUtils.isLinux()){
                     srcML = "ubuntu/srcml";
 //                    tempLoc = new File(".");
+                } else if (OsUtils.isMac()) {
+                    srcML = "mac/srcml";
                 }
                 else {
                     System.err.println("Please specify location of srcML, binary not included for current OS");
@@ -119,6 +117,7 @@ public class Main {
                 InputStream in = Files.newInputStream(zipPath);
                 //noinspection ConstantConditions
                 file = File.createTempFile("PREFIX", "SUFFIX", tempLoc);
+                file.setExecutable(true);
                 file.deleteOnExit();
                 try (FileOutputStream out = new FileOutputStream(file))
                 {
@@ -195,12 +194,11 @@ public class Main {
             //noinspection ConstantConditions
             if(mode.equals("testing"))
                 export_graph(DG);
-            return print_violations();
+            print_violations();
 
         } catch (URISyntaxException | IOException | SAXException | ParserConfigurationException e) {
             e.printStackTrace();
         }
-        return null;
     }
 
     private static void export_graph(Graph<Encl_name_pos_tuple, DefaultEdge> dg) throws IOException {
@@ -257,7 +255,6 @@ public class Main {
         while (violations_print.hasMoreElements()) {
             String violation = violations_print.nextElement();
             Set<List<Encl_name_pos_tuple>> current_violation = tempTable.get(violation);
-            System.err.println(violation);
             current_violation.forEach(v-> {
 //                if(v.toString().contains("C:/Users/elbon/Documents/GitHub/skia/src/core/SkImageFilter.cpp"))
 //                {
@@ -268,6 +265,8 @@ public class Main {
 //                }
 
             });
+            System.err.println(violation + "\n");
+
         }
 
         System.out.println("No of files analyzed " + (java_slice_profiles_info.size()+cpp_slice_profiles_info.size()));
