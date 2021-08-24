@@ -10,6 +10,7 @@ import org.jgrapht.alg.shortestpath.AllDirectedPaths;
 import org.jgrapht.graph.DefaultDirectedGraph;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.nio.dot.DOTExporter;
+import org.jgrapht.traverse.BreadthFirstIterator;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.xml.sax.InputSource;
@@ -190,11 +191,13 @@ public class Main {
                 }
             }
 
-            long end = System.currentTimeMillis();
-            System.out.println("Completed in " + (end - start)/1000 + "s");
-            //noinspection ConstantConditions
+            long mid = System.currentTimeMillis();
+            System.out.println("Completed building slice profiles in " + (mid - start)/1000 + "s");
+//            noinspection ConstantConditions
             if(mode.equals("testing"))
                 export_graph(DG);
+            long end = System.currentTimeMillis();
+            System.out.println("Completed analysis in " + (end - start)/1000 + "s");
             return print_violations();
 
         } catch (URISyntaxException | IOException | SAXException | ParserConfigurationException e) {
@@ -219,6 +222,29 @@ public class Main {
 //        fw.close();
 //    }
 
+    @SuppressWarnings("unused")
+    public static void bfsSolution(Encl_name_pos_tuple source){
+        List<List<Encl_name_pos_tuple>> completePaths = new ArrayList<>();
+
+        //Run a BFS from the source vertex. Each time a new vertex is encountered, construct a new path.
+        BreadthFirstIterator<Encl_name_pos_tuple, DefaultEdge> bfs = new BreadthFirstIterator<>(DG, source);
+        while(bfs.hasNext()){
+            Encl_name_pos_tuple vertex=bfs.next();
+            //Create path P2 that ends in the vertex by backtracking from the new vertex we encountered
+            Stack<Encl_name_pos_tuple> partialPathP2 = new Stack<>();
+            while(vertex != null) {
+                partialPathP2.push(vertex);
+                vertex=bfs.getParent(vertex);
+            }
+            List<Encl_name_pos_tuple> pathP = new ArrayList<>(partialPathP2.size());
+            while(!partialPathP2.isEmpty())
+                pathP.add(partialPathP2.pop());
+            completePaths.add(pathP);
+        }
+
+        System.out.println(completePaths);
+    }
+
     private static Hashtable<String, Set<List<Encl_name_pos_tuple>>> print_violations() {
         Hashtable<String, Set<List<Encl_name_pos_tuple>>> tempTable = new Hashtable<>();
         ArrayList<Encl_name_pos_tuple> source_nodes = new ArrayList<>();
@@ -228,12 +254,13 @@ public class Main {
         }
         int violations_count = 0;
         for(Encl_name_pos_tuple source_node: source_nodes){
+//            bfsSolution(source_node);
             Enumeration<Encl_name_pos_tuple> violationE = detected_violations.keys();
             while (violationE.hasMoreElements()) {
                 Encl_name_pos_tuple violated_node_pos_pair = violationE.nextElement();
                 ArrayList<String> violations = detected_violations.get(violated_node_pos_pair);
                 AllDirectedPaths<Encl_name_pos_tuple,DefaultEdge> allDirectedPaths = new AllDirectedPaths<>(DG);
-                List<GraphPath<Encl_name_pos_tuple,DefaultEdge>> requiredPath = allDirectedPaths.getAllPaths(source_node, violated_node_pos_pair, true, null);
+                List<GraphPath<Encl_name_pos_tuple,DefaultEdge>> requiredPath = allDirectedPaths.getAllPaths(source_node, violated_node_pos_pair, true, 25);
                 if(!requiredPath.isEmpty()){
                     List<Encl_name_pos_tuple> vertexList = requiredPath.get(0).getVertexList();
 //                    shortestBellman(DG,source_node, violated_node_pos_pair)
@@ -474,7 +501,7 @@ public class Main {
             if(!function_name.equals(cfunction_name)) continue;
             
             ArrayList<NamePos> func_args = find_function_parameters(possible_function_node);
-            if(func_args.size()==0 || arg_pos_index>=func_args.size()) continue;
+            if(func_args.size()==0 || arg_pos_index>func_args.size()) continue;
 
             int arg_index = arg_pos_index -1;
             String param_name = func_args.get(arg_index).getName();
