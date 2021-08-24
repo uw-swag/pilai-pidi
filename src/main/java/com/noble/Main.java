@@ -10,6 +10,7 @@ import org.jgrapht.alg.shortestpath.AllDirectedPaths;
 import org.jgrapht.graph.DefaultDirectedGraph;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.nio.dot.DOTExporter;
+import org.jgrapht.traverse.BreadthFirstIterator;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.xml.sax.InputSource;
@@ -189,11 +190,13 @@ public class Main {
                 }
             }
 
-            long end = System.currentTimeMillis();
-            System.out.println("Completed in " + (end - start)/1000 + "s");
-            //noinspection ConstantConditions
+            long mid = System.currentTimeMillis();
+            System.out.println("Completed building slice profiles in " + (mid - start)/1000 + "s");
+//            noinspection ConstantConditions
             if(mode.equals("testing"))
                 export_graph(DG);
+            long end = System.currentTimeMillis();
+            System.out.println("Completed analysis in " + (end - start)/1000 + "s");
             print_violations();
 
         } catch (URISyntaxException | IOException | SAXException | ParserConfigurationException e) {
@@ -255,6 +258,7 @@ public class Main {
         while (violations_print.hasMoreElements()) {
             String violation = violations_print.nextElement();
             Set<List<Encl_name_pos_tuple>> current_violation = tempTable.get(violation);
+            System.err.println(violation);
             current_violation.forEach(v-> {
 //                if(v.toString().contains("C:/Users/elbon/Documents/GitHub/skia/src/core/SkImageFilter.cpp"))
 //                {

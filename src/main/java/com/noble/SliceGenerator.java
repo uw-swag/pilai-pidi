@@ -364,7 +364,6 @@ public class SliceGenerator {
         analyzeCompoundExpr(stmt);
     }
 
-    @SuppressWarnings("unused")
     private NamePos analyzeCallExpr(Node call) {
         NamePos cfunction_details = getNamePosTextPair(call);
         String cfunction_name = cfunction_details.getName();
@@ -438,21 +437,30 @@ public class SliceGenerator {
     //
     private void analyzeCastExpr(Node cast_expr) {
         if(cast_expr==null) return;
-        Node cast_node = noob(getNodeByName(cast_expr, "argument_list"),0);
-        if(cast_node==null)return;
-        List<Node> argument_list = getNodeByName(cast_node,"argument");
-        if(argument_list.size() == 2){
-            analyzeExpr(noob(getNodeByName(argument_list.get(1),"expr"),0));
-        }
-        else{
-            for(Node arg_expr:argument_list){
-                Node arg_expr_node = noob(getNodeByName(arg_expr,"expr"),0);
-                if(arg_expr_node==null)return;
+        for(Node argument_list: getNodeByName(cast_expr, "argument_list",true)){
+            for(Node argument: getNodeByName(argument_list, "argument")){
+                Node arg_expr_node = noob(getNodeByName(argument,"expr"),0);
+                if(arg_expr_node!=null)
                 for(Node expr:asList(arg_expr_node.getChildNodes())){
                     analyzeExpr(expr);
                 }
             }
         }
+//        Node cast_node = noob(getNodeByName(cast_expr, "argument_list"),0);
+//        if(cast_node==null)return;
+//        List<Node> argument_list = getNodeByName(cast_node,"argument");
+//        if(argument_list.size() == 2){
+//            analyzeExpr(noob(getNodeByName(argument_list.get(1),"expr"),0));
+//        }
+//        else{
+//            for(Node arg_expr:argument_list){
+//                Node arg_expr_node = noob(getNodeByName(arg_expr,"expr"),0);
+//                if(arg_expr_node==null)return;
+//                for(Node expr:asList(arg_expr_node.getChildNodes())){
+//                    analyzeExpr(expr);
+//                }
+//            }
+//        }
     }
 
     private void updateCFunctionsSliceProfile(String var_name, String cfunction_name, String cfunction_pos, int arg_pos_index, String slice_variables_string, String slice_key) {
