@@ -381,6 +381,7 @@ public class SliceGenerator {
             local_variables.put(cfunction_identifier,cfprofile);
         }
 
+        @SuppressWarnings("unused")
         NamePos todo_prevent_return = getNamePos(call, cfunction_name, cfunction_pos, cfunction_identifier);
         return new NamePos(cfunction_identifier,"",cfunction_pos,false);
     }

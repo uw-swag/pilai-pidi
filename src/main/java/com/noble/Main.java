@@ -6,7 +6,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.jgrapht.Graph;
 import org.jgrapht.GraphPath;
-import org.jgrapht.alg.shortestpath.AllDirectedPaths;
+import org.jgrapht.alg.shortestpath.BFSShortestPath;
 import org.jgrapht.graph.DefaultDirectedGraph;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.nio.dot.DOTExporter;
@@ -32,6 +32,7 @@ import java.util.stream.Stream;
 
 import static com.noble.util.XmlUtil.*;
 
+//import org.jgrapht.alg.shortestpath.AllDirectedPaths;
 //import org.jgrapht.alg.shortestpath.BellmanFordShortestPath;
 //import static com.noble.util.RecursionLimiter.emerge;
 
@@ -48,11 +49,6 @@ public class Main {
     public static final Hashtable<Encl_name_pos_tuple,ArrayList<String>> detected_violations = new Hashtable<>();
 
     static LinkedList<SliceProfile> analyzed_profiles= new LinkedList<>();
-
-//    public static List<Encl_name_pos_tuple> shortestBellman(Graph<Encl_name_pos_tuple, DefaultEdge> directedGraph, Encl_name_pos_tuple a, Encl_name_pos_tuple b) {
-//        BellmanFordShortestPath<Encl_name_pos_tuple, DefaultEdge> bellmanFordShortestPath = new BellmanFordShortestPath<>(directedGraph);
-//        return bellmanFordShortestPath.getPath(a, b).getVertexList();
-//    }
 
 //    public static void inspectXML(String xmlSource)
 //            throws IOException {
@@ -196,9 +192,7 @@ public class Main {
 //            noinspection ConstantConditions
             if(mode.equals("testing"))
                 export_graph(DG);
-            long end = System.currentTimeMillis();
-            System.out.println("Completed analysis in " + (end - start)/1000 + "s");
-            return print_violations();
+            return print_violations(start);
 
         } catch (URISyntaxException | IOException | SAXException | ParserConfigurationException e) {
             e.printStackTrace();
@@ -245,7 +239,7 @@ public class Main {
         System.out.println(completePaths);
     }
 
-    private static Hashtable<String, Set<List<Encl_name_pos_tuple>>> print_violations() {
+    private static Hashtable<String, Set<List<Encl_name_pos_tuple>>> print_violations(long start) {
         Hashtable<String, Set<List<Encl_name_pos_tuple>>> tempTable = new Hashtable<>();
         ArrayList<Encl_name_pos_tuple> source_nodes = new ArrayList<>();
         for(Encl_name_pos_tuple node:DG.vertexSet()){
@@ -259,12 +253,19 @@ public class Main {
             while (violationE.hasMoreElements()) {
                 Encl_name_pos_tuple violated_node_pos_pair = violationE.nextElement();
                 ArrayList<String> violations = detected_violations.get(violated_node_pos_pair);
-                AllDirectedPaths<Encl_name_pos_tuple,DefaultEdge> allDirectedPaths = new AllDirectedPaths<>(DG);
-                List<GraphPath<Encl_name_pos_tuple,DefaultEdge>> requiredPath = allDirectedPaths.getAllPaths(source_node, violated_node_pos_pair, true, 25);
-                if(!requiredPath.isEmpty()){
-                    List<Encl_name_pos_tuple> vertexList = requiredPath.get(0).getVertexList();
-//                    shortestBellman(DG,source_node, violated_node_pos_pair)
-//                            .forEach(x->System.out.print(x + " -> "));
+
+//                AllDirectedPaths<Encl_name_pos_tuple,DefaultEdge> allDirectedPaths = new AllDirectedPaths<>(DG);
+//                List<GraphPath<Encl_name_pos_tuple,DefaultEdge>> requiredPath = allDirectedPaths.getAllPaths(source_node, violated_node_pos_pair, true, 15);
+
+//                BellmanFordShortestPath<Encl_name_pos_tuple, DefaultEdge> bellmanFordShortestPath = new BellmanFordShortestPath<>(DG);
+//                GraphPath<Encl_name_pos_tuple,DefaultEdge> requiredPath =  bellmanFordShortestPath.getPath(source_node, violated_node_pos_pair);
+
+                BFSShortestPath<Encl_name_pos_tuple, DefaultEdge> bfsShortestPath = new BFSShortestPath<>(DG);
+                GraphPath<Encl_name_pos_tuple,DefaultEdge> requiredPath =  bfsShortestPath.getPath(source_node, violated_node_pos_pair);
+
+                if(requiredPath!=null){
+//                    List<Encl_name_pos_tuple> vertexList = requiredPath.get(0).getVertexList();
+                    List<Encl_name_pos_tuple> vertexList = requiredPath.getVertexList();
                     violations.forEach(violation-> {
                         Set<List<Encl_name_pos_tuple>> currentArray;
                         if(tempTable.containsKey(violation))
@@ -300,6 +301,8 @@ public class Main {
         System.out.println("No of files analyzed " + (java_slice_profiles_info.size()+cpp_slice_profiles_info.size()));
         System.out.println("Detected violations "+ violations_count);
 //        if(violations_count>0) System.exit(1);
+        long end = System.currentTimeMillis();
+        System.out.println("Completed analysis in " + (end - start)/1000 + "s");
         return tempTable;
     }
 
