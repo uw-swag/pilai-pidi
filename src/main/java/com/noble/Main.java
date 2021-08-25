@@ -234,7 +234,7 @@ public class Main {
                 Encl_name_pos_tuple violated_node_pos_pair = violationE.nextElement();
                 ArrayList<String> violations = detected_violations.get(violated_node_pos_pair);
                 AllDirectedPaths<Encl_name_pos_tuple,DefaultEdge> allDirectedPaths = new AllDirectedPaths<>(DG);
-                List<GraphPath<Encl_name_pos_tuple,DefaultEdge>> requiredPath = allDirectedPaths.getAllPaths(source_node, violated_node_pos_pair, true, null);
+                List<GraphPath<Encl_name_pos_tuple,DefaultEdge>> requiredPath = allDirectedPaths.getAllPaths(source_node, violated_node_pos_pair, true, 15);
                 if(!requiredPath.isEmpty()){
                     List<Encl_name_pos_tuple> vertexList = requiredPath.get(0).getVertexList();
 //                    shortestBellman(DG,source_node, violated_node_pos_pair)
@@ -477,7 +477,7 @@ public class Main {
             if(!function_name.equals(cfunction_name)) continue;
             
             ArrayList<NamePos> func_args = find_function_parameters(possible_function_node);
-            if(func_args.size()==0 || arg_pos_index>=func_args.size()) continue;
+            if(func_args.size()==0 || arg_pos_index>func_args.size()) continue;
 
             int arg_index = arg_pos_index -1;
             String param_name = func_args.get(arg_index).getName();
