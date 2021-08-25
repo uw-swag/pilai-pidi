@@ -6,7 +6,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.jgrapht.Graph;
 import org.jgrapht.GraphPath;
-import org.jgrapht.alg.shortestpath.AllDirectedPaths;
+import org.jgrapht.alg.shortestpath.BFSShortestPath;
 import org.jgrapht.graph.DefaultDirectedGraph;
 import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.nio.dot.DOTExporter;
@@ -32,6 +32,7 @@ import java.util.stream.Stream;
 
 import static com.noble.util.XmlUtil.*;
 
+//import org.jgrapht.alg.shortestpath.AllDirectedPaths;
 //import org.jgrapht.alg.shortestpath.BellmanFordShortestPath;
 //import static com.noble.util.RecursionLimiter.emerge;
 
@@ -49,11 +50,6 @@ public class Main {
 
     static LinkedList<SliceProfile> analyzed_profiles= new LinkedList<>();
 
-//    public static List<Encl_name_pos_tuple> shortestBellman(Graph<Encl_name_pos_tuple, DefaultEdge> directedGraph, Encl_name_pos_tuple a, Encl_name_pos_tuple b) {
-//        BellmanFordShortestPath<Encl_name_pos_tuple, DefaultEdge> bellmanFordShortestPath = new BellmanFordShortestPath<>(directedGraph);
-//        return bellmanFordShortestPath.getPath(a, b).getVertexList();
-//    }
-
 //    public static void inspectXML(String xmlSource)
 //            throws IOException {
 //        java.io.FileWriter fw = new java.io.FileWriter("temp.xml");
@@ -62,7 +58,11 @@ public class Main {
 //    }
 
     public static void main(String[] args) {
-//        nonCLI(args);
+        nonCLI(args);
+    }
+
+    @SuppressWarnings("UnusedReturnValue")
+    public static Hashtable<String, Set<List<Encl_name_pos_tuple>>> nonCLI(String[] args) {
         long start = System.currentTimeMillis();
         String projectLocation=null;
         String srcML = null;
@@ -195,13 +195,12 @@ public class Main {
 //            noinspection ConstantConditions
             if(mode.equals("testing"))
                 export_graph(DG);
-            long end = System.currentTimeMillis();
-            System.out.println("Completed analysis in " + (end - start)/1000 + "s");
-            print_violations();
+            return print_violations(start);
 
         } catch (URISyntaxException | IOException | SAXException | ParserConfigurationException e) {
             e.printStackTrace();
         }
+        return null;
     }
 
     private static void export_graph(Graph<Encl_name_pos_tuple, DefaultEdge> dg) throws IOException {
@@ -220,7 +219,30 @@ public class Main {
 //        fw.close();
 //    }
 
-    private static Hashtable<String, Set<List<Encl_name_pos_tuple>>> print_violations() {
+    @SuppressWarnings("unused")
+    public static void bfsSolution(Encl_name_pos_tuple source){
+        List<List<Encl_name_pos_tuple>> completePaths = new ArrayList<>();
+
+        //Run a BFS from the source vertex. Each time a new vertex is encountered, construct a new path.
+        BreadthFirstIterator<Encl_name_pos_tuple, DefaultEdge> bfs = new BreadthFirstIterator<>(DG, source);
+        while(bfs.hasNext()){
+            Encl_name_pos_tuple vertex=bfs.next();
+            //Create path P2 that ends in the vertex by backtracking from the new vertex we encountered
+            Stack<Encl_name_pos_tuple> partialPathP2 = new Stack<>();
+            while(vertex != null) {
+                partialPathP2.push(vertex);
+                vertex=bfs.getParent(vertex);
+            }
+            List<Encl_name_pos_tuple> pathP = new ArrayList<>(partialPathP2.size());
+            while(!partialPathP2.isEmpty())
+                pathP.add(partialPathP2.pop());
+            completePaths.add(pathP);
+        }
+
+        System.out.println(completePaths);
+    }
+
+    private static Hashtable<String, Set<List<Encl_name_pos_tuple>>> print_violations(long start) {
         Hashtable<String, Set<List<Encl_name_pos_tuple>>> tempTable = new Hashtable<>();
         ArrayList<Encl_name_pos_tuple> source_nodes = new ArrayList<>();
         for(Encl_name_pos_tuple node:DG.vertexSet()){
@@ -233,12 +255,19 @@ public class Main {
             while (violationE.hasMoreElements()) {
                 Encl_name_pos_tuple violated_node_pos_pair = violationE.nextElement();
                 ArrayList<String> violations = detected_violations.get(violated_node_pos_pair);
-                AllDirectedPaths<Encl_name_pos_tuple,DefaultEdge> allDirectedPaths = new AllDirectedPaths<>(DG);
-                List<GraphPath<Encl_name_pos_tuple,DefaultEdge>> requiredPath = allDirectedPaths.getAllPaths(source_node, violated_node_pos_pair, true, 15);
-                if(!requiredPath.isEmpty()){
-                    List<Encl_name_pos_tuple> vertexList = requiredPath.get(0).getVertexList();
-//                    shortestBellman(DG,source_node, violated_node_pos_pair)
-//                            .forEach(x->System.out.print(x + " -> "));
+
+//                AllDirectedPaths<Encl_name_pos_tuple,DefaultEdge> allDirectedPaths = new AllDirectedPaths<>(DG);
+//                List<GraphPath<Encl_name_pos_tuple,DefaultEdge>> requiredPath = allDirectedPaths.getAllPaths(source_node, violated_node_pos_pair, true, 15);
+
+//                BellmanFordShortestPath<Encl_name_pos_tuple, DefaultEdge> bellmanFordShortestPath = new BellmanFordShortestPath<>(DG);
+//                GraphPath<Encl_name_pos_tuple,DefaultEdge> requiredPath =  bellmanFordShortestPath.getPath(source_node, violated_node_pos_pair);
+
+                BFSShortestPath<Encl_name_pos_tuple, DefaultEdge> bfsShortestPath = new BFSShortestPath<>(DG);
+                GraphPath<Encl_name_pos_tuple,DefaultEdge> requiredPath =  bfsShortestPath.getPath(source_node, violated_node_pos_pair);
+
+                if(requiredPath!=null){
+//                    List<Encl_name_pos_tuple> vertexList = requiredPath.get(0).getVertexList();
+                    List<Encl_name_pos_tuple> vertexList = requiredPath.getVertexList();
                     violations.forEach(violation-> {
                         Set<List<Encl_name_pos_tuple>> currentArray;
                         if(tempTable.containsKey(violation))
@@ -276,13 +305,15 @@ public class Main {
         System.out.println("No of files analyzed " + (java_slice_profiles_info.size()+cpp_slice_profiles_info.size()));
         System.out.println("Detected violations "+ violations_count);
 //        if(violations_count>0) System.exit(1);
+        long end = System.currentTimeMillis();
+        System.out.println("Completed analysis in " + (end - start)/1000 + "s");
         return tempTable;
     }
 
     private static void analyze_slice_profile(SliceProfile profile, Hashtable<String, SliceProfilesInfo> raw_profiles_info) {
         analyzed_profiles.add(profile);
 
-//                  step-01 : analyse cfunctions of the slice variable
+//      step-01 : analyse cfunctions of the slice variable
 
         Encl_name_pos_tuple encl_name_pos_tuple;
         Enumeration<String> cfunction_k = profile.cfunctions.keys();
@@ -300,7 +331,7 @@ public class Main {
         if (!DG.containsVertex(encl_name_pos_tuple))
         DG.addVertex(encl_name_pos_tuple);
 
-//                  step-02 : analyze data dependent vars of the slice variable
+//      step-02 : analyze data dependent vars of the slice variable
 
         for(NamePos dv: profile.dependent_vars){
             String dvar = dv.getName();
