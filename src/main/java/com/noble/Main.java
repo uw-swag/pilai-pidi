@@ -423,6 +423,9 @@ public class Main {
     private static void analyze_native_function(SliceProfile profile, Hashtable<String, SliceProfilesInfo> profiles_info, Node encl_function_node, Encl_name_pos_tuple encl_name_pos_tuple) {
         Node encl_unit_node = profiles_info.get(profile.file_name).unit_node;
         String jni_function_name = profile.function_name;
+        if (jni_function_name.length() > 2 && jni_function_name.startsWith("n") && Character.isUpperCase(jni_function_name.charAt(1))) {
+            jni_function_name = jni_function_name.substring(1);
+        }
         String jni_arg_name = profile.var_name;
         ArrayList<NamePos> params = find_function_parameters(encl_function_node);
         int index = 0;
@@ -432,7 +435,7 @@ public class Main {
         }
         int jni_arg_pos_index = index + 2;
         String clazz_name = getNodeByName(getNodeByName(encl_unit_node,"class").get(0),"name").get(0).getTextContent();
-        String jni_function_search_str = "_" + clazz_name + "_" + jni_function_name;
+        String jni_function_search_str = clazz_name + "_" + jni_function_name;
 
         Enumeration<String> profiles_to_analyze = cpp_slice_profiles_info.keys();
         while (profiles_to_analyze.hasMoreElements()) {
