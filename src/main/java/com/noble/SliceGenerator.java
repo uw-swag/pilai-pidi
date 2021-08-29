@@ -654,7 +654,7 @@ public class SliceGenerator {
     private boolean is_assignment_expr(List<Node> exprs) {
         if(exprs.size()!=5) return false;
         Node operator_expr = exprs.get(2);
-        return operator_expr.getNodeName().equals("operator")&& operator_expr.getFirstChild().getNodeValue().equals("=");
+        return operator_expr.getNodeName().equals("operator")&& (operator_expr.getFirstChild().getNodeValue().equals("=") || operator_expr.getFirstChild().getNodeValue().equals("+=")) ;
     }
 
     private boolean is_literal_expr(Node expr) {
