@@ -70,7 +70,7 @@ public class Main {
         String result = null;
 
         try {
-            if(Files.exists(Path.of("skip.txt")) && skip_srcml)
+            if(Files.exists(Path.of("skip.txt")) && mode.getSkip_srcml())
                 result = Files.readString(Path.of("skip.txt"), StandardCharsets.UTF_8);
             else{
                 URI uri = Objects.requireNonNull(Main.class.getClassLoader().
@@ -107,7 +107,7 @@ public class Main {
                     System.exit(1);
                 }
             }
-            if(!skip_srcml || result == null){
+            if(!mode.getSkip_srcml() || result == null){
                 ProcessBuilder pb;
                 if (args.length > 1) {
                     pb = new ProcessBuilder(srcML, projectLocation, "--position");
@@ -235,8 +235,8 @@ public class Main {
         }
         int violations_count = 0;
         for(Encl_name_pos_tuple source_node: source_nodes){
-            if(skip_violations){
-                bfsSolution(source_node, lookup_string);
+            if(mode.getSkip_violations()){
+                bfsSolution(source_node, mode.getLookup_string());
                 continue;
             }
             Enumeration<Encl_name_pos_tuple> violationE = detected_violations.keys();
@@ -353,7 +353,7 @@ public class Main {
 
 //      step-04 : check and add buffer reads and writes for this profile
 
-        if (!check_buffer) {
+        if (!mode.getCheck_buffer()) {
             return;
         }
 
@@ -594,28 +594,4 @@ public class Main {
         return function_nodes;
     }
 
-}
-
-enum MODE {
-    TESTING("testing"), NON_TESTING("non_testing");
-
-    private Boolean check_buffer;
-    private Boolean skip_srcml;
-    private Boolean skip_violations;
-    private List<String> lookup_string;
-
-    MODE(String mode) {
-        if (mode.equals("testing")){
-            this.skip_srcml = true;
-            this.check_buffer = true;
-            this.skip_violations = true;
-            this.lookup_string = Arrays.asList("SkFlattenable","SkReadBuffer");
-        }
-        else {
-            this.skip_srcml = false;
-            this.check_buffer = false;
-            this.skip_violations = false;
-            this.lookup_string = Collections.<String>emptyList();
-        }
-    }
 }
