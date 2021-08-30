@@ -35,7 +35,6 @@ import static com.noble.util.XmlUtil.*;
 
 public class Main {
 
-    private static final Boolean check_buffer = true;
     private static final List<String> buffer_error_functions = Arrays.asList("strcat", "strdup", "strncat", "strcmp",
             "strncmp", "strcpy", "strncpy", "strlen", "strchr", "strrchr", "index", "rindex", "strpbrk", "strspn",
             "strcspn", "strstr", "strtok", "memccpy", "memchr", "memmove", "memcpy", "memcmp", "memset", "bcopy",
@@ -55,6 +54,12 @@ public class Main {
         nonCLI(args);
     }
 
+    public static boolean containsAllWords(String word, List<String> keywords) {
+        for (String k : keywords)
+            if (!word.contains(k)) return false;
+        return true;
+    }
+
     @SuppressWarnings("UnusedReturnValue")
     public static Hashtable<String, Set<List<Encl_name_pos_tuple>>> nonCLI(String[] args) {
         long start = System.currentTimeMillis();
@@ -62,62 +67,66 @@ public class Main {
         String srcML = null;
         File file;
         File tempLoc = null;
+        String result = null;
 
         try {
-
-            URI uri = Objects.requireNonNull(Main.class.getClassLoader().
-                    getResource("windows/srcml.exe")).toURI();
-            if (JAR.equals(uri.getScheme())) {
-                for (FileSystemProvider provider : FileSystemProvider.installedProviders()) {
-                    if (provider.getScheme().equalsIgnoreCase(JAR)) {
-                        try {
-                            provider.getFileSystem(uri);
-                        } catch (FileSystemNotFoundException e) {
-                            // in this case we need to initialize it first:
-                            provider.newFileSystem(uri, Collections.emptyMap());
+            if(Files.exists(Path.of("skip.txt")) && mode.getSkip_srcml())
+                result = Files.readString(Path.of("skip.txt"), StandardCharsets.UTF_8);
+            else{
+                URI uri = Objects.requireNonNull(Main.class.getClassLoader().
+                        getResource("windows/srcml.exe")).toURI();
+                if (JAR.equals(uri.getScheme())) {
+                    for (FileSystemProvider provider : FileSystemProvider.installedProviders()) {
+                        if (provider.getScheme().equalsIgnoreCase(JAR)) {
+                            try {
+                                provider.getFileSystem(uri);
+                            } catch (FileSystemNotFoundException e) {
+                                // in this case we need to initialize it first:
+                                provider.newFileSystem(uri, Collections.emptyMap());
+                            }
                         }
                     }
                 }
-            }
-
-            if (args.length > 1) {
-                projectLocation = args[0];
-                srcML = args[1];
-            } else if (args.length == 1) {
-                projectLocation = args[0];
-                if (OsUtils.isWindows()) {
-                    srcML = "windows/srcml.exe";
-                } else if (OsUtils.isLinux()) {
-                    srcML = "ubuntu/srcml";
-                } else if (OsUtils.isMac()) {
-                    srcML = "mac/srcml";
+                if (args.length > 1) {
+                    projectLocation = args[0];
+                    srcML = args[1];
+                } else if (args.length == 1) {
+                    projectLocation = args[0];
+                    if (OsUtils.isWindows()) {
+                        srcML = "windows/srcml.exe";
+                    } else if (OsUtils.isLinux()) {
+                        srcML = "ubuntu/srcml";
+                    } else if (OsUtils.isMac()) {
+                        srcML = "mac/srcml";
+                    } else {
+                        System.err.println("Please specify location of srcML, binary not included for current OS");
+                        System.exit(1);
+                    }
                 } else {
-                    System.err.println("Please specify location of srcML, binary not included for current OS");
+                    System.err.println("Please specify location of project to be analysed");
                     System.exit(1);
                 }
-            } else {
-                System.err.println("Please specify location of project to be analysed");
-                System.exit(1);
             }
-            ProcessBuilder pb;
-            if (args.length > 1) {
-                pb = new ProcessBuilder(srcML, projectLocation, "--position");
-            } else {
-                Path zipPath = Paths.get(Objects.requireNonNull(Main.class.getClassLoader().
-                        getResource(srcML)).toURI());
-                InputStream in = Files.newInputStream(zipPath);
-                //noinspection ConstantConditions
-                file = File.createTempFile("PREFIX", "SUFFIX", tempLoc);
-                file.setExecutable(true);
-                file.deleteOnExit();
-                try (FileOutputStream out = new FileOutputStream(file)) {
-                    IOUtils.copy(in, out);
+            if(!mode.getSkip_srcml() || result == null){
+                ProcessBuilder pb;
+                if (args.length > 1) {
+                    pb = new ProcessBuilder(srcML, projectLocation, "--position");
+                } else {
+                    Path zipPath = Paths.get(Objects.requireNonNull(Main.class.getClassLoader().getResource(srcML)).toURI());
+                    InputStream in = Files.newInputStream(zipPath);
+                    //noinspection ConstantConditions
+                    file = File.createTempFile("PREFIX", "SUFFIX", tempLoc);
+                    file.deleteOnExit();
+                    try (FileOutputStream out = new FileOutputStream(file)) {
+                        IOUtils.copy(in, out);
+                    }
+                    pb = new ProcessBuilder(file.getAbsolutePath(), projectLocation, "--position");
                 }
-                pb = new ProcessBuilder(file.getAbsolutePath(), projectLocation, "--position");
+                result = IOUtils.toString(pb.start().getInputStream(), StandardCharsets.UTF_8);
+                try (PrintWriter out = new PrintWriter("skip.txt")) {
+                    out.println(result);
+                }
             }
-
-            String result = IOUtils.toString(pb.start().getInputStream(), StandardCharsets.UTF_8);
-
             System.out.println("Converted to XML, beginning parsing ...");
             DocumentBuilder db = DocumentBuilderFactory.newInstance().newDocumentBuilder();
             Document doc = db.parse(new InputSource(new StringReader(result)));
@@ -192,7 +201,7 @@ public class Main {
 //    }
 
     @SuppressWarnings("unused")
-    public static void bfsSolution(Encl_name_pos_tuple source) {
+    public static void bfsSolution(Encl_name_pos_tuple source, List<String> lookup) {
         List<List<Encl_name_pos_tuple>> completePaths = new ArrayList<>();
 
         //Run a BFS from the source vertex. Each time a new vertex is encountered, construct a new path.
@@ -211,8 +220,10 @@ public class Main {
             }
             completePaths.add(pathP);
         }
-
-        System.out.println(completePaths);
+        for(List<Encl_name_pos_tuple> smallPath: completePaths){
+            if (containsAllWords(smallPath.toString(),lookup))
+                System.out.println(smallPath);
+        }
     }
 
     private static Hashtable<String, Set<List<Encl_name_pos_tuple>>> print_violations(long start) {
@@ -223,7 +234,11 @@ public class Main {
                 source_nodes.add(node);
         }
         int violations_count = 0;
-        for (Encl_name_pos_tuple source_node : source_nodes) {
+        for(Encl_name_pos_tuple source_node: source_nodes){
+            if(mode.getSkip_violations()){
+                bfsSolution(source_node, mode.getLookup_string());
+                continue;
+            }
             Enumeration<Encl_name_pos_tuple> violationE = detected_violations.keys();
             while (violationE.hasMoreElements()) {
                 Encl_name_pos_tuple violated_node_pos_pair = violationE.nextElement();
@@ -296,6 +311,9 @@ public class Main {
             analyze_cfunction(cfunction_name, cfunction_pos, arg_pos_index, profile.type_name, encl_function_node,
                     encl_name_pos_tuple, raw_profiles_info);
         }
+        encl_name_pos_tuple = new Encl_name_pos_tuple(profile.var_name,profile.function_name,profile.file_name,profile.defined_position);
+        if (!DG.containsVertex(encl_name_pos_tuple))
+            DG.addVertex(encl_name_pos_tuple);
         encl_name_pos_tuple = new Encl_name_pos_tuple(profile.var_name, profile.function_name, profile.file_name,
                 profile.defined_position);
         if (!DG.containsVertex(encl_name_pos_tuple)) {
@@ -335,7 +353,7 @@ public class Main {
 
 //      step-04 : check and add buffer reads and writes for this profile
 
-        if (!check_buffer) {
+        if (!mode.getCheck_buffer()) {
             return;
         }
 
@@ -356,6 +374,7 @@ public class Main {
                 }
             }
         }
+
     }
 
     private static void analyze_cfunction(String cfunction_name, String cfunction_pos, int arg_pos_index,
@@ -599,11 +618,4 @@ public class Main {
         return function_nodes;
     }
 
-}
-
-enum MODE {
-    TESTING("testing"), NON_TESTING("non_testing");
-
-    MODE(String mode) {
-    }
 }
