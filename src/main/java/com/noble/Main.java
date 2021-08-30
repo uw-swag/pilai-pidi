@@ -549,6 +549,30 @@ public class Main {
             }
             return true;
         }
+
+        for (Node decl : getNodeByName(encl_function_node, "decl", true)) {
+            Node init = noob(getNodeByName(decl, "init"), 0);
+            if (init != null) {
+                continue;
+            }
+
+            String constructorTypeName = getNamePosTextPair(decl).getType();
+            if (!cfunction_name.equals(constructorTypeName)) {
+                continue;
+            }
+
+            Node argument_list = noob(getNodeByName(decl, "argument_list"), 0);
+            if (argument_list == null) {
+                continue;
+            }
+
+            call_argument_list = getNodeByName(argument_list, "argument");
+            if (call_argument_list.size() != func_args.size()) {
+                continue;
+            }
+            return true;
+        }
+
         return false;
     }
 
