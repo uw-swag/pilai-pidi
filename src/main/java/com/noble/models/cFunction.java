@@ -10,7 +10,7 @@ public final class cFunction {
     private final String cfunction_pos;
     private final String current_function_name;
     private final Node current_function_node;
-    private final ArrayList<NamePos> func_args;
+    private final ArrayList<ArgumentNamePos> func_args;
 
     public cFunction(int arg_pos_index, String current_function_name, String cfunction_pos, Node current_function_node) {
         this.arg_pos_index = arg_pos_index;
@@ -20,7 +20,8 @@ public final class cFunction {
         this.func_args = null;
     }
 
-    public cFunction(int arg_pos_index, String current_function_name, String cfunction_pos, Node current_function_node, ArrayList<NamePos> func_args) {
+    public cFunction(int arg_pos_index, String current_function_name, String cfunction_pos, Node current_function_node,
+                     ArrayList<ArgumentNamePos> func_args) {
         this.arg_pos_index = arg_pos_index;
         this.current_function_name = current_function_name;
         this.current_function_node = current_function_node;
@@ -48,7 +49,7 @@ public final class cFunction {
         return arg_pos_index;
     }
 
-    public ArrayList<NamePos> getFunc_args() { return func_args; }
+    public ArrayList<ArgumentNamePos> getFunc_args() { return func_args; }
 
     public String getCfunction_pos() {
         return cfunction_pos;

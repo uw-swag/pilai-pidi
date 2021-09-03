@@ -7,38 +7,38 @@ import java.util.List;
 enum MODE {
     TESTING("testing"), NON_TESTING("non_testing");
 
-    private final Boolean check_buffer;
-    private final Boolean skip_srcml;
-    private final Boolean skip_violations;
-    private final List<String> lookup_string;
+    private final Boolean checkBuffer;
+    private final Boolean skipSrcml;
+    private final Boolean skipViolations;
+    private final List<String> lookupString;
 
     MODE(String mode) {
         if (mode.equals("testing")) {
-            this.skip_srcml = true;
-            this.check_buffer = true;
-            this.skip_violations = true;
-            this.lookup_string = Arrays.asList("SkFlattenable", "SkReadBuffer");
+            this.skipSrcml = true;
+            this.checkBuffer = true;
+            this.skipViolations = true;
+            this.lookupString = Arrays.asList("SkFlattenable", "SkReadBuffer");
         } else {
-            this.skip_srcml = false;
-            this.check_buffer = false;
-            this.skip_violations = false;
-            this.lookup_string = Collections.emptyList();
+            this.skipSrcml = false;
+            this.checkBuffer = true;
+            this.skipViolations = false;
+            this.lookupString = Collections.emptyList();
         }
     }
 
-    public Boolean getCheck_buffer() {
-        return check_buffer;
+    public Boolean checkBuffer() {
+        return checkBuffer;
     }
 
-    public Boolean getSkip_srcml() {
-        return skip_srcml;
+    public Boolean skipSrcml() {
+        return skipSrcml;
     }
 
-    public Boolean getSkip_violations() {
-        return skip_violations;
+    public Boolean skipViolations() {
+        return skipViolations;
     }
 
-    public List<String> getLookup_string() {
-        return lookup_string;
+    public List<String> lookupString() {
+        return lookupString;
     }
 }

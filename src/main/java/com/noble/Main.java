@@ -43,8 +43,8 @@ public class Main {
     private static final Hashtable<String, SliceProfilesInfo> slice_profiles_info = new Hashtable<>();
     private static final Hashtable<String, SliceProfilesInfo> java_slice_profiles_info = new Hashtable<>();
     private static final Hashtable<String, SliceProfilesInfo> cpp_slice_profiles_info = new Hashtable<>();
-    private static final Graph<Encl_name_pos_tuple, DefaultEdge> DG = new DefaultDirectedGraph<>(DefaultEdge.class);
-    public static final Hashtable<Encl_name_pos_tuple, ArrayList<String>> detected_violations = new Hashtable<>();
+    private static final Graph<EnclNamePosTuple, DefaultEdge> DG = new DefaultDirectedGraph<>(DefaultEdge.class);
+    public static final Hashtable<EnclNamePosTuple, ArrayList<String>> detected_violations = new Hashtable<>();
     public static final String JAR = "jar";
     private static final MODE mode = com.noble.MODE.NON_TESTING;
 
@@ -55,13 +55,16 @@ public class Main {
     }
 
     public static boolean containsAllWords(String word, List<String> keywords) {
-        for (String k : keywords)
-            if (!word.contains(k)) return false;
+        for (String k : keywords) {
+            if (!word.contains(k)) {
+                return false;
+            }
+        }
         return true;
     }
 
     @SuppressWarnings("UnusedReturnValue")
-    public static Hashtable<String, Set<List<Encl_name_pos_tuple>>> nonCLI(String[] args) {
+    public static Hashtable<String, Set<List<EnclNamePosTuple>>> nonCLI(String[] args) {
         long start = System.currentTimeMillis();
         String projectLocation = null;
         String srcML = null;
@@ -70,9 +73,9 @@ public class Main {
         String result = null;
 
         try {
-            if(Files.exists(Path.of("skip.txt")) && mode.getSkip_srcml())
+            if (Files.exists(Path.of("skip.txt")) && mode.skipSrcml())
                 result = Files.readString(Path.of("skip.txt"), StandardCharsets.UTF_8);
-            else{
+            else {
                 URI uri = Objects.requireNonNull(Main.class.getClassLoader().
                         getResource("windows/srcml.exe")).toURI();
                 if (JAR.equals(uri.getScheme())) {
@@ -107,7 +110,7 @@ public class Main {
                     System.exit(1);
                 }
             }
-            if(!mode.getSkip_srcml() || result == null){
+            if (!mode.skipSrcml() || result == null) {
                 ProcessBuilder pb;
                 if (args.length > 1) {
                     pb = new ProcessBuilder(srcML, projectLocation, "--position");
@@ -116,6 +119,7 @@ public class Main {
                     InputStream in = Files.newInputStream(zipPath);
                     //noinspection ConstantConditions
                     file = File.createTempFile("PREFIX", "SUFFIX", tempLoc);
+                    file.setExecutable(true);
                     file.deleteOnExit();
                     try (FileOutputStream out = new FileOutputStream(file)) {
                         IOUtils.copy(in, out);
@@ -174,8 +178,9 @@ public class Main {
 
             long mid = System.currentTimeMillis();
             System.out.println("Completed building slice profiles in " + (mid - start) / 1000 + "s");
-            if (mode.equals(TESTING))
+            if (mode.equals(TESTING)) {
                 export_graph(DG);
+            }
             return print_violations(start);
 
         } catch (URISyntaxException | IOException | SAXException | ParserConfigurationException e) {
@@ -184,9 +189,9 @@ public class Main {
         return null;
     }
 
-    private static void export_graph(Graph<Encl_name_pos_tuple, DefaultEdge> dg) throws IOException {
+    private static void export_graph(Graph<EnclNamePosTuple, DefaultEdge> dg) throws IOException {
         System.out.println("Exporting graph...");
-        DOTExporter<Encl_name_pos_tuple, DefaultEdge> exporter = new DOTExporter<>(Encl_name_pos_tuple::toString);
+        DOTExporter<EnclNamePosTuple, DefaultEdge> exporter = new DOTExporter<>(EnclNamePosTuple::toString);
         StringWriter writer = new StringWriter();
         exporter.exportGraph(dg, writer);
         final File file = new File(FileSystems.getDefault().getPath(".").toString(), "graph.dot");
@@ -201,47 +206,49 @@ public class Main {
 //    }
 
     @SuppressWarnings("unused")
-    public static void bfsSolution(Encl_name_pos_tuple source, List<String> lookup) {
-        List<List<Encl_name_pos_tuple>> completePaths = new ArrayList<>();
+    public static void bfsSolution(EnclNamePosTuple source, List<String> lookup) {
+        List<List<EnclNamePosTuple>> completePaths = new ArrayList<>();
 
         //Run a BFS from the source vertex. Each time a new vertex is encountered, construct a new path.
-        BreadthFirstIterator<Encl_name_pos_tuple, DefaultEdge> bfs = new BreadthFirstIterator<>(DG, source);
+        BreadthFirstIterator<EnclNamePosTuple, DefaultEdge> bfs = new BreadthFirstIterator<>(DG, source);
         while (bfs.hasNext()) {
-            Encl_name_pos_tuple vertex = bfs.next();
+            EnclNamePosTuple vertex = bfs.next();
             //Create path P that ends in the vertex by backtracking from the new vertex we encountered
-            Stack<Encl_name_pos_tuple> partialPathP = new Stack<>();
+            Stack<EnclNamePosTuple> partialPathP = new Stack<>();
             while (vertex != null) {
                 partialPathP.push(vertex);
                 vertex = bfs.getParent(vertex);
             }
-            List<Encl_name_pos_tuple> pathP = new ArrayList<>(partialPathP.size());
+            List<EnclNamePosTuple> pathP = new ArrayList<>(partialPathP.size());
             while (!partialPathP.isEmpty()) {
                 pathP.add(partialPathP.pop());
             }
             completePaths.add(pathP);
         }
-        for(List<Encl_name_pos_tuple> smallPath: completePaths){
-            if (containsAllWords(smallPath.toString(),lookup))
+        for (List<EnclNamePosTuple> smallPath : completePaths) {
+            if (containsAllWords(smallPath.toString(), lookup)) {
                 System.out.println(smallPath);
+            }
         }
     }
 
-    private static Hashtable<String, Set<List<Encl_name_pos_tuple>>> print_violations(long start) {
-        Hashtable<String, Set<List<Encl_name_pos_tuple>>> violationsToPrint = new Hashtable<>();
-        ArrayList<Encl_name_pos_tuple> source_nodes = new ArrayList<>();
-        for (Encl_name_pos_tuple node : DG.vertexSet()) {
-            if (DG.inDegreeOf(node) == 0)
+    private static Hashtable<String, Set<List<EnclNamePosTuple>>> print_violations(long start) {
+        Hashtable<String, Set<List<EnclNamePosTuple>>> violationsToPrint = new Hashtable<>();
+        ArrayList<EnclNamePosTuple> source_nodes = new ArrayList<>();
+        for (EnclNamePosTuple node : DG.vertexSet()) {
+            if (DG.inDegreeOf(node) == 0) {
                 source_nodes.add(node);
+            }
         }
         int violations_count = 0;
-        for(Encl_name_pos_tuple source_node: source_nodes){
-            if(mode.getSkip_violations()){
-                bfsSolution(source_node, mode.getLookup_string());
+        for (EnclNamePosTuple source_node : source_nodes) {
+            if (mode.skipViolations()) {
+                bfsSolution(source_node, mode.lookupString());
                 continue;
             }
-            Enumeration<Encl_name_pos_tuple> violationE = detected_violations.keys();
+            Enumeration<EnclNamePosTuple> violationE = detected_violations.keys();
             while (violationE.hasMoreElements()) {
-                Encl_name_pos_tuple violated_node_pos_pair = violationE.nextElement();
+                EnclNamePosTuple violated_node_pos_pair = violationE.nextElement();
                 ArrayList<String> violations = detected_violations.get(violated_node_pos_pair);
 
 //                AllDirectedPaths<Encl_name_pos_tuple,DefaultEdge> allDirectedPaths = new AllDirectedPaths<>(DG);
@@ -253,14 +260,14 @@ public class Main {
 //                GraphPath<Encl_name_pos_tuple,DefaultEdge> requiredPath =
 //                        bellmanFordShortestPath.getPath(source_node, violated_node_pos_pair);
 
-                BFSShortestPath<Encl_name_pos_tuple, DefaultEdge> bfsShortestPath = new BFSShortestPath<>(DG);
-                GraphPath<Encl_name_pos_tuple, DefaultEdge> requiredPath =
+                BFSShortestPath<EnclNamePosTuple, DefaultEdge> bfsShortestPath = new BFSShortestPath<>(DG);
+                GraphPath<EnclNamePosTuple, DefaultEdge> requiredPath =
                         bfsShortestPath.getPath(source_node, violated_node_pos_pair);
 
                 if (requiredPath != null) {
-                    List<Encl_name_pos_tuple> vertexList = requiredPath.getVertexList();
+                    List<EnclNamePosTuple> vertexList = requiredPath.getVertexList();
                     violations.forEach(violation -> {
-                        Set<List<Encl_name_pos_tuple>> currentArray;
+                        Set<List<EnclNamePosTuple>> currentArray;
                         if (violationsToPrint.containsKey(violation)) {
                             currentArray = violationsToPrint.get(violation);
                         } else {
@@ -275,11 +282,18 @@ public class Main {
         }
 
 
-        violationsToPrint.forEach((key, violation) -> {
-            violation.forEach(v -> {
+        violationsToPrint.forEach((key, violations) -> {
+            violations.forEach(violation -> {
                 System.err.print("Possible out-of-bounds operation path : ");
                 StringBuilder vPath = new StringBuilder();
-                v.forEach(x -> vPath.append(x).append(" -> "));
+                int size = violation.size() - 1;
+                if (key.startsWith("Buffer")) {
+                    size = violation.size();
+                }
+                for (int i = 0; i < size; i++) {
+                    EnclNamePosTuple x = violation.get(i);
+                    vPath.append(x).append(" -> ");
+                }
                 System.err.println(vPath);
             });
             System.err.println(key + "\n");
@@ -299,25 +313,27 @@ public class Main {
 
 //      step-01 : analyse cfunctions of the slice variable
 
-        Encl_name_pos_tuple encl_name_pos_tuple;
+        EnclNamePosTuple encl_namePosTuple;
         for (String cfunction_name : profile.cfunctions.keySet()) {
             cFunction cfunction = profile.cfunctions.get(cfunction_name);
             int arg_pos_index = cfunction.getArg_pos_index();
             String cfunction_pos = cfunction.getCfunction_pos();
             String encl_function_name = cfunction.getCurrent_function_name();
             Node encl_function_node = cfunction.getCurrent_function_node();
-            encl_name_pos_tuple = new Encl_name_pos_tuple(profile.var_name, encl_function_name, profile.file_name,
+            encl_namePosTuple = new EnclNamePosTuple(profile.var_name, encl_function_name, profile.file_name,
                     profile.defined_position);
             analyze_cfunction(cfunction_name, cfunction_pos, arg_pos_index, profile.type_name, encl_function_node,
-                    encl_name_pos_tuple, raw_profiles_info);
+                    encl_namePosTuple, raw_profiles_info);
         }
-        encl_name_pos_tuple = new Encl_name_pos_tuple(profile.var_name,profile.function_name,profile.file_name,profile.defined_position);
-        if (!DG.containsVertex(encl_name_pos_tuple))
-            DG.addVertex(encl_name_pos_tuple);
-        encl_name_pos_tuple = new Encl_name_pos_tuple(profile.var_name, profile.function_name, profile.file_name,
+        encl_namePosTuple = new EnclNamePosTuple(profile.var_name, profile.function_name, profile.file_name,
                 profile.defined_position);
-        if (!DG.containsVertex(encl_name_pos_tuple)) {
-            DG.addVertex(encl_name_pos_tuple);
+        if (!DG.containsVertex(encl_namePosTuple)) {
+            DG.addVertex(encl_namePosTuple);
+        }
+        encl_namePosTuple = new EnclNamePosTuple(profile.var_name, profile.function_name, profile.file_name,
+                profile.defined_position);
+        if (!DG.containsVertex(encl_namePosTuple)) {
+            DG.addVertex(encl_namePosTuple);
         }
 
 //      step-02 : analyze data dependent vars of the slice variable
@@ -334,10 +350,10 @@ public class Main {
                 continue;
             }
             SliceProfile dvar_slice_profile = source_slice_profiles.get(key);
-            Encl_name_pos_tuple dvar_name_pos_tuple = new Encl_name_pos_tuple(dvar_slice_profile.var_name,
+            EnclNamePosTuple dvar_name_pos_tuple = new EnclNamePosTuple(dvar_slice_profile.var_name,
                     dvar_slice_profile.function_name, dvar_slice_profile.file_name,
                     dvar_slice_profile.defined_position);
-            if (has_no_edge(encl_name_pos_tuple, dvar_name_pos_tuple)) {
+            if (has_no_edge(encl_namePosTuple, dvar_name_pos_tuple)) {
                 analyze_slice_profile(dvar_slice_profile, raw_profiles_info);
             }
         }
@@ -347,63 +363,70 @@ public class Main {
         if (!profile.function_name.equals("GLOBAL") && profile.cfunctions.size() < 1) {
             Node encl_function_node = profile.function_node;
             if (is_function_of_given_modifier(encl_function_node, jni_native_method_modifier)) {
-                analyze_native_function(profile, raw_profiles_info, encl_function_node, encl_name_pos_tuple);
+                analyze_native_function(profile, raw_profiles_info, encl_function_node, encl_namePosTuple);
             }
         }
 
 //      step-04 : check and add buffer reads and writes for this profile
 
-        if (!mode.getCheck_buffer()) {
+        if (!mode.checkBuffer()) {
             return;
         }
 
-        if (profile.file_name.endsWith(".cpp") || profile.file_name.endsWith(".c") ||
-                profile.file_name.endsWith(".cc")) {
-            for (SliceVariableAccess var_access : profile.used_positions) {
-                for (Tuple access : var_access.write_positions) {
-                    if (DataAccessType.BUFFER_WRITE == access.access_type) {
-                        ArrayList<String> violations;
-                        if (detected_violations.containsKey(encl_name_pos_tuple)) {
-                            violations = new ArrayList<>(detected_violations.get(encl_name_pos_tuple));
-                        } else {
-                            violations = new ArrayList<>();
-                        }
-                        violations.add("Buffer write at " + access.access_pos);
-                        detected_violations.put(encl_name_pos_tuple, violations);
-                    }
-                }
-            }
+        if (profile.file_name.endsWith(".java")) {
+            return;
         }
 
+        for (SliceVariableAccess var_access : profile.used_positions) {
+            for (Tuple access : var_access.write_positions) {
+                if (DataAccessType.BUFFER_WRITE != access.access_type) {
+                    continue;
+                }
+
+                ArrayList<String> violations;
+                if (detected_violations.containsKey(encl_namePosTuple)) {
+                    violations = new ArrayList<>(detected_violations.get(encl_namePosTuple));
+                } else {
+                    violations = new ArrayList<>();
+                }
+                violations.add("Buffer write at " + access.access_pos);
+                detected_violations.put(encl_namePosTuple, violations);
+            }
+        }
     }
 
     private static void analyze_cfunction(String cfunction_name, String cfunction_pos, int arg_pos_index,
                                           String var_type_name, Node encl_function_node,
-                                          Encl_name_pos_tuple encl_name_pos_tuple, Hashtable<String,
+                                          EnclNamePosTuple encl_namePosTuple, Hashtable<String,
             SliceProfilesInfo> slice_profiles_info) {
         LinkedList<SliceProfile> dependent_slice_profiles = find_dependent_slice_profiles(cfunction_name,
                 arg_pos_index, var_type_name, encl_function_node, slice_profiles_info);
-        dependent_slice_profiles.forEach(dep_profile -> {
-            Encl_name_pos_tuple dep_name_pos_tuple = new Encl_name_pos_tuple(dep_profile.var_name,
+        for (SliceProfile dep_profile : dependent_slice_profiles) {
+            EnclNamePosTuple dep_name_pos_tuple = new EnclNamePosTuple(dep_profile.var_name,
                     dep_profile.function_name, dep_profile.file_name, dep_profile.defined_position);
-            if (!has_no_edge(encl_name_pos_tuple, dep_name_pos_tuple)) {
-                return;
+            if (!has_no_edge(encl_namePosTuple, dep_name_pos_tuple)) {
+                continue;
             }
             if (analyzed_profiles.contains(dep_profile)) {
-                return;
+                continue;
             }
             analyze_slice_profile(dep_profile, slice_profiles_info);
-        });
+        }
 
-        if (dependent_slice_profiles.size() >= 1) {
+        if (dependent_slice_profiles.size() > 0) {
             return;
         }
 
         if (buffer_error_functions.contains(cfunction_name)) {
-            DG.addVertex(encl_name_pos_tuple);
+            DG.addVertex(encl_namePosTuple);
             ArrayList<String> cErrors = new ArrayList<>();
             cErrors.add("Use of " + cfunction_name + " at " + cfunction_pos);
-            detected_violations.put(encl_name_pos_tuple, cErrors);
+            EnclNamePosTuple bufferErrorFunctionPosTuple =
+                    new EnclNamePosTuple(encl_namePosTuple.varName() + "#" + cfunction_name,
+                            encl_namePosTuple.functionName(), encl_namePosTuple.fileName(), cfunction_pos);
+            has_no_edge(encl_namePosTuple, bufferErrorFunctionPosTuple);
+            detected_violations.put(bufferErrorFunctionPosTuple, cErrors);
+//            detected_violations.put(encl_name_pos_tuple, cErrors);
         }
     }
 
@@ -421,7 +444,9 @@ public class Main {
                 String param_name = param.getName();
                 String param_pos = param.getPos();
                 String key = param_name + "%" + param_pos + "%" + cfunction_name + "%" + file_path;
-                if (!profile_info.slice_profiles.containsKey(key)) continue;
+                if (!profile_info.slice_profiles.containsKey(key)) {
+                    continue;
+                }
                 dependent_slice_profiles.add(profile_info.slice_profiles.get(key));
             }
         }
@@ -431,7 +456,7 @@ public class Main {
 
     private static void analyze_native_function(SliceProfile profile,
                                                 Hashtable<String, SliceProfilesInfo> profiles_info,
-                                                Node encl_function_node, Encl_name_pos_tuple encl_name_pos_tuple) {
+                                                Node encl_function_node, EnclNamePosTuple encl_namePosTuple) {
         Node encl_unit_node = profiles_info.get(profile.file_name).unit_node;
         String jni_function_name = profile.function_name;
         if (jni_function_name.length() > 2 && jni_function_name.startsWith("n")
@@ -439,7 +464,7 @@ public class Main {
             jni_function_name = jni_function_name.substring(1);
         }
         String jni_arg_name = profile.var_name;
-        ArrayList<NamePos> params = find_function_parameters(encl_function_node);
+        ArrayList<ArgumentNamePos> params = find_function_parameters(encl_function_node);
         int index = 0;
         for (NamePos par : params) {
             if (par.getName().equals(jni_arg_name)) break;
@@ -459,7 +484,7 @@ public class Main {
                 if (!function_name.toLowerCase().endsWith(jni_function_search_str.toLowerCase())) {
                     continue;
                 }
-                ArrayList<NamePos> function_args = find_function_parameters(function_node);
+                ArrayList<ArgumentNamePos> function_args = find_function_parameters(function_node);
                 if (function_args.size() < 1 || jni_arg_pos_index > function_args.size() - 1) {
                     continue;
                 }
@@ -475,10 +500,10 @@ public class Main {
                     }
                 }
                 if (possible_slice_profile == null) continue;
-                Encl_name_pos_tuple analyzed_name_pos_tuple = new Encl_name_pos_tuple(possible_slice_profile.var_name,
+                EnclNamePosTuple analyzed_name_pos_tuple = new EnclNamePosTuple(possible_slice_profile.var_name,
                         possible_slice_profile.function_name, possible_slice_profile.file_name,
                         possible_slice_profile.defined_position);
-                if (!has_no_edge(encl_name_pos_tuple, analyzed_name_pos_tuple)) {
+                if (!has_no_edge(encl_namePosTuple, analyzed_name_pos_tuple)) {
                     continue;
                 }
                 if (analyzed_profiles.contains(possible_slice_profile)) {
@@ -500,8 +525,8 @@ public class Main {
         return false;
     }
 
-    private static boolean has_no_edge(Encl_name_pos_tuple source_name_pos_tuple,
-                                       Encl_name_pos_tuple target_name_pos_tuple) {
+    private static boolean has_no_edge(EnclNamePosTuple source_name_pos_tuple,
+                                       EnclNamePosTuple target_name_pos_tuple) {
         if (source_name_pos_tuple.equals(target_name_pos_tuple)) {
             return false;
         }
@@ -525,6 +550,10 @@ public class Main {
                                                                  Node encl_function_node) {
         LinkedList<cFunction> possible_functions = new LinkedList<>();
 
+        if (encl_function_node == null) {
+            return possible_functions;
+        }
+
         for (NamePos key : function_nodes.keySet()) {
             Node possible_function_node = function_nodes.get(key);
             String function_name = key.getName();
@@ -532,7 +561,7 @@ public class Main {
                 continue;
             }
 
-            ArrayList<NamePos> func_args = find_function_parameters(possible_function_node);
+            ArrayList<ArgumentNamePos> func_args = find_function_parameters(possible_function_node);
             if (func_args.size() == 0 || arg_pos_index > func_args.size()) {
                 continue;
             }
@@ -555,7 +584,7 @@ public class Main {
 
     @SuppressWarnings("unused")
     private static boolean validate_function_against_call_expr(Node encl_function_node, String cfunction_name,
-                                                               int arg_index, ArrayList<NamePos> func_args) {
+                                                               int arg_index, ArrayList<ArgumentNamePos> func_args) {
         List<Node> call_argument_list;
         for (Node call : getNodeByName(encl_function_node, "call", true)) {
             String function_name = getNamePosTextPair(call).getName();
@@ -564,13 +593,16 @@ public class Main {
             }
             call_argument_list = getNodeByName(getNodeByName(call, "argument_list").get(0), "argument");
             if (call_argument_list.size() != func_args.size()) {
-                continue;
+                int size_without_optional_args = (int) func_args.stream().filter(arg -> !arg.isOptional()).count();
+                if (call_argument_list.size() != size_without_optional_args) {
+                    continue;
+                }
             }
             return true;
         }
 
         for (Node decl : getNodeByName(encl_function_node, "decl", true)) {
-            Node init = noob(getNodeByName(decl, "init"), 0);
+            Node init = nodeAtIndex(getNodeByName(decl, "init"), 0);
             if (init != null) {
                 continue;
             }
@@ -580,7 +612,7 @@ public class Main {
                 continue;
             }
 
-            Node argument_list = noob(getNodeByName(decl, "argument_list"), 0);
+            Node argument_list = nodeAtIndex(getNodeByName(decl, "argument_list"), 0);
             if (argument_list == null) {
                 continue;
             }

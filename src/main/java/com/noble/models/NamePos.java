@@ -1,6 +1,6 @@
 package com.noble.models;
 
-public final class NamePos {
+public class NamePos {
     private final String name;
     private final String type;
     private final String pos;
@@ -30,3 +30,4 @@ public final class NamePos {
         return type;
     }
 }
+
