@@ -202,21 +202,21 @@ public final class XmlUtil {
         return asList(allChilds);
     }
 
-    public static ArrayList<ArgumentNamePos> find_function_parameters(Node encl_function_node) {
+    public static ArrayList<ArgumentNamePos> findFunctionParameters(Node enclFunctionNode) {
         ArrayList<ArgumentNamePos> parameters = new ArrayList<>();
-        Node parameter_list = nodeAtIndex(getNodeByName(encl_function_node, "parameter_list"), 0);
-        if (parameter_list == null) {
+        Node parameterList = nodeAtIndex(getNodeByName(enclFunctionNode, "parameter_list"), 0);
+        if (parameterList == null) {
             return parameters;
         }
-        getNodeByName(parameter_list, "parameter").forEach(param -> {
+        getNodeByName(parameterList, "parameter").forEach(param -> {
             Node paramDecl = getNodeByName(param, "decl").get(0);
-            List<Node> name_node = getNodeByName(paramDecl, "name");
+            List<Node> nameNode = getNodeByName(paramDecl, "name");
             boolean isOptional = getNodeByName(paramDecl, "init").size() > 0;
-            if (name_node.size() < 1) {
+            if (nameNode.size() < 1) {
                 parameters.add(new ArgumentNamePos("NoNameParam", "", String.valueOf(parameters.size()),
                         false, isOptional));
             } else {
-                parameters.add(new ArgumentNamePos(getNamePosTextPair(name_node.get(0)), isOptional));
+                parameters.add(new ArgumentNamePos(getNamePosTextPair(nameNode.get(0)), isOptional));
             }
         });
         return parameters;
