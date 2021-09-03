@@ -8,7 +8,7 @@ import java.util.*;
 
 import static com.noble.util.XmlUtil.*;
 import static com.noble.util.XmlUtil.asList;
-import static com.noble.util.XmlUtil.find_all_nodes;
+import static com.noble.util.XmlUtil.findAllNodes;
 import static com.noble.util.XmlUtil.getNamePosTextPair;
 import static com.noble.util.XmlUtil.getNodeByName;
 import static com.noble.util.XmlUtil.getNodePos;
@@ -47,7 +47,7 @@ public class SliceGenerator {
     }
 
     private void analyzeJavaSource(Node unitNode) {
-        for (Node classNode : find_all_nodes(unitNode, "class")) {
+        for (Node classNode : findAllNodes(unitNode, "class")) {
             analyzeJavaClass(classNode);
         }
     }
@@ -169,8 +169,8 @@ public class SliceGenerator {
         assert doc != null;
         for (int count = 0; count < doc.getLength(); count++) {
             Node node = doc.item(count);
-            String node_tag = node.getNodeName();
-            switch (node_tag) {
+            String nodeTag = node.getNodeName();
+            switch (nodeTag) {
                 case "decl_stmt":
                     this.analyzeGlobalDecl(node);
                     break;
@@ -241,8 +241,8 @@ public class SliceGenerator {
         NodeList doc = externNode.getChildNodes();
         for (int count = 0; count < doc.getLength(); count++) {
             Node node = doc.item(count);
-            String node_tag = node.getNodeName();
-            if (node_tag.equals("function_decl") || node_tag.equals("function")) {
+            String nodeTag = node.getNodeName();
+            if (nodeTag.equals("function_decl") || nodeTag.equals("function")) {
                 this.localVariables = new Hashtable<>();
                 this.analyzeFunction(node);
             }
@@ -559,7 +559,7 @@ public class SliceGenerator {
                     String typeName = varNamePos.getType();
                     SliceProfile sliceProfile = new SliceProfile(this.fileName, this.currentFunctionName,
                             varName, typeName, varPos, this.currentFunctionNode);
-                    cFunction cFun = new cFunction(argPosIndex, currentFunctionName, currentFunctionNode);
+                    CFunction cFun = new CFunction(argPosIndex, currentFunctionName, currentFunctionNode);
                     sliceProfile.cfunctions.put(cfunctionName, cFun);
                     sliceProfiles.put(sliceKey, sliceProfile);
                 }
@@ -593,7 +593,7 @@ public class SliceGenerator {
             sliceVariables = globalVariables;
         }
         SliceProfile sliceProfile = sliceVariables.get(varName).get(varName);
-        cFunction cFun = new cFunction(argPosIndex, currentFunctionName, cfunctionPos, currentFunctionNode);
+        CFunction cFun = new CFunction(argPosIndex, currentFunctionName, cfunctionPos, currentFunctionNode);
         sliceProfile.cfunctions.put(cfunctionName, cFun);
         sliceProfiles.put(sliceKey, sliceProfile);
         Hashtable<String, SliceProfile> body = sliceVariables.get(varName);

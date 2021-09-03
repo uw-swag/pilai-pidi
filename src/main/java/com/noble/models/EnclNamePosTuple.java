@@ -40,10 +40,7 @@ public final class EnclNamePosTuple {
     }
 
     public EnclNamePosTuple(String varName, String functionName, String fileName, String definedPosition) {
-        if (functionName == null) {
-            System.out.println("Ooopsss error at : " + fileName + ":" + definedPosition);
-        }
-
+        assert functionName != null;
         this.varName = varName;
         this.functionName = functionName;
         this.fileName = fileName;

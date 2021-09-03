@@ -10,7 +10,7 @@ public class ArgumentNamePos extends NamePos {
 
     public ArgumentNamePos(NamePos namePosTextPair, boolean isOptional) {
         super(namePosTextPair.getName(), namePosTextPair.getType(), namePosTextPair.getPos(),
-                namePosTextPair.is_pointer());
+                namePosTextPair.isPointer());
         this.isOptional = isOptional;
     }
 

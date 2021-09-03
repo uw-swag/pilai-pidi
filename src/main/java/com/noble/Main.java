@@ -318,11 +318,11 @@ public class Main {
 
         EnclNamePosTuple enclNamePosTuple;
         for (String cfunctionName : profile.cfunctions.keySet()) {
-            cFunction cfunction = profile.cfunctions.get(cfunctionName);
-            int argPosIndex = cfunction.getArg_pos_index();
-            String cfunctionPos = cfunction.getCfunction_pos();
-            String enclFunctionName = cfunction.getCurrent_function_name();
-            Node enclFunctionNode = cfunction.getCurrent_function_node();
+            CFunction cfunction = profile.cfunctions.get(cfunctionName);
+            int argPosIndex = cfunction.getArgPosIndex();
+            String cfunctionPos = cfunction.getCfunctionPos();
+            String enclFunctionName = cfunction.getCFunctionName();
+            Node enclFunctionNode = cfunction.getCFunctionNode();
             enclNamePosTuple = new EnclNamePosTuple(profile.varName, enclFunctionName, profile.fileName,
                     profile.definedPosition);
             analyzeCfunction(cfunctionName, cfunctionPos, argPosIndex, profile.typeName, enclFunctionNode,
@@ -377,7 +377,7 @@ public class Main {
 
         for (SliceVariableAccess varAccess : profile.usedPositions) {
             for (DataTuple access : varAccess.writePositions) {
-                if (DataAccessType.BUFFER_WRITE != access.access_type) {
+                if (DataAccessType.BUFFER_WRITE != access.accessType) {
                     continue;
                 }
 
@@ -387,7 +387,7 @@ public class Main {
                 } else {
                     violations = new ArrayList<>();
                 }
-                violations.add("Buffer write at " + access.access_pos);
+                violations.add("Buffer write at " + access.accessPos);
                 detectedViolations.put(enclNamePosTuple, violations);
             }
         }
@@ -435,9 +435,9 @@ public class Main {
         LinkedList<SliceProfile> dependentSliceProfiles = new LinkedList<>();
         for (String filePath : sliceProfileInfo.keySet()) {
             SliceProfilesInfo profileInfo = sliceProfileInfo.get(filePath);
-            for (cFunction cfunction : findPossibleFunctions(profileInfo.functionNodes, cfunctionName,
+            for (CFunction cfunction : findPossibleFunctions(profileInfo.functionNodes, cfunctionName,
                     argPosIndex, currentFunctionNode)) {
-                NamePos param = cfunction.getFunc_args().get(argPosIndex - 1);
+                NamePos param = cfunction.getFuncArgs().get(argPosIndex - 1);
                 String param_name = param.getName();
                 String param_pos = param.getPos();
                 String key = param_name + "%" + param_pos + "%" + cfunctionName + "%" + filePath;
@@ -545,10 +545,10 @@ public class Main {
         return true;
     }
 
-    private static LinkedList<cFunction> findPossibleFunctions(Hashtable<NamePos, Node> functionNodes,
+    private static LinkedList<CFunction> findPossibleFunctions(Hashtable<NamePos, Node> functionNodes,
                                                                String cfunctionName, int argPosIndex,
                                                                Node enclFunctionNode) {
-        LinkedList<cFunction> possibleFunctions = new LinkedList<>();
+        LinkedList<CFunction> possibleFunctions = new LinkedList<>();
 
         if (enclFunctionNode == null) {
             return possibleFunctions;
@@ -576,7 +576,7 @@ public class Main {
                 continue;
             }
 
-            possibleFunctions.add(new cFunction(argIndex, functionName, "", enclFunctionNode,
+            possibleFunctions.add(new CFunction(argIndex, functionName, "", enclFunctionNode,
                     funcArgs));
         }
         return possibleFunctions;

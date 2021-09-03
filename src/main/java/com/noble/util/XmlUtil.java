@@ -12,8 +12,6 @@ import org.w3c.dom.*;
 
 public final class XmlUtil {
 
-//    public static List<Node> MasterList;
-
     public enum DataAccessType {
         @SuppressWarnings("unused") BUFFER_READ, BUFFER_WRITE
     }
@@ -21,45 +19,13 @@ public final class XmlUtil {
     private XmlUtil() {
     }
 
-    public static List<Node> asList(NodeList n) {
-        return n.getLength() == 0 ? Collections.emptyList() : new NodeListWrapper(n);
+    public static List<Node> asList(NodeList nodeList) {
+        return nodeList.getLength() == 0 ? Collections.emptyList() : new NodeListWrapper(nodeList);
     }
 
     public static String getNodePos(Node tempNode) {
-//        return tempNode.getAttributes().item(0).getNodeValue().split(":")[0];
-//        return tempNode.getAttributes().item(0).getNodeValue();
         return tempNode.getAttributes().getNamedItem("pos:start").getNodeValue();
     }
-//    public static List<Node> getNodeByName(Node parent, String tag){
-//        NodeList children = parent.getChildNodes();
-////        Set<Node> targetElements = new HashSet<Node>();
-//        List<Node> namedNodes = new LinkedList<Node>(asList(children));
-//
-//        for(int x = namedNodes.size() - 1; x >= 0; x--)
-//        {
-//            if(!namedNodes.get(x).getNodeName().equals(tag))
-//                namedNodes.remove(x);
-//        }
-//        if(namedNodes.size()<1){
-//            for (int count = 0; count < children.getLength(); count++) {
-//                Node childDeep = children.item(count);
-//                if(childDeep.getNodeType()==Node.ELEMENT_NODE) {
-//                    NodeList deepChildren;
-//                    deepChildren = childDeep.getChildNodes();
-//                    List<Node> namedDeepNodes = new LinkedList<>(asList(deepChildren));
-//                    for(int x = namedDeepNodes.size() - 1; x >= 0; x--)
-//                    {
-//                        if(!namedDeepNodes.get(x).getNodeName().equals(tag))
-//                            namedDeepNodes.remove(x);
-//                    }
-//                    if(namedDeepNodes.size()>=1)
-//                        return namedDeepNodes;
-//                }
-//            }
-//        }
-//
-//        return  namedNodes;
-//    }
 
     public static List<Node> getNodeByName(Node parent, String tag) {
 
@@ -82,19 +48,12 @@ public final class XmlUtil {
     }
 
     public static List<Node> getNodeByName(Node parent, String tag, Boolean all) {
-//        MasterList = Collections.emptyList();
         return getNodesByName(parent, tag, all);
     }
 
     private static List<Node> getNodesByName(Node parent, String tag, Boolean all) {
-
         List<Node> nodeList = new ArrayList<>(getNodesBase(parent, tag));
-//        List<Node> namedNodes = getNodesBase(parent, tag);
-//        if (namedNodes.size() > 0) {
-//            nodeList = Stream.of(nodeList, namedNodes)
-//                    .flatMap(Collection::stream)
-//                    .collect(Collectors.toList());
-//        }
+
         NodeList deep = parent.getChildNodes();
         for (int i = 0, len = deep.getLength(); i < len; i++) {
             if (deep.item(i).getNodeType() == Node.ELEMENT_NODE) {
@@ -116,13 +75,13 @@ public final class XmlUtil {
         return namedNodes;
     }
 
-    public static NamePos getNamePosTextPair(Node init_node) {
+    public static NamePos getNamePosTextPair(Node node) {
         NamePos namePos = new NamePos("", "", "", false);
-        if (init_node == null) {
+        if (node == null) {
             return namePos;
         }
-        NodeList nodeList = init_node.getChildNodes();
-        boolean is_pointer = false;
+        NodeList nodeList = node.getChildNodes();
+        boolean isPointer = false;
         Set<String> names = new HashSet<>();
         names.add("decl");
         for (int count = 0; count < nodeList.getLength(); count++) {
@@ -135,7 +94,7 @@ public final class XmlUtil {
                             tempNode.getNextSibling().getNodeType() == Node.ELEMENT_NODE) {
                         if (((Element) tempNode.getNextSibling()).getTagName().equals("modifier") &&
                                 tempNode.getNextSibling().getNodeValue() != null) {
-                            is_pointer = tempNode.getNextSibling().getNodeValue().equals("*") ||
+                            isPointer = tempNode.getNextSibling().getNodeValue().equals("*") ||
                                     tempNode.getNextSibling().getNodeValue().equals("&");
                         }
                     }
@@ -170,10 +129,10 @@ public final class XmlUtil {
                     if (tempNode.getFirstChild().getNodeType() == Node.ELEMENT_NODE) {
                         List<Node> nameChildren = getNodeByName(tempNode, "name");
                         namePos = new NamePos(nameChildren.get(nameChildren.size() - 1).getTextContent(),
-                                varType.toString(), linePos, is_pointer);
+                                varType.toString(), linePos, isPointer);
                     } else {
                         namePos = new NamePos(tempNode.getFirstChild().getNodeValue(), varType.toString(),
-                                linePos, is_pointer);
+                                linePos, isPointer);
                     }
                     break;
                 } else if (tempNode.getNodeName().equals("literal")) {
@@ -185,20 +144,22 @@ public final class XmlUtil {
                 }
             }
         }
-        if (init_node.getNodeName().equals("name") && namePos.getName().equals(""))
-            namePos = new NamePos(init_node.getFirstChild().getNodeValue(), "", getNodePos(init_node),
+        if (node.getNodeName().equals("name") && namePos.getName().equals(""))
+            namePos = new NamePos(node.getFirstChild().getNodeValue(), "", getNodePos(node),
                     false);
         return namePos;
     }
 
     public static Node nodeAtIndex(final List<Node> list, int index) {
-        if (index < 0 || index >= list.size()) return null;
+        if (index < 0 || index >= list.size()) {
+            return null;
+        }
         else return list.get(index);
     }
 
-    public static List<Node> find_all_nodes(Node unit_node, String tag) {
-        Element eElement = (Element) unit_node;
-        NodeList allChilds = eElement.getElementsByTagName(tag);
+    public static List<Node> findAllNodes(Node unitNode, String tag) {
+        Element element = (Element) unitNode;
+        NodeList allChilds = element.getElementsByTagName(tag);
         return asList(allChilds);
     }
 
@@ -225,8 +186,8 @@ public final class XmlUtil {
     static final class NodeListWrapper extends AbstractList<Node> implements RandomAccess {
         private final NodeList list;
 
-        NodeListWrapper(NodeList l) {
-            list = l;
+        NodeListWrapper(NodeList list) {
+            this.list = list;
         }
 
         public Node get(int index) {
@@ -242,31 +203,31 @@ public final class XmlUtil {
     public static final class MyResult {
         private final ArrayList<EnclNamePosTuple> first;
         private final Hashtable<EnclNamePosTuple, ArrayList<String>> second;
-        private final Hashtable<String, SliceProfilesInfo> java_slice_profiles_info;
+        private final Hashtable<String, SliceProfilesInfo> javaSliceProfilesInfo;
         private final Graph<EnclNamePosTuple, DefaultEdge> dg;
 
         public MyResult(ArrayList<EnclNamePosTuple> first, Hashtable<EnclNamePosTuple,
-                ArrayList<String>> second, Hashtable<String, SliceProfilesInfo> java_slice_profiles_info,
+                ArrayList<String>> second, Hashtable<String, SliceProfilesInfo> javaSliceProfilesInfo,
                         Graph<EnclNamePosTuple, DefaultEdge> dg) {
             this.first = first;
             this.second = second;
-            this.java_slice_profiles_info = java_slice_profiles_info;
+            this.javaSliceProfilesInfo = javaSliceProfilesInfo;
             this.dg = dg;
         }
 
-        public ArrayList<EnclNamePosTuple> getSource_nodes() {
+        public ArrayList<EnclNamePosTuple> getSourceNodes() {
             return first;
         }
 
-        public Hashtable<EnclNamePosTuple, ArrayList<String>> getDetected_violations() {
+        public Hashtable<EnclNamePosTuple, ArrayList<String>> getDetectedViolations() {
             return second;
         }
 
-        public Hashtable<String, SliceProfilesInfo> getJava_slice_profiles_info() {
-            return java_slice_profiles_info;
+        public Hashtable<String, SliceProfilesInfo> getJavaSliceProfilesInfo() {
+            return javaSliceProfilesInfo;
         }
 
-        public Graph<EnclNamePosTuple, DefaultEdge> getDg() {
+        public Graph<EnclNamePosTuple, DefaultEdge> getDG() {
             return dg;
         }
     }

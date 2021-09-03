@@ -1,13 +1,13 @@
 package com.noble.util;
 
 public final class OsUtils {
-    private static String OS = null;
+    private static String os = null;
 
     public static String getOsName() {
-        if (OS == null) {
-            OS = System.getProperty("os.name").toLowerCase();
+        if (os == null) {
+            os = System.getProperty("os.name").toLowerCase();
         }
-        return OS;
+        return os;
     }
 
     public static boolean isWindows() {
