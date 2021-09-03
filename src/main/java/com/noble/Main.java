@@ -378,7 +378,7 @@ public class Main {
         }
 
         for (SliceVariableAccess var_access : profile.used_positions) {
-            for (Tuple access : var_access.write_positions) {
+            for (DataTuple access : var_access.writePositions) {
                 if (DataAccessType.BUFFER_WRITE != access.access_type) {
                     continue;
                 }

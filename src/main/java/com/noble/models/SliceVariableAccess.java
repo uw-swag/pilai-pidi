@@ -4,13 +4,13 @@ import java.util.ArrayList;
 
 @SuppressWarnings("unused")
 public class SliceVariableAccess {
-    public ArrayList<Tuple> read_positions = new ArrayList<>();
-    public ArrayList<Tuple> write_positions = new ArrayList<>();
+    public ArrayList<DataTuple> readPositions = new ArrayList<>();
+    public ArrayList<DataTuple> writePositions = new ArrayList<>();
 
-    public void addWrite_positions(Tuple write){
-        write_positions.add(write);
+    public void addWritePosition(DataTuple write){
+        writePositions.add(write);
     }
-    public void addRead_positions(Tuple read){
-        write_positions.add(read);
+    public void addReadPosition(DataTuple read){
+        writePositions.add(read);
     }
 }
