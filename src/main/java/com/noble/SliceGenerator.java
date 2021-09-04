@@ -5,6 +5,8 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.noble.util.XmlUtil.*;
 import static com.noble.util.XmlUtil.asList;
@@ -18,32 +20,38 @@ public class SliceGenerator {
 
     private final String fileName;
     private final Node unitNode;
+    private final Hashtable<FunctionNamePos, Node> functionNodes;
     private final Hashtable<String, SliceProfile> sliceProfiles;
+    private final Hashtable<String, List<FunctionNamePos>> functionDeclMap;
     private final Hashtable<String, Hashtable<String, SliceProfile>> globalVariables;
     private Hashtable<String, Hashtable<String, SliceProfile>> localVariables;
     private String currentFunctionName;
     private Node currentFunctionNode;
 
-    private static final String IDENTIFIER_SEPARATOR = "[^\\w]+";
     private static final String GLOBAL = "GLOBAL";
+    public static final String IDENTIFIER_SEPARATOR = "[^\\w]+";
 
-    public SliceGenerator(Node unitNode, String fileName, Hashtable<String, SliceProfile> sliceProfiles) {
+    public SliceGenerator(Node unitNode, String fileName) {
         this.unitNode = unitNode;
-        this.sliceProfiles = sliceProfiles;
+        this.fileName = fileName;
+        this.sliceProfiles = new Hashtable<>();
+        this.functionNodes = findFunctionNodes(unitNode);
+        this.functionDeclMap = new Hashtable<>();
         this.localVariables = new Hashtable<>();
         this.globalVariables = new Hashtable<>();
-        this.fileName = fileName;
         this.currentFunctionName = "";
         this.currentFunctionNode = null;
     }
 
-    public void generate() {
+    public SliceProfilesInfo generate() {
         String langAttribute = this.unitNode.getAttributes().getNamedItem("language").getNodeValue();
         if (langAttribute.equals("Java")) {
             analyzeJavaSource(unitNode);
         } else if (langAttribute.equals("C++") || langAttribute.equals("C")) {
             analyzeCPPSource(unitNode);
         }
+
+        return new SliceProfilesInfo(sliceProfiles, functionNodes, functionDeclMap, unitNode);
     }
 
     private void analyzeJavaSource(Node unitNode) {
@@ -743,6 +751,19 @@ public class SliceGenerator {
             return;
         }
 
+        if (isLhsExprFunctionPointer(lhsExprVarName)) {
+            List<FunctionNamePos> alias;
+            if (functionDeclMap.containsKey(lhsExprVarName)) {
+                alias = functionDeclMap.get(lhsExprVarName);
+            } else {
+                alias = new ArrayList<>();
+            }
+
+            FunctionNamePos rhsFunctionPointerName = getFunctionNamePos(rhsExpr);
+            alias.add(rhsFunctionPointerName);
+            functionDeclMap.put(lhsExprVarName, alias);
+        }
+
         boolean isBufferWrite = isBufferWriteExpr(lhsExpr);
         if (!isBufferWrite && lhsExprVarName.equals(rhsExprVarName)) {
             return;
@@ -787,6 +808,10 @@ public class SliceGenerator {
         SliceVariableAccess varAccess = new SliceVariableAccess();
         varAccess.addWritePosition(bufferWriteData);
         rhsVarProfile.usedPositions.add(varAccess);
+    }
+
+    private boolean isLhsExprFunctionPointer(String lhsExprVarName) {
+        return functionNodes.keySet().stream().anyMatch(namePos -> namePos.getName().equals(lhsExprVarName));
     }
 
     private boolean isBufferWriteExpr(Node expr) {
@@ -853,5 +878,22 @@ public class SliceGenerator {
 
     private boolean isLiteralExpr(Node expr) {
         return expr.getFirstChild().getNodeName().equals("literal");
+    }
+
+    private static Hashtable<FunctionNamePos, Node> findFunctionNodes(Node unitNode) {
+        Hashtable<FunctionNamePos, Node> functionNodes = new Hashtable<>();
+        List<Node> fun1 = getNodeByName(unitNode, "function", true);
+        List<Node> fun2 = getNodeByName(unitNode, "function_decl", true);
+        List<Node> fun3 = getNodeByName(unitNode, "constructor", true);
+        List<Node> fun4 = getNodeByName(unitNode, "destructor", true);
+
+        List<Node> funList = Stream.of(fun1, fun2, fun3, fun4)
+                .flatMap(Collection::stream)
+                .collect(Collectors.toList());
+
+        for (Node node : funList) {
+            functionNodes.put(getFunctionNamePos(node), node);
+        }
+        return functionNodes;
     }
 }
