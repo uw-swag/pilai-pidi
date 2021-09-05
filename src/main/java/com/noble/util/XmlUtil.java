@@ -26,6 +26,17 @@ public final class XmlUtil {
         return tempNode.getAttributes().getNamedItem("pos:start").getNodeValue();
     }
 
+    public static List<Node> getFunctionParams(Node functionNode) {
+        List<Node> functionParams = new ArrayList<>();
+        List<Node> paramList = getNodeByName(functionNode, "parameter_list");
+
+        if (paramList.size() == 1) {
+            functionParams = getNodeByName(paramList.get(0), "parameter");
+        }
+
+        return functionParams;
+    }
+
     public static List<Node> getNodeByName(Node parent, String tag) {
 
         List<Node> namedNodes = getNodesBase(parent, tag);
