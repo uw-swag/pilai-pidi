@@ -29,5 +29,25 @@ public class NamePos {
     public String getType() {
         return type;
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof NamePos)) {
+            return false;
+        }
+        NamePos other = (NamePos) obj;
+        return this.name.equals(other.name) && this.type.equals(other.type) &&
+                this.pos.equals(other.pos) && this.isPointer == other.isPointer;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = 17;
+        result = 31 * result + this.name.hashCode();
+        result = 31 * result + this.type.hashCode();
+        result = 31 * result + this.pos.hashCode();
+        return result;
+    }
+
 }
 

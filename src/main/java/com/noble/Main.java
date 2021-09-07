@@ -237,7 +237,7 @@ public class Main {
         Hashtable<String, Set<List<EnclNamePosTuple>>> violationsToPrint = new Hashtable<>();
         ArrayList<EnclNamePosTuple> sourceNodes = new ArrayList<>();
         for (EnclNamePosTuple node : DG.vertexSet()) {
-            if (DG.inDegreeOf(node) == 0) {
+            if (DG.inDegreeOf(node) == 0 && node.fileName().endsWith(".java")) {
                 sourceNodes.add(node);
             }
         }

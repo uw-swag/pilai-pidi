@@ -882,12 +882,8 @@ public class SliceGenerator {
         lVarDefinedPos = lVarProfile.definedPosition;
 
         NamePos dvarNamePos = new NamePos(lVarName, lVarEnclFunctionName, lVarDefinedPos, false);
+        profile.dependentVars.add(dvarNamePos);
 
-        int length = profile.dependentVars.length;
-        NamePos[] arrlist = new NamePos[length + 1];
-        System.arraycopy(profile.dependentVars, 0, arrlist, 0, length);
-        arrlist[length] = dvarNamePos;
-        profile.dependentVars = arrlist;
         Hashtable<String, SliceProfile> body = new Hashtable<>();
         body.put(rVarName, profile);
         if (sliceVariablesString.equals("local_variables")) {
