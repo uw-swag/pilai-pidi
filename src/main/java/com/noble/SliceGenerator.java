@@ -409,7 +409,7 @@ public class SliceGenerator {
         NamePos exprVarNamePos = analyzeExpr(expr);
 
         if (exprVarNamePos == null) {
-            return true;
+            return;
         }
 
         String exprVarName = exprVarNamePos.getName();
