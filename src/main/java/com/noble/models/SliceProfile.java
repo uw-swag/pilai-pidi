@@ -2,8 +2,7 @@ package com.noble.models;
 
 import org.w3c.dom.Node;
 
-import java.util.ArrayList;
-import java.util.Hashtable;
+import java.util.*;
 
 public class SliceProfile {
     public final String fileName;
@@ -11,10 +10,10 @@ public class SliceProfile {
     public final String varName;
     public final String typeName;
     public final String definedPosition;
-    public ArrayList<SliceVariableAccess> usedPositions = new ArrayList<>();
-    public NamePos[] dependentVars = new NamePos[]{};
-    public Hashtable<String, CFunction> cfunctions = new Hashtable<>();
-    public Node functionNode;
+    public final List<SliceVariableAccess> usedPositions = new ArrayList<>();
+    public final Set<NamePos> dependentVars = new HashSet<>();
+    public final Hashtable<String, CFunction> cfunctions = new Hashtable<>();
+    public final Node functionNode;
 
     public SliceProfile(String fileName, String functionName, String varName, String typeName,
                         String definedPosition) {
@@ -23,6 +22,7 @@ public class SliceProfile {
         this.varName = varName;
         this.typeName = typeName;
         this.definedPosition = definedPosition;
+        this.functionNode = null;
     }
 
     public SliceProfile(String fileName, String functionName, String varName, String typeName,

@@ -133,10 +133,7 @@ public class Main {
                     if (unitNode.getNodeType() != Node.ELEMENT_NODE) {
                         continue;
                     }
-                    Hashtable<String, SliceProfile> sliceProfiles = new Hashtable<>();
-                    analyzeSourceUnitAndBuildSlices(unitNode, sourceFilePath, sliceProfiles);
-                    Hashtable<NamePos, Node> functionNodes = findFunctionNodes(unitNode);
-                    SliceProfilesInfo profilesInfo = new SliceProfilesInfo(sliceProfiles, functionNodes, unitNode);
+                    SliceProfilesInfo profilesInfo = analyzeSourceUnitAndBuildSlices(unitNode, sourceFilePath);
                     sliceProfilesInfo.put(sourceFilePath, profilesInfo);
                 }
             }
@@ -241,7 +238,7 @@ public class Main {
         Hashtable<String, Set<List<EnclNamePosTuple>>> violationsToPrint = new Hashtable<>();
         ArrayList<EnclNamePosTuple> sourceNodes = new ArrayList<>();
         for (EnclNamePosTuple node : DG.vertexSet()) {
-            if (DG.inDegreeOf(node) == 0) {
+            if (DG.inDegreeOf(node) == 0 && node.fileName().endsWith(".java")) {
                 sourceNodes.add(node);
             }
         }
@@ -435,12 +432,12 @@ public class Main {
         LinkedList<SliceProfile> dependentSliceProfiles = new LinkedList<>();
         for (String filePath : sliceProfileInfo.keySet()) {
             SliceProfilesInfo profileInfo = sliceProfileInfo.get(filePath);
-            for (CFunction cfunction : findPossibleFunctions(profileInfo.functionNodes, cfunctionName,
-                    argPosIndex, currentFunctionNode)) {
+            for (CFunction cfunction : findPossibleFunctions(profileInfo.functionNodes, profileInfo.functionDeclMap,
+                    cfunctionName, argPosIndex, currentFunctionNode)) {
                 NamePos param = cfunction.getFuncArgs().get(argPosIndex - 1);
                 String param_name = param.getName();
                 String param_pos = param.getPos();
-                String key = param_name + "%" + param_pos + "%" + cfunctionName + "%" + filePath;
+                String key = param_name + "%" + param_pos + "%" + cfunction.getCFunctionName() + "%" + filePath;
                 if (!profileInfo.sliceProfiles.containsKey(key)) {
                     continue;
                 }
@@ -475,7 +472,7 @@ public class Main {
         for (String filePath : cppSliceProfilesInfo.keySet()) {
             SliceProfilesInfo profileInfo = cppSliceProfilesInfo.get(filePath);
 
-            for (NamePos funcNamePos : profileInfo.functionNodes.keySet()) {
+            for (FunctionNamePos funcNamePos : profileInfo.functionNodes.keySet()) {
                 Node functionNode = profileInfo.functionNodes.get(funcNamePos);
                 String functionName = funcNamePos.getName();
                 if (!functionName.toLowerCase().endsWith(jniFunctionSearchStr.toLowerCase())) {
@@ -545,7 +542,8 @@ public class Main {
         return true;
     }
 
-    private static LinkedList<CFunction> findPossibleFunctions(Hashtable<NamePos, Node> functionNodes,
+    private static LinkedList<CFunction> findPossibleFunctions(Hashtable<FunctionNamePos, Node> functionNodes,
+                                                               Hashtable<String, List<FunctionNamePos>> functionDeclMap,
                                                                String cfunctionName, int argPosIndex,
                                                                Node enclFunctionNode) {
         LinkedList<CFunction> possibleFunctions = new LinkedList<>();
@@ -554,30 +552,42 @@ public class Main {
             return possibleFunctions;
         }
 
-        for (NamePos key : functionNodes.keySet()) {
-            Node possibleFunctionNode = functionNodes.get(key);
-            String functionName = key.getName();
-            if (!functionName.equals(cfunctionName)) {
-                continue;
-            }
+        List<String> cFunctionsWithAlias = new ArrayList<>();
+        cFunctionsWithAlias.add(cfunctionName);
 
-            ArrayList<ArgumentNamePos> funcArgs = findFunctionParameters(possibleFunctionNode);
-            if (funcArgs.size() == 0 || argPosIndex > funcArgs.size()) {
-                continue;
-            }
+        if (functionDeclMap.containsKey(cfunctionName)) {
+            cFunctionsWithAlias.addAll(functionDeclMap.get(cfunctionName).
+                    stream().
+                    map(FunctionNamePos::getFunctionDeclName).
+                    collect(Collectors.toList()));
+        }
 
-            int argIndex = argPosIndex - 1;
-            String paramName = funcArgs.get(argIndex).getName();
-            if (paramName.equals("")) {
-                continue;
-            }
+        for (String cFunc : cFunctionsWithAlias) {
+            for (FunctionNamePos key : functionNodes.keySet()) {
+                Node possibleFunctionNode = functionNodes.get(key);
+                String functionName = key.getName();
+                if (!functionName.equals(cFunc)) {
+                    continue;
+                }
 
-            if (!validateFunctionAgainstCallExpr(enclFunctionNode, cfunctionName, argIndex, funcArgs)) {
-                continue;
-            }
+                ArrayList<ArgumentNamePos> funcArgs = findFunctionParameters(possibleFunctionNode);
+                if (funcArgs.size() == 0 || argPosIndex > funcArgs.size()) {
+                    continue;
+                }
 
-            possibleFunctions.add(new CFunction(argIndex, functionName, "", enclFunctionNode,
-                    funcArgs));
+                int argIndex = argPosIndex - 1;
+                String paramName = funcArgs.get(argIndex).getName();
+                if (paramName.equals("")) {
+                    continue;
+                }
+
+                if (!validateFunctionAgainstCallExpr(enclFunctionNode, cfunctionName, argIndex, funcArgs)) {
+                    continue;
+                }
+
+                possibleFunctions.add(new CFunction(argIndex, functionName, "", enclFunctionNode,
+                        funcArgs));
+            }
         }
         return possibleFunctions;
     }
@@ -592,11 +602,12 @@ public class Main {
                 continue;
             }
             callArgumentList = getNodeByName(getNodeByName(call, "argument_list").get(0), "argument");
-            if (callArgumentList.size() != funcArgs.size()) {
-                int sizeWithoutOptionalArgs = (int) funcArgs.stream().filter(arg -> !arg.isOptional()).count();
-                if (callArgumentList.size() != sizeWithoutOptionalArgs) {
-                    continue;
-                }
+            if (callArgumentList.size() > funcArgs.size()) {
+                continue;
+//                int sizeWithoutOptionalArgs = (int) funcArgs.stream().filter(arg -> !arg.isOptional()).count();
+//                if (callArgumentList.size() != sizeWithoutOptionalArgs) {
+//                    continue;
+//                }
             }
             return true;
         }
@@ -627,27 +638,9 @@ public class Main {
         return false;
     }
 
-    private static void analyzeSourceUnitAndBuildSlices(Node unitNode, String sourceFilePath,
-                                                        Hashtable<String, SliceProfile> sliceProfiles) {
-        SliceGenerator sliceGenerator = new SliceGenerator(unitNode, sourceFilePath, sliceProfiles);
-        sliceGenerator.generate();
-    }
-
-    private static Hashtable<NamePos, Node> findFunctionNodes(Node unitNode) {
-        Hashtable<NamePos, Node> functionNodes = new Hashtable<>();
-        List<Node> fun1 = getNodeByName(unitNode, "function", true);
-        List<Node> fun2 = getNodeByName(unitNode, "function_decl", true);
-        List<Node> fun3 = getNodeByName(unitNode, "constructor", true);
-        List<Node> fun4 = getNodeByName(unitNode, "destructor", true);
-
-        List<Node> funList = Stream.of(fun1, fun2, fun3, fun4)
-                .flatMap(Collection::stream)
-                .collect(Collectors.toList());
-
-        for (Node node : funList) {
-            functionNodes.put(getNamePosTextPair(node), node);
-        }
-        return functionNodes;
+    private static SliceProfilesInfo analyzeSourceUnitAndBuildSlices(Node unitNode, String sourceFilePath) {
+        SliceGenerator sliceGenerator = new SliceGenerator(unitNode, sourceFilePath);
+        return sliceGenerator.generate();
     }
 
 }
