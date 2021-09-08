@@ -397,18 +397,17 @@ public class SliceGenerator {
         }
     }
 
-    private boolean analyzeExprAndUpdateDVar(NamePos namePos, Node expr) {
+    private void analyzeExprAndUpdateDVar(NamePos namePos, Node expr) {
         NamePos exprVarNamePos = analyzeExpr(expr);
         String exprVarName = exprVarNamePos.getName();
         if (exprVarName.equals("")) {
-            return true;
+            return;
         }
         if (localVariables.containsKey(exprVarName)) {
             updateDVarSliceProfile(namePos.getName(), exprVarName, "local_variables");
         } else if (globalVariables.containsKey(exprVarName)) {
             updateDVarSliceProfile(namePos.getName(), exprVarName, "global_variables");
         }
-        return false;
     }
 
     private NamePos analyzeExpr(Node expr) {

@@ -59,6 +59,7 @@ public final class EnclNamePosTuple {
         return this.fileName;
     }
 
+    @SuppressWarnings("unused")
     public String definedPosition() {
         return this.definedPosition;
     }

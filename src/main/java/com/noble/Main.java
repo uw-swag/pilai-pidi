@@ -29,8 +29,6 @@ import java.nio.file.spi.FileSystemProvider;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import static com.noble.MODE.TESTING;
 import static com.noble.util.XmlUtil.*;
 
 public class Main {
@@ -46,7 +44,8 @@ public class Main {
     private static final Graph<EnclNamePosTuple, DefaultEdge> DG = new DefaultDirectedGraph<>(DefaultEdge.class);
     private static final Hashtable<EnclNamePosTuple, ArrayList<String>> detectedViolations = new Hashtable<>();
     private static final String JAR = "jar";
-    private static final MODE mode = com.noble.MODE.NON_TESTING;
+    private static final MODE mode = com.noble.MODE.TESTING;
+//    private static final MODE mode = com.noble.MODE.NON_TESTING;
 
     private static final LinkedList<SliceProfile> analyzedProfiles = new LinkedList<>();
 
@@ -111,7 +110,8 @@ public class Main {
                     InputStream in = Files.newInputStream(zipPath);
                     //noinspection ConstantConditions
                     file = File.createTempFile("PREFIX", "SUFFIX", tempLoc);
-                    file.setExecutable(true);
+                    boolean execStatus = file.setExecutable(true);
+                    if (!execStatus) throw new AssertionError();
                     file.deleteOnExit();
                     try (FileOutputStream out = new FileOutputStream(file)) {
                         IOUtils.copy(in, out);
@@ -150,8 +150,8 @@ public class Main {
                 }
             }
 
-            if (mode.equals(TESTING)) {
-//            start from cpp slice profiles [testing]
+            if (mode.startFromCpp()) {
+//            start from cpp slice profiles
                 System.out.println("Beginning test...");
                 for (SliceProfilesInfo currentSlice : cppSliceProfilesInfo.values()) {
                     for (SliceProfile profile : currentSlice.sliceProfiles.values()) {
@@ -174,7 +174,7 @@ public class Main {
 
             long mid = System.currentTimeMillis();
             System.out.println("Completed building slice profiles in " + (mid - start) / 1000 + "s");
-            if (mode.equals(TESTING)) {
+            if (mode.exportGraph()) {
                 exportGraph(DG);
             }
             return printViolations(start);

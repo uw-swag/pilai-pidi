@@ -15,6 +15,7 @@ public class DataTuple {
         this.accessPos = accessPos;
     }
 
+    @SuppressWarnings("unused")
     public DataTuple(String a, String b){
         this.a = a;
         this.b = b;
