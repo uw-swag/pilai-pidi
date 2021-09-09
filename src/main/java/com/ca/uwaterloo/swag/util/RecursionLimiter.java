@@ -1,4 +1,4 @@
-package com.noble.util;
+package com.ca.uwaterloo.swag.util;
 
 @SuppressWarnings("unused")
 public class RecursionLimiter {

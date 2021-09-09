@@ -1,7 +1,8 @@
-package com.noble;
+package com.ca.uwaterloo.swag;
 
-import com.noble.models.*;
-import com.noble.util.OsUtils;
+import com.ca.uwaterloo.swag.models.*;
+import com.ca.uwaterloo.swag.util.XmlUtil;
+import com.ca.uwaterloo.swag.util.OsUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.jgrapht.Graph;
@@ -29,8 +30,6 @@ import java.nio.file.spi.FileSystemProvider;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static com.noble.util.XmlUtil.*;
-
 public class Main {
 
     private static final List<String> BUFFER_ERROR_FUNCTIONS = Arrays.asList("strcat", "strdup", "strncat", "strcmp",
@@ -44,7 +43,7 @@ public class Main {
     private static final Graph<EnclNamePosTuple, DefaultEdge> DG = new DefaultDirectedGraph<>(DefaultEdge.class);
     private static final Hashtable<EnclNamePosTuple, ArrayList<String>> detectedViolations = new Hashtable<>();
     private static final String JAR = "jar";
-    private static final MODE mode = com.noble.MODE.TESTING;
+    private static final MODE mode = MODE.TESTING;
 //    private static final MODE mode = com.noble.MODE.NON_TESTING;
 
     private static final LinkedList<SliceProfile> analyzedProfiles = new LinkedList<>();
@@ -126,7 +125,7 @@ public class Main {
             System.out.println("Converted to XML, beginning parsing ...");
             DocumentBuilder documentBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
             Document document = documentBuilder.parse(new InputSource(new StringReader(result)));
-            for (Node unitNode : asList(document.getElementsByTagName("unit"))) {
+            for (Node unitNode : XmlUtil.asList(document.getElementsByTagName("unit"))) {
                 Node fileName = unitNode.getAttributes().getNamedItem("filename");
                 if (fileName != null) {
                     String sourceFilePath = fileName.getNodeValue();
@@ -374,7 +373,7 @@ public class Main {
 
         for (SliceVariableAccess varAccess : profile.usedPositions) {
             for (DataTuple access : varAccess.writePositions) {
-                if (DataAccessType.BUFFER_WRITE != access.accessType) {
+                if (XmlUtil.DataAccessType.BUFFER_WRITE != access.accessType) {
                     continue;
                 }
 
@@ -458,14 +457,14 @@ public class Main {
             jniFunctionName = jniFunctionName.substring(1);
         }
         String jniArgName = profile.varName;
-        ArrayList<ArgumentNamePos> params = findFunctionParameters(enclFunctionNode);
+        ArrayList<ArgumentNamePos> params = XmlUtil.findFunctionParameters(enclFunctionNode);
         int index = 0;
         for (NamePos par : params) {
             if (par.getName().equals(jniArgName)) break;
             index++;
         }
         int jniArgPosIndex = index + 2;
-        String clazzName = getNodeByName(getNodeByName(enclUnitNode, "class").get(0), "name").get(0).
+        String clazzName = XmlUtil.getNodeByName(XmlUtil.getNodeByName(enclUnitNode, "class").get(0), "name").get(0).
                 getTextContent();
         String jniFunctionSearchStr = clazzName + "_" + jniFunctionName;
 
@@ -478,7 +477,7 @@ public class Main {
                 if (!functionName.toLowerCase().endsWith(jniFunctionSearchStr.toLowerCase())) {
                     continue;
                 }
-                ArrayList<ArgumentNamePos> functionArgs = findFunctionParameters(functionNode);
+                ArrayList<ArgumentNamePos> functionArgs = XmlUtil.findFunctionParameters(functionNode);
                 if (functionArgs.size() < 1 || jniArgPosIndex > functionArgs.size() - 1) {
                     continue;
                 }
@@ -512,7 +511,7 @@ public class Main {
     }
 
     private static boolean isFunctionOfGivenModifier(Node enclFunctionNode, String accessModifier) {
-        List<Node> specifiers = getNodeByName(enclFunctionNode, "specifier");
+        List<Node> specifiers = XmlUtil.getNodeByName(enclFunctionNode, "specifier");
         for (Node specifier : specifiers) {
             String nodeName = specifier.getTextContent();
             if (accessModifier.equals(nodeName)) {
@@ -570,7 +569,7 @@ public class Main {
                     continue;
                 }
 
-                ArrayList<ArgumentNamePos> funcArgs = findFunctionParameters(possibleFunctionNode);
+                ArrayList<ArgumentNamePos> funcArgs = XmlUtil.findFunctionParameters(possibleFunctionNode);
                 if (funcArgs.size() == 0 || argPosIndex > funcArgs.size()) {
                     continue;
                 }
@@ -596,12 +595,12 @@ public class Main {
     private static boolean validateFunctionAgainstCallExpr(Node enclFunctionNode, String cfunctionName,
                                                            int argIndex, ArrayList<ArgumentNamePos> funcArgs) {
         List<Node> callArgumentList;
-        for (Node call : getNodeByName(enclFunctionNode, "call", true)) {
-            String functionName = getNamePosTextPair(call).getName();
+        for (Node call : XmlUtil.getNodeByName(enclFunctionNode, "call", true)) {
+            String functionName = XmlUtil.getNamePosTextPair(call).getName();
             if (!cfunctionName.equals(functionName)) {
                 continue;
             }
-            callArgumentList = getNodeByName(getNodeByName(call, "argument_list").get(0), "argument");
+            callArgumentList = XmlUtil.getNodeByName(XmlUtil.getNodeByName(call, "argument_list").get(0), "argument");
             if (callArgumentList.size() > funcArgs.size()) {
                 continue;
 //                int sizeWithoutOptionalArgs = (int) funcArgs.stream().filter(arg -> !arg.isOptional()).count();
@@ -612,23 +611,23 @@ public class Main {
             return true;
         }
 
-        for (Node decl : getNodeByName(enclFunctionNode, "decl", true)) {
-            Node init = nodeAtIndex(getNodeByName(decl, "init"), 0);
+        for (Node decl : XmlUtil.getNodeByName(enclFunctionNode, "decl", true)) {
+            Node init = XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(decl, "init"), 0);
             if (init != null) {
                 continue;
             }
 
-            String constructorTypeName = getNamePosTextPair(decl).getType();
+            String constructorTypeName = XmlUtil.getNamePosTextPair(decl).getType();
             if (!cfunctionName.equals(constructorTypeName)) {
                 continue;
             }
 
-            Node argumentList = nodeAtIndex(getNodeByName(decl, "argument_list"), 0);
+            Node argumentList = XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(decl, "argument_list"), 0);
             if (argumentList == null) {
                 continue;
             }
 
-            callArgumentList = getNodeByName(argumentList, "argument");
+            callArgumentList = XmlUtil.getNodeByName(argumentList, "argument");
             if (callArgumentList.size() != funcArgs.size()) {
                 continue;
             }

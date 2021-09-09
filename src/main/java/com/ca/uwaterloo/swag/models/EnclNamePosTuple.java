@@ -1,4 +1,4 @@
-package com.noble.models;
+package com.ca.uwaterloo.swag.models;
 
 public final class EnclNamePosTuple {
     private final String varName;

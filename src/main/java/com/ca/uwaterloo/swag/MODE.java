@@ -1,4 +1,4 @@
-package com.noble;
+package com.ca.uwaterloo.swag;
 
 import java.util.Arrays;
 import java.util.Collections;

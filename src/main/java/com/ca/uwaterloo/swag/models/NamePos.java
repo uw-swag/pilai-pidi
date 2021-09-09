@@ -1,4 +1,4 @@
-package com.noble.models;
+package com.ca.uwaterloo.swag.models;
 
 public class NamePos {
     private final String name;

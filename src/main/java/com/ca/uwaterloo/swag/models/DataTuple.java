@@ -1,6 +1,6 @@
-package com.noble.models;
+package com.ca.uwaterloo.swag.models;
 
-import com.noble.util.XmlUtil;
+import com.ca.uwaterloo.swag.util.XmlUtil;
 
 public class DataTuple {
     public XmlUtil.DataAccessType accessType = null;

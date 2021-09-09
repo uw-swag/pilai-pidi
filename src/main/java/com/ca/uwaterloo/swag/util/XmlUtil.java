@@ -1,13 +1,13 @@
-package com.noble.util;
+package com.ca.uwaterloo.swag.util;
 
 import java.util.*;
 
-import com.noble.models.*;
+import com.ca.uwaterloo.swag.models.*;
 import org.jgrapht.Graph;
 import org.jgrapht.graph.DefaultEdge;
 import org.w3c.dom.*;
 
-import static com.noble.SliceGenerator.IDENTIFIER_SEPARATOR;
+import static com.ca.uwaterloo.swag.SliceGenerator.IDENTIFIER_SEPARATOR;
 
 public final class XmlUtil {
 

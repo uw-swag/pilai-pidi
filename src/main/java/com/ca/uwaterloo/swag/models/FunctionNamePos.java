@@ -1,4 +1,4 @@
-package com.noble.models;
+package com.ca.uwaterloo.swag.models;
 
 public class FunctionNamePos extends NamePos {
     private final String functionDeclName;

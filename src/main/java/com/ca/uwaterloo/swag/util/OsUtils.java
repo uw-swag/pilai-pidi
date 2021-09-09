@@ -1,4 +1,4 @@
-package com.noble.util;
+package com.ca.uwaterloo.swag.util;
 
 public final class OsUtils {
     private static String os = null;
