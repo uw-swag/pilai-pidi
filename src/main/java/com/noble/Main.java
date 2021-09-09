@@ -313,12 +313,12 @@ public class Main {
 //      step-01 : analyse cfunctions of the slice variable
 
         EnclNamePosTuple enclNamePosTuple;
-        for (String cfunctionName : profile.cfunctions.keySet()) {
-            CFunction cfunction = profile.cfunctions.get(cfunctionName);
+        for (CFunction cfunction : profile.cfunctions) {
+            String cfunctionName = cfunction.getName();
             int argPosIndex = cfunction.getArgPosIndex();
-            String cfunctionPos = cfunction.getCfunctionPos();
-            String enclFunctionName = cfunction.getCFunctionName();
-            Node enclFunctionNode = cfunction.getCFunctionNode();
+            String cfunctionPos = cfunction.getPosition();
+            String enclFunctionName = cfunction.getEnclFunctionName();
+            Node enclFunctionNode = cfunction.getEnclFunctionNode();
             enclNamePosTuple = new EnclNamePosTuple(profile.varName, enclFunctionName, profile.fileName,
                     profile.definedPosition);
             analyzeCfunction(cfunctionName, cfunctionPos, argPosIndex, profile.typeName, enclFunctionNode,
@@ -436,7 +436,7 @@ public class Main {
                 NamePos param = cfunction.getFuncArgs().get(argPosIndex - 1);
                 String param_name = param.getName();
                 String param_pos = param.getPos();
-                String key = param_name + "%" + param_pos + "%" + cfunction.getCFunctionName() + "%" + filePath;
+                String key = param_name + "%" + param_pos + "%" + cfunction.getEnclFunctionName() + "%" + filePath;
                 if (!profileInfo.sliceProfiles.containsKey(key)) {
                     continue;
                 }
@@ -584,7 +584,7 @@ public class Main {
                     continue;
                 }
 
-                possibleFunctions.add(new CFunction(argIndex, functionName, "", enclFunctionNode,
+                possibleFunctions.add(new CFunction(cfunctionName, "", argIndex, functionName, enclFunctionNode,
                         funcArgs));
             }
         }

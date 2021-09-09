@@ -12,7 +12,7 @@ public class SliceProfile {
     public final String definedPosition;
     public final List<SliceVariableAccess> usedPositions = new ArrayList<>();
     public final Set<NamePos> dependentVars = new HashSet<>();
-    public final Hashtable<String, CFunction> cfunctions = new Hashtable<>();
+    public final Set<CFunction> cfunctions = new HashSet<>();
     public final Node functionNode;
 
     public SliceProfile(String fileName, String functionName, String varName, String typeName,
