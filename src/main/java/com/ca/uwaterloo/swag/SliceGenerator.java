@@ -9,8 +9,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static com.ca.uwaterloo.swag.util.XmlUtil.getNodeByName;
-
 public class SliceGenerator {
 
     private final String fileName;
