@@ -1,8 +1,8 @@
-package com.ca.uwaterloo.swag;
+package ca.uwaterloo.swag;
 
-import com.ca.uwaterloo.swag.models.*;
-import com.ca.uwaterloo.swag.util.XmlUtil;
-import com.ca.uwaterloo.swag.util.OsUtils;
+import ca.uwaterloo.swag.models.*;
+import ca.uwaterloo.swag.util.XmlUtil;
+import ca.uwaterloo.swag.util.OsUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.jgrapht.Graph;

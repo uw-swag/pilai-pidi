@@ -1,7 +1,7 @@
-package com.ca.uwaterloo.swag;
+package ca.uwaterloo.swag;
 
-import com.ca.uwaterloo.swag.models.*;
-import com.ca.uwaterloo.swag.util.XmlUtil;
+import ca.uwaterloo.swag.models.*;
+import ca.uwaterloo.swag.util.XmlUtil;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 

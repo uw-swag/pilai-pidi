@@ -1,4 +1,4 @@
-package com.ca.uwaterloo.swag.models;
+package ca.uwaterloo.swag.models;
 
 import org.w3c.dom.Node;
 

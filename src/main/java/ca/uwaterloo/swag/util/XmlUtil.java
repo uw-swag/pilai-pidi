@@ -1,13 +1,13 @@
-package com.ca.uwaterloo.swag.util;
+package ca.uwaterloo.swag.util;
 
 import java.util.*;
 
-import com.ca.uwaterloo.swag.models.*;
+import ca.uwaterloo.swag.models.*;
 import org.jgrapht.Graph;
 import org.jgrapht.graph.DefaultEdge;
 import org.w3c.dom.*;
 
-import static com.ca.uwaterloo.swag.SliceGenerator.IDENTIFIER_SEPARATOR;
+import static ca.uwaterloo.swag.SliceGenerator.IDENTIFIER_SEPARATOR;
 
 public final class XmlUtil {
 

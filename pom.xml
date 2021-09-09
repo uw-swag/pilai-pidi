@@ -4,9 +4,9 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.ca.uwaterloo.swag</groupId>
+    <groupId>ca.uwaterloo.swag</groupId>
     <artifactId>pilaipidi</artifactId>
-    <version>1.0.6</version>
+    <version>1.0.7</version>
     <packaging>jar</packaging>
 
     <name>PilaiPidi</name>
@@ -55,7 +55,7 @@
                     <appendAssemblyId>false</appendAssemblyId>
                     <archive>
                         <manifest>
-                            <mainClass>com.ca.uwaterloo.swag.Main</mainClass>
+                            <mainClass>ca.uwaterloo.swag.Main</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>

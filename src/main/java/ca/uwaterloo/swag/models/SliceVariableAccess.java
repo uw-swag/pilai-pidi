@@ -1,4 +1,4 @@
-package com.ca.uwaterloo.swag.models;
+package ca.uwaterloo.swag.models;
 
 import java.util.ArrayList;
 

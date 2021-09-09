@@ -1,6 +1,6 @@
-package com.ca.uwaterloo.swag.models;
+package ca.uwaterloo.swag.models;
 
-import com.ca.uwaterloo.swag.util.XmlUtil;
+import ca.uwaterloo.swag.util.XmlUtil;
 
 public class DataTuple {
     public XmlUtil.DataAccessType accessType = null;
