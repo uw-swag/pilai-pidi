@@ -43,8 +43,7 @@ public class Main {
     private static final Graph<EnclNamePosTuple, DefaultEdge> DG = new DefaultDirectedGraph<>(DefaultEdge.class);
     private static final Hashtable<EnclNamePosTuple, ArrayList<String>> detectedViolations = new Hashtable<>();
     private static final String JAR = "jar";
-    private static final MODE mode = MODE.TESTING;
-//    private static final MODE mode = com.noble.MODE.NON_TESTING;
+    private static final MODE mode = MODE.NON_TESTING;
 
     private static final LinkedList<SliceProfile> analyzedProfiles = new LinkedList<>();
 
