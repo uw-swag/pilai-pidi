@@ -1,6 +1,7 @@
 package ca.uwaterloo.swag.util;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 import ca.uwaterloo.swag.models.*;
 import org.jgrapht.Graph;
@@ -12,14 +13,19 @@ import static ca.uwaterloo.swag.SliceGenerator.IDENTIFIER_SEPARATOR;
 public final class XmlUtil {
 
     public enum DataAccessType {
-        @SuppressWarnings("unused") BUFFER_READ, BUFFER_WRITE
+        @SuppressWarnings("unused") BUFFER_READ, BUFFER_WRITE, POINTER_ARITHMENTIC
     }
 
     private XmlUtil() {
     }
 
     public static List<Node> asList(NodeList nodeList) {
-        return nodeList.getLength() == 0 ? Collections.emptyList() : new NodeListWrapper(nodeList);
+        if (nodeList.getLength() == 0) {
+            return Collections.emptyList();
+        }
+        return new NodeListWrapper(nodeList).stream()
+                .filter(node -> !(node.getNodeName().equals("#text") && node.getNodeValue().isBlank()))
+                .collect(Collectors.toList());
     }
 
     public static String getNodePos(Node tempNode) {
@@ -128,7 +134,7 @@ public final class XmlUtil {
             return namePos;
         }
         NodeList nodeList = node.getChildNodes();
-        boolean isPointer = false;
+//        boolean isPointer;
         Set<String> names = new HashSet<>();
         names.add("decl");
         for (int count = 0; count < nodeList.getLength(); count++) {
@@ -139,14 +145,7 @@ public final class XmlUtil {
             }
             if (tempNode.getNodeName().equals("name")) {
                 String linePos = getNodePos(tempNode);
-                if (tempNode.getNextSibling() != null &&
-                        tempNode.getNextSibling().getNodeType() == Node.ELEMENT_NODE) {
-                    if (((Element) tempNode.getNextSibling()).getTagName().equals("modifier") &&
-                            tempNode.getNextSibling().getNodeValue() != null) {
-                        isPointer = tempNode.getNextSibling().getNodeValue().equals("*") ||
-                                tempNode.getNextSibling().getNodeValue().equals("&");
-                    }
-                }
+                boolean isPointer = isPointer(tempNode);
                 StringBuilder varType = new StringBuilder();
                 try {
 //                        NodeList typeList = tempNode.getParentNode().getChildNodes().item(0).getChildNodes();
@@ -168,6 +167,10 @@ public final class XmlUtil {
                                     varType.append(filler).append(tempType.getLastChild().getNodeValue());
                                 }
                             }
+
+                            if (!isPointer) {
+                                isPointer = isPointer(tempType);
+                            }
                         }
                     }
 //                      varType = tempNode.getParentNode().getNextSibling().getNextSibling().getChildNodes().item(0).getNodeValue();
@@ -187,7 +190,7 @@ public final class XmlUtil {
             } else if (tempNode.getNodeName().equals("literal")) {
                 return new NamePos(tempNode.getTextContent(),
                         tempNode.getAttributes().getNamedItem("type").getNodeValue(), getNodePos(tempNode),
-                        false);
+                        isPointer(tempNode));
             } else if (names.contains(tempNode.getNodeName())) {
                 return getNamePosTextPair(tempNode);
             }
@@ -197,6 +200,28 @@ public final class XmlUtil {
                     false);
         }
         return namePos;
+    }
+
+    private static boolean isPointer(Node node) {
+        if (node.getNextSibling() == null ||
+                node.getNextSibling().getNodeType() != Node.ELEMENT_NODE) {
+            return false;
+        }
+
+        Node nextSibling = node.getNextSibling();
+
+        if (((Element) nextSibling).getTagName().equals("modifier") &&
+                nextSibling.getFirstChild() != null) {
+            return nextSibling.getFirstChild().getTextContent().equals("*");
+        }
+
+        if (nextSibling.getNodeValue() == null) {
+            return false;
+        }
+
+        return nextSibling.getNodeValue().equals("*") ||
+                nextSibling.getNodeValue().equals("&");
+
     }
 
     public static Node nodeAtIndex(final List<Node> list, int index) {
