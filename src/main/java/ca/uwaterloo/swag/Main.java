@@ -353,7 +353,7 @@ public class Main {
 
 //      step-03 : analyze if given function node is a native method
 
-        if (!profile.functionName.equals("GLOBAL") && profile.cfunctions.size() < 1) {
+        if (!profile.functionName.equals("GLOBAL") && profile.cfunctions.size() < 1 && profile.functionNode != null) {
             Node enclFunctionNode = profile.functionNode;
             if (isFunctionOfGivenModifier(enclFunctionNode, JNI_NATIVE_METHOD_MODIFIER)) {
                 analyzeNativeFunction(profile, rawProfilesInfo, enclFunctionNode, enclNamePosTuple);
@@ -382,8 +382,42 @@ public class Main {
                 } else {
                     violations = new ArrayList<>();
                 }
-                violations.add("Buffer write at " + access.accessPos);
+                violations.add("Buffer write at " + access.accessVarNamePos.getPos());
                 detectedViolations.put(enclNamePosTuple, violations);
+            }
+        }
+
+        for (SliceVariableAccess varAccess : profile.dataAccess) {
+            for (DataTuple access : varAccess.writePositions) {
+                NamePos dependentVar = access.accessVarNamePos;
+                String dvarName = dependentVar.getName();
+                String dvarEnclFunctionName = dependentVar.getType();
+                String dvarPos = dependentVar.getPos();
+                Hashtable<String, SliceProfile> sourceSliceProfiles =
+                        rawProfilesInfo.get(profile.fileName).sliceProfiles;
+                String sliceKey = dvarName + "%" + dvarPos + "%" + dvarEnclFunctionName + "%" + profile.fileName;
+                if (!sourceSliceProfiles.containsKey(sliceKey)) {//not capturing struct/class var assignments
+                    continue;
+                }
+                SliceProfile dvarSliceProfile = sourceSliceProfiles.get(sliceKey);
+                EnclNamePosTuple dvarNamePosTuple = new EnclNamePosTuple(dvarSliceProfile.varName,
+                        dvarSliceProfile.functionName, dvarSliceProfile.fileName,
+                        dvarSliceProfile.definedPosition);
+                if (hasNoEdge(enclNamePosTuple, dvarNamePosTuple)) {
+                    analyzeSliceProfile(dvarSliceProfile, rawProfilesInfo);
+                }
+
+                if (dvarSliceProfile.isPointer && XmlUtil.DataAccessType.DATA_WRITE == access.accessType) {
+                    ArrayList<String> violations;
+                    if (detectedViolations.containsKey(dvarNamePosTuple)) {
+                        violations = new ArrayList<>(detectedViolations.get(dvarNamePosTuple));
+                    } else {
+                        violations = new ArrayList<>();
+                    }
+                    violations.add("Pointer data write of '" + dvarSliceProfile.varName + "' at " +
+                            access.accessVarNamePos.getPos());
+                    detectedViolations.put(dvarNamePosTuple, violations);
+                }
             }
         }
     }
@@ -456,7 +490,7 @@ public class Main {
             jniFunctionName = jniFunctionName.substring(1);
         }
         String jniArgName = profile.varName;
-        ArrayList<ArgumentNamePos> params = XmlUtil.findFunctionParameters(enclFunctionNode);
+        List<ArgumentNamePos> params = XmlUtil.findFunctionParameters(enclFunctionNode);
         int index = 0;
         for (NamePos par : params) {
             if (par.getName().equals(jniArgName)) break;
@@ -476,7 +510,7 @@ public class Main {
                 if (!functionName.toLowerCase().endsWith(jniFunctionSearchStr.toLowerCase())) {
                     continue;
                 }
-                ArrayList<ArgumentNamePos> functionArgs = XmlUtil.findFunctionParameters(functionNode);
+                List<ArgumentNamePos> functionArgs = XmlUtil.findFunctionParameters(functionNode);
                 if (functionArgs.size() < 1 || jniArgPosIndex > functionArgs.size() - 1) {
                     continue;
                 }
@@ -568,7 +602,7 @@ public class Main {
                     continue;
                 }
 
-                ArrayList<ArgumentNamePos> funcArgs = XmlUtil.findFunctionParameters(possibleFunctionNode);
+                List<ArgumentNamePos> funcArgs = XmlUtil.findFunctionParameters(possibleFunctionNode);
                 if (funcArgs.size() == 0 || argPosIndex > funcArgs.size()) {
                     continue;
                 }
@@ -592,7 +626,7 @@ public class Main {
 
     @SuppressWarnings("unused")
     private static boolean validateFunctionAgainstCallExpr(Node enclFunctionNode, String cfunctionName,
-                                                           int argIndex, ArrayList<ArgumentNamePos> funcArgs) {
+                                                           int argIndex, List<ArgumentNamePos> funcArgs) {
         List<Node> callArgumentList;
         for (Node call : XmlUtil.getNodeByName(enclFunctionNode, "call", true)) {
             String functionName = XmlUtil.getNamePosTextPair(call).getName();

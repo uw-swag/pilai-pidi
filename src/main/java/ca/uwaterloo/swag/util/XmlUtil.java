@@ -13,7 +13,7 @@ import static ca.uwaterloo.swag.SliceGenerator.IDENTIFIER_SEPARATOR;
 public final class XmlUtil {
 
     public enum DataAccessType {
-        @SuppressWarnings("unused") BUFFER_READ, BUFFER_WRITE, POINTER_ARITHMENTIC
+        @SuppressWarnings("unused") BUFFER_READ, BUFFER_WRITE, DATA_READ, DATA_WRITE
     }
 
     private XmlUtil() {
@@ -74,6 +74,11 @@ public final class XmlUtil {
         return namedNodes;
     }
 
+    public static List<Node> getMacros(Node unitNode) {
+        List<Node> macros = getNodesByName(unitNode, "macro", true);
+        return macros;
+    }
+
     public static List<Node> getNodeByName(Node parent, String tag, Boolean all) {
         return getNodesByName(parent, tag, all);
     }
@@ -129,7 +134,7 @@ public final class XmlUtil {
 
 
     public static NamePos getNamePosTextPair(Node node) {
-        NamePos namePos = new NamePos("", "", "", false);
+        NamePos namePos = new NamePos.DefaultNamePos();
         if (node == null) {
             return namePos;
         }
@@ -236,24 +241,53 @@ public final class XmlUtil {
         return asList(allChilds);
     }
 
-    public static ArrayList<ArgumentNamePos> findFunctionParameters(Node enclFunctionNode) {
-        ArrayList<ArgumentNamePos> parameters = new ArrayList<>();
-        Node parameterList = nodeAtIndex(getNodeByName(enclFunctionNode, "parameter_list"), 0);
+    public static List<ArgumentNamePos> findFunctionParameters(Node functionNode) {
+        List<ArgumentNamePos> parameters = new ArrayList<>();
+        Node parameterList = nodeAtIndex(getNodeByName(functionNode, "parameter_list"), 0);
         if (parameterList == null) {
+            List<Node> argumentList = XmlUtil.getArgumentList(functionNode);
+            if (argumentList.size() > 0) {
+                parameters = argumentList
+                        .stream()
+                        .map(XmlUtil::getArgumentOfMacro)
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toList());
+            }
             return parameters;
         }
+        List<ArgumentNamePos> finalParameters = parameters;
         getNodeByName(parameterList, "parameter").forEach(param -> {
             Node paramDecl = getNodeByName(param, "decl").get(0);
             List<Node> nameNode = getNodeByName(paramDecl, "name");
             boolean isOptional = getNodeByName(paramDecl, "init").size() > 0;
             if (nameNode.size() < 1) {
-                parameters.add(new ArgumentNamePos("NoNameParam", "", String.valueOf(parameters.size()),
-                        false, isOptional));
+                finalParameters.add(new ArgumentNamePos("NoNameParam", "",
+                        String.valueOf(finalParameters.size()), false, isOptional));
             } else {
-                parameters.add(new ArgumentNamePos(getNamePosTextPair(nameNode.get(0)), isOptional));
+                finalParameters.add(new ArgumentNamePos(getNamePosTextPair(nameNode.get(0)), isOptional));
             }
         });
         return parameters;
+    }
+
+    private static ArgumentNamePos getArgumentOfMacro(Node param) {
+        if (param == null) {
+            return null;
+        }
+
+        String paramNameWithType = param.getTextContent();
+        if (paramNameWithType == null || paramNameWithType.isBlank()) {
+            return null;
+        }
+        String[] parts = paramNameWithType.split("\\s+");
+        if (parts.length == 2) {
+            String type = parts[0];
+            String name = parts[1];
+            String pos = getNodePos(param);
+            return new ArgumentNamePos(name, type, pos, false, false);
+        }
+
+        return null;
     }
 
     static final class NodeListWrapper extends AbstractList<Node> implements RandomAccess {

@@ -12,6 +12,7 @@ public class SliceProfile {
     public final String definedPosition;
     public final boolean isPointer;
     public final List<SliceVariableAccess> usedPositions = new ArrayList<>();
+    public final List<SliceVariableAccess> dataAccess = new ArrayList<>();
     public final Set<NamePos> dependentVars = new HashSet<>();
     public final Set<CFunction> cfunctions = new HashSet<>();
     public final Node functionNode;

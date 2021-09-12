@@ -3,6 +3,7 @@ package ca.uwaterloo.swag.models;
 import org.w3c.dom.Node;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 public final class CFunction {
@@ -12,7 +13,7 @@ public final class CFunction {
     private final String position;
     private final String enclFunctionName;
     private final Node enclFunctionNode;
-    private final ArrayList<ArgumentNamePos> funcArgs;
+    private final List<ArgumentNamePos> funcArgs;
 
     public CFunction(String name, String position, int argPosIndex, String enclFunctionName, Node enclFunctionNode) {
         this.name = name;
@@ -24,7 +25,7 @@ public final class CFunction {
     }
 
     public CFunction(String name, String position, int argPosIndex, String enclFunctionName, Node enclFunctionNode,
-                     ArrayList<ArgumentNamePos> funcArgs) {
+                     List<ArgumentNamePos> funcArgs) {
         this.name = name;
         this.position = position;
         this.argPosIndex = argPosIndex;
@@ -54,7 +55,7 @@ public final class CFunction {
         return argPosIndex;
     }
 
-    public ArrayList<ArgumentNamePos> getFuncArgs() {
+    public List<ArgumentNamePos> getFuncArgs() {
         return funcArgs;
     }
 

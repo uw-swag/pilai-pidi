@@ -49,5 +49,12 @@ public class NamePos {
         return result;
     }
 
+    public static class DefaultNamePos extends NamePos {
+
+        public DefaultNamePos() {
+            super("", "", "", false);
+        }
+    }
+
 }
 

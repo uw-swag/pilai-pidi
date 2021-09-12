@@ -3,28 +3,12 @@ package ca.uwaterloo.swag.models;
 import ca.uwaterloo.swag.util.XmlUtil;
 
 public class DataTuple {
-    public XmlUtil.DataAccessType accessType = null;
-    public String accessPos = null;
-    public int inDegree = -1;
-    public EnclNamePosTuple node = null;
-    public String a = null;
-    public String b = null;
+    public final XmlUtil.DataAccessType accessType;
+    public final NamePos accessVarNamePos;
 
-    public DataTuple(XmlUtil.DataAccessType accessType, String accessPos) {
+    public DataTuple(XmlUtil.DataAccessType accessType, NamePos accessVarNamePos) {
         this.accessType = accessType;
-        this.accessPos = accessPos;
-    }
-
-    @SuppressWarnings("unused")
-    public DataTuple(String a, String b){
-        this.a = a;
-        this.b = b;
-    }
-
-    @SuppressWarnings("unused")
-    public DataTuple(int inDegree, EnclNamePosTuple node) {
-        this.inDegree = inDegree;
-        this.node = node;
+        this.accessVarNamePos = accessVarNamePos;
     }
 }
 

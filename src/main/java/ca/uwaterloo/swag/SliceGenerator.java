@@ -71,6 +71,9 @@ public class SliceGenerator {
                 case "decl_stmt":
                     this.analyzeGlobalDecl(node);
                     break;
+                case "expr_stmt":
+                    this.analyzeExprStmt(node);
+                    break;
                 case "extern":
                     this.analyzeExternFunction(node);
                     break;
@@ -86,10 +89,10 @@ public class SliceGenerator {
 //                case "typedef":
 //                    this.analyzeTypeDef(node);
 //                    break;
-//                case "macro":
-//                    this.localVariables = new Hashtable<>();
-//                    this.analyzeMacro(node);
-//                    break;
+                case "macro":
+                    this.localVariables = new Hashtable<>();
+                    this.analyzeMacro(node);
+                    break;
                 case "function_decl":
                 case "function":
                 case "constructor":
@@ -282,12 +285,11 @@ public class SliceGenerator {
         this.currentFunctionNode = macro;
         List<Node> argumentList = XmlUtil.getArgumentList(macro);
         for (Node argument : argumentList) {
-            analyzeParam(argument);
+            analyzeArgumentOfMacro(argument);
         }
-        analyzeBlock(nodeAtIndex(getNodeByName(macro, "block"), 0));
-        if ("block".equals(macro.getNextSibling().getNodeName())) {
-            analyzeBlock(macro.getNextSibling());
-        }
+
+        Node block = nodeAtIndex(getNodeByName(macro.getParentNode(), "block"), 0);
+        analyzeBlockContent(block);
         this.currentFunctionName = previousFunctionName;
         this.currentFunctionNode = previousFunctionNode;
     }
@@ -373,43 +375,49 @@ public class SliceGenerator {
             return;
         }
         Node blockContent = nodeAtIndex(getNodeByName(block, "block_content"), 0);
-        if (blockContent != null) {
-            NodeList childNodes = blockContent.getChildNodes();
-            for (Node stmt : asList(childNodes)) {
-                String stmtTag = stmt.getNodeName();
-                switch (stmtTag) {
-                    case "expr_stmt":
-                        analyzeExprStmt(stmt);
-                        break;
-                    case "decl_stmt":
-                        analyzeDeclStmt(stmt);
-                        break;
-                    case "if_stmt":
-                        analyzeIfStmt(stmt);
-                        break;
-                    case "for":
-                        analyzeForStmt(stmt);
-                        break;
-                    case "while":
-                        analyzeWhileStmt(stmt);
-                        break;
-                    case "return":
-                        analyzeReturnStmt(stmt);
-                        break;
-                    case "try":
-                        analyzeTryBlock(stmt);
-                        break;
-                    case "switch":
-                        analyzeSwitchStmt(stmt);
-                        break;
-                    case "case":
-                        analyzeCaseStmt(stmt);
-                        break;
-                    case "function":
-                    case "function_decl":
-                        analyzeFunction(stmt);
-                        break;
-                }
+        analyzeBlockContent(blockContent);
+    }
+
+    private void analyzeBlockContent(Node blockContent) {
+        if (blockContent == null) {
+            return;
+        }
+
+        NodeList childNodes = blockContent.getChildNodes();
+        for (Node stmt : asList(childNodes)) {
+            String stmtTag = stmt.getNodeName();
+            switch (stmtTag) {
+                case "expr_stmt":
+                    analyzeExprStmt(stmt);
+                    break;
+                case "decl_stmt":
+                    analyzeDeclStmt(stmt);
+                    break;
+                case "if_stmt":
+                    analyzeIfStmt(stmt);
+                    break;
+                case "for":
+                    analyzeForStmt(stmt);
+                    break;
+                case "while":
+                    analyzeWhileStmt(stmt);
+                    break;
+                case "return":
+                    analyzeReturnStmt(stmt);
+                    break;
+                case "try":
+                    analyzeTryBlock(stmt);
+                    break;
+                case "switch":
+                    analyzeSwitchStmt(stmt);
+                    break;
+                case "case":
+                    analyzeCaseStmt(stmt);
+                    break;
+                case "function":
+                case "function_decl":
+                    analyzeFunction(stmt);
+                    break;
             }
         }
     }
@@ -441,8 +449,10 @@ public class SliceGenerator {
             Node initNode = nodeAtIndex(initExprs, 0);
             if (initNode != null) {
                 List<Node> initExpr = asList(initNode.getChildNodes());
-                NamePos initExprNamePos = evaluateExprs(initExpr);
-                analyzeBinaryExpr(namePos, initExprNamePos);
+                if (initExpr.size() > 0) {
+                    NamePos initExprNamePos = evaluateExprs(initExpr);
+                    checkAndUpdateDVarSliceProfile(namePos, initExprNamePos);
+                }
             }
         }
 
@@ -517,14 +527,18 @@ public class SliceGenerator {
                     return analyzeTernaryExpr(expr);
                 case "call":
                     return analyzeCallExpr(expr);
+                case "name":
+                    return getNamePosTextPair(expr);
                 case "cast":
                     analyzeCastExpr(expr);
                     break;
-                case "name":
-                    return getNamePosTextPair(expr);
+                case "macro":
+                    this.localVariables = new Hashtable<>();
+                    analyzeMacro(expr);
+                    break;
             }
         }
-        return new NamePos("", "", "", false);
+        return new NamePos.DefaultNamePos();
     }
 
     private NamePos analyzeLiteralExpr(Node literal) {
@@ -805,6 +819,31 @@ public class SliceGenerator {
         return conditionNamePos;
     }
 
+    private void analyzeArgumentOfMacro(Node param) {
+        if (param == null) {
+            return;
+        }
+
+        String paramNameWithType = param.getTextContent();
+        if (paramNameWithType == null || paramNameWithType.isBlank()) {
+            return;
+        }
+        String[] parts = paramNameWithType.split("\\s+");
+        if (parts.length == 2) {
+            String type = parts[0];
+            String name = parts[1];
+            String pos = getNodePos(param);
+
+            String sliceKey = name + "%" + pos + "%" + this.currentFunctionName + "%" + this.fileName;
+            SliceProfile sliceProfile = new SliceProfile(this.fileName, this.currentFunctionName,
+                    name, type, pos, false, this.currentFunctionNode);
+            this.sliceProfiles.put(sliceKey, sliceProfile);
+            Hashtable<String, SliceProfile> nameProfile = new Hashtable<>();
+            nameProfile.put(name, sliceProfile);
+            localVariables.put(name, nameProfile);
+        }
+    }
+
     private void analyzeParam(Node param) {
         if (param == null) {
             return;
@@ -826,14 +865,16 @@ public class SliceGenerator {
         Node exprNode = nodeAtIndex(getNodeByName(compoundExpr, "expr"), 0);
         if (exprNode != null) {
             List<Node> exprs = asList(exprNode.getChildNodes());
-            if (isAssignmentExpr(exprs)) {
-                analyzeAssignmentExpr(exprs);
-            }
+            if (exprs.size() > 0) {
+                if (isAssignmentExpr(exprs)) {
+                    analyzeAssignmentExpr(exprs);
+                }
 
-            return evaluateExprs(exprs);
+                return evaluateExprs(exprs);
+            }
         }
 
-        return new NamePos("", "", "", false);
+        return new NamePos.DefaultNamePos();
 //      TODO check for pointers and update slice profiles
     }
 
@@ -883,6 +924,10 @@ public class SliceGenerator {
             exprs.push(analyzeBinaryExpr(lhs, rhs));
         }
 
+        if (exprs.size() == 0) {
+            return new NamePos.DefaultNamePos();
+        }
+
         return exprs.pop();
     }
 
@@ -913,12 +958,8 @@ public class SliceGenerator {
         String lhsExprVarName = lhsExprNamePos.getName();
         String rhsExprVarName = rhsExprNamePos.getName();
 
-        if (!lhsExprVarName.equals(rhsExprVarName)) {
-            if (localVariables.containsKey(rhsExprVarName)) {
-                updateDVarSliceProfile(lhsExprVarName, rhsExprVarName, "local_variables");
-            } else if (globalVariables.containsKey(rhsExprVarName)) {
-                updateDVarSliceProfile(lhsExprVarName, rhsExprVarName, "global_variables");
-            }
+        if (!lhsExprVarName.equals(rhsExprVarName)) { // TODO check for lhs == rhs
+            updateDataWriteDVarAccess(lhsExprVarName, rhsExprVarName);
         }
 
         return lhsExprNamePos;
@@ -936,7 +977,6 @@ public class SliceGenerator {
 
         String lhsExprVarName = lhsExprNamePos.getName();
         String rhsExprVarName = rhsExprNamePos.getName();
-        String lhsExprPos = lhsExprNamePos.getPos();
 
         if (lhsExprVarName == null || rhsExprVarName == null) {
             return;
@@ -995,7 +1035,7 @@ public class SliceGenerator {
             return;
         }
 
-        DataTuple bufferWriteData = new DataTuple(XmlUtil.DataAccessType.BUFFER_WRITE, lhsExprPos);
+        DataTuple bufferWriteData = new DataTuple(XmlUtil.DataAccessType.BUFFER_WRITE, lhsExprNamePos);
         SliceVariableAccess varAccess = new SliceVariableAccess();
         varAccess.addWritePosition(bufferWriteData);
         rhsVarProfile.usedPositions.add(varAccess);
@@ -1036,6 +1076,35 @@ public class SliceGenerator {
                 updateDVarSliceProfile(lhsExprVarName, rhsExprVarName, "global_variables");
             }
         }
+    }
+
+    private void updateDataWriteDVarAccess(String lVarName, String rVarName) {
+        if (localVariables.containsKey(rVarName)) {
+            addDataWriteAccess(lVarName, localVariables.get(rVarName).get(rVarName));
+        } else if (globalVariables.containsKey(rVarName)) {
+            addDataWriteAccess(lVarName, globalVariables.get(rVarName).get(rVarName));
+        }
+    }
+
+    private void addDataWriteAccess(String lVarName, SliceProfile rVarProfile) {
+        SliceProfile lVarProfile;
+        String lVarEnclFunctionName = currentFunctionName;
+        if (globalVariables.containsKey(lVarName)) {
+            lVarEnclFunctionName = GLOBAL;
+            lVarProfile = globalVariables.get(lVarName).get(lVarName);
+        } else if (localVariables.containsKey(lVarName)) {
+            lVarProfile = localVariables.get(lVarName).get(lVarName);
+        } else {
+            return;
+        }
+
+        NamePos dataWriteVarNamePos = new NamePos(lVarName, lVarEnclFunctionName, lVarProfile.definedPosition,
+                lVarProfile.isPointer);
+
+        DataTuple dataWrite = new DataTuple(DataAccessType.DATA_WRITE, dataWriteVarNamePos);
+        SliceVariableAccess varAccess = new SliceVariableAccess();
+        varAccess.addWritePosition(dataWrite);
+        rVarProfile.dataAccess.add(varAccess);
     }
 
     private void updateDVarSliceProfile(String lVarName, String rVarName, String sliceVariablesString) {
@@ -1094,8 +1163,9 @@ public class SliceGenerator {
         List<Node> funcDecls = getNodeByName(unitNode, "function_decl", true);
         List<Node> constructors = getNodeByName(unitNode, "constructor", true);
         List<Node> destructors = getNodeByName(unitNode, "destructor", true);
+        List<Node> macros = getMacros(unitNode);
 
-        List<Node> funcList = Stream.of(functions, funcDecls, constructors, destructors)
+        List<Node> funcList = Stream.of(functions, funcDecls, constructors, destructors, macros)
                 .flatMap(Collection::stream)
                 .collect(Collectors.toList());
 
