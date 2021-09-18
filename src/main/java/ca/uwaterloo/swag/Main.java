@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
 
 public class Main {
 
-    private static final List<String> BUFFER_ERROR_FUNCTIONS = Arrays.asList("strcat", "strdup", "strncat", "strcmp",
+    private static List<String> BUFFER_ERROR_FUNCTIONS = Arrays.asList("strcat", "strdup", "strncat", "strcmp",
             "strncmp", "strcpy", "strncpy", "strlen", "strchr", "strrchr", "index", "rindex", "strpbrk", "strspn",
             "strcspn", "strstr", "strtok", "memccpy", "memchr", "memmove", "memcpy", "memcmp", "memset", "bcopy",
             "bzero", "bcmp");
@@ -43,7 +43,7 @@ public class Main {
     private static final Graph<EnclNamePosTuple, DefaultEdge> DG = new DefaultDirectedGraph<>(DefaultEdge.class);
     private static final Hashtable<EnclNamePosTuple, ArrayList<String>> detectedViolations = new Hashtable<>();
     private static final String JAR = "jar";
-    private static final MODE mode = MODE.NON_TESTING;
+    private static MODE mode = MODE.NON_TESTING;
 
     private static final LinkedList<SliceProfile> analyzedProfiles = new LinkedList<>();
 
@@ -59,8 +59,39 @@ public class Main {
         File file;
         File tempLoc = null;
         String result = null;
+        String functionsFile;
+
+        List<String> argsList = new ArrayList<>();
+        Map<String, String> optsList = new HashMap<>();
+        List<String> doubleOptsList = new ArrayList<>();
+
+        for (int i = 0; i < args.length; i++) {
+            if (args[i].charAt(0) == '-') {
+                if (args[i].length() < 2)
+                    throw new IllegalArgumentException("Not a valid argument: " + args[i]);
+                if (args[i].charAt(1) == '-') {
+                    if (args[i].length() < 3)
+                        throw new IllegalArgumentException("Not a valid argument: " + args[i]);
+                    // --opt
+                    doubleOptsList.add(args[i].substring(2));
+                } else {
+                    if (args.length - 1 == i)
+                        throw new IllegalArgumentException("Expected arg after: " + args[i]);
+                    // -opt
+                    optsList.put(args[i], args[i + 1]);
+                    i++;
+                }
+            } else {// arg
+                argsList.add(args[i]);
+            }
+        }
 
         try {
+            if(doubleOptsList.size()>0){
+                if(doubleOptsList.contains("debug")){
+                    mode = MODE.TESTING;
+                }
+            }
             if (Files.exists(Path.of("skip.txt")) && mode.skipSrcml())
                 result = Files.readString(Path.of("skip.txt"), StandardCharsets.UTF_8);
             else {
@@ -78,20 +109,38 @@ public class Main {
                         }
                     }
                 }
-                if (args.length > 1) {
+                if (argsList.size() > 0) {
                     projectLocation = args[0];
-                    srcML = args[1];
-                } else if (args.length == 1) {
-                    projectLocation = args[0];
-                    if (OsUtils.isWindows()) {
-                        srcML = "windows/srcml.exe";
-                    } else if (OsUtils.isLinux()) {
-                        srcML = "ubuntu/srcml";
-                    } else if (OsUtils.isMac()) {
-                        srcML = "mac/srcml";
-                    } else {
-                        System.err.println("Please specify location of srcML, binary not included for current OS");
-                        System.exit(1);
+                    if(optsList.containsKey("srcml")){
+                        srcML = optsList.get("srcml");
+                    }
+                    else{
+                        if (OsUtils.isWindows()) {
+                            srcML = "windows/srcml.exe";
+                        } else if (OsUtils.isLinux()) {
+                            srcML = "ubuntu/srcml";
+                        } else if (OsUtils.isMac()) {
+                            srcML = "mac/srcml";
+                        } else {
+                            System.err.println("Please specify location of srcML, binary not included for current OS");
+                            System.exit(1);
+                        }
+                    }
+                    if(optsList.containsKey("functions")){
+                        functionsFile = optsList.get("functions");
+                        Path functionFilePath = Path.of(functionsFile);
+                        if (Files.exists(functionFilePath)){
+                            try (Scanner sc = new Scanner(functionFilePath.toFile(), StandardCharsets.UTF_8))
+                            {
+                                BUFFER_ERROR_FUNCTIONS = new ArrayList<>();
+                                while (sc.hasNextLine()) {
+                                    BUFFER_ERROR_FUNCTIONS.add(sc.nextLine());
+                                }
+                            }
+                            catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
                     }
                 } else {
                     System.err.println("Please specify location of project to be analysed");
