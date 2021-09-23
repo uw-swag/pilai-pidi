@@ -44,6 +44,7 @@ public class Main {
     private static final Hashtable<EnclNamePosTuple, ArrayList<String>> detectedViolations = new Hashtable<>();
     private static final String JAR = "jar";
     private static MODE mode = MODE.NON_TESTING;
+    private static String[] singleTarget;
 
     private static final LinkedList<SliceProfile> analyzedProfiles = new LinkedList<>();
 
@@ -85,7 +86,6 @@ public class Main {
                 argsList.add(args[i]);
             }
         }
-
         try {
             if(doubleOptsList.size()>0){
                 if(doubleOptsList.contains("debug")){
@@ -111,8 +111,8 @@ public class Main {
                 }
                 if (argsList.size() > 0) {
                     projectLocation = args[0];
-                    if(optsList.containsKey("srcml")){
-                        srcML = optsList.get("srcml");
+                    if(optsList.containsKey("-srcml")){
+                        srcML = optsList.get("-srcml");
                     }
                     else{
                         if (OsUtils.isWindows()) {
@@ -126,8 +126,8 @@ public class Main {
                             System.exit(1);
                         }
                     }
-                    if(optsList.containsKey("functions")){
-                        functionsFile = optsList.get("functions");
+                    if(optsList.containsKey("-functions")){
+                        functionsFile = optsList.get("-functions");
                         Path functionFilePath = Path.of(functionsFile);
                         if (Files.exists(functionFilePath)){
                             try (Scanner sc = new Scanner(functionFilePath.toFile(), StandardCharsets.UTF_8))
@@ -142,6 +142,12 @@ public class Main {
                             }
                         }
                     }
+                    if(optsList.containsKey("-node")){
+                        singleTarget = optsList.get("-node").split("@AT@");
+                    }
+                    else {
+                        singleTarget = null;
+                    }
                 } else {
                     System.err.println("Please specify location of project to be analysed");
                     System.exit(1);
@@ -149,7 +155,7 @@ public class Main {
             }
             if (!mode.skipSrcml() || result == null) {
                 ProcessBuilder pb;
-                if (args.length > 1) {
+                if (argsList.size() > 1) {
                     pb = new ProcessBuilder(srcML, projectLocation, "--position");
                 } else {
                     Path zipPath = Paths.get(Objects.requireNonNull(Main.class.getClassLoader().
@@ -166,9 +172,9 @@ public class Main {
                     pb = new ProcessBuilder(file.getAbsolutePath(), projectLocation, "--position");
                 }
                 result = IOUtils.toString(pb.start().getInputStream(), StandardCharsets.UTF_8);
-                try (PrintWriter out = new PrintWriter("skip.txt")) {
-                    out.println(result);
-                }
+//                try (PrintWriter out = new PrintWriter("skip.txt")) {
+//                    out.println(result);
+//                }
             }
             System.out.println("Converted to XML, beginning parsing ...");
             DocumentBuilder documentBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
@@ -282,6 +288,7 @@ public class Main {
     }
 
     private static Hashtable<String, Set<List<EnclNamePosTuple>>> printViolations(long start) {
+        BFSShortestPath<EnclNamePosTuple, DefaultEdge> bfsShortestPath = new BFSShortestPath<>(DG);
         Hashtable<String, Set<List<EnclNamePosTuple>>> violationsToPrint = new Hashtable<>();
         ArrayList<EnclNamePosTuple> sourceNodes = new ArrayList<>();
         for (EnclNamePosTuple node : DG.vertexSet()) {
@@ -294,6 +301,10 @@ public class Main {
             if (mode.skipViolations()) {
                 bfsSolution(sourceNode, mode.lookupString());
                 continue;
+            }
+            if (singleTarget != null) {
+                Optional<EnclNamePosTuple> actualTarget = DG.vertexSet().stream().filter(ENPtuple -> ENPtuple.fileName().equals(singleTarget[1]) && ENPtuple.varName().equals(singleTarget[0]) && ENPtuple.definedPosition().equals(singleTarget[2])).findFirst();
+                actualTarget.ifPresent(enclNamePosTuple -> detectedViolations.put(enclNamePosTuple, new ArrayList<>(Collections.singletonList(String.join("@AT@",singleTarget)))));
             }
 
             for (EnclNamePosTuple violatedNodePos : detectedViolations.keySet()) {
@@ -308,7 +319,6 @@ public class Main {
 //                GraphPath<Encl_name_pos_tuple,DefaultEdge> requiredPath =
 //                        bellmanFordShortestPath.getPath(source_node, violated_node_pos_pair);
 
-                BFSShortestPath<EnclNamePosTuple, DefaultEdge> bfsShortestPath = new BFSShortestPath<>(DG);
                 GraphPath<EnclNamePosTuple, DefaultEdge> requiredPath =
                         bfsShortestPath.getPath(sourceNode, violatedNodePos);
 
@@ -419,6 +429,10 @@ public class Main {
             return;
         }
 
+        if(singleTarget != null){
+            return;
+        }
+
         for (SliceVariableAccess varAccess : profile.usedPositions) {
             for (DataTuple access : varAccess.writePositions) {
                 if (XmlUtil.DataAccessType.BUFFER_WRITE != access.accessType) {
@@ -456,7 +470,7 @@ public class Main {
                     analyzeSliceProfile(dvarSliceProfile, rawProfilesInfo);
                 }
 
-                if (dvarSliceProfile.isPointer && XmlUtil.DataAccessType.DATA_WRITE == access.accessType) {
+                if (dvarSliceProfile.isPointer && XmlUtil.DataAccessType.DATA_WRITE == access.accessType && singleTarget == null) {
                     ArrayList<String> violations;
                     if (detectedViolations.containsKey(dvarNamePosTuple)) {
                         violations = new ArrayList<>(detectedViolations.get(dvarNamePosTuple));
@@ -490,6 +504,10 @@ public class Main {
         }
 
         if (dependentSliceProfiles.size() > 0) {
+            return;
+        }
+
+        if(singleTarget != null){
             return;
         }
 
