@@ -1,6 +1,7 @@
 package ca.uwaterloo.swag.util;
 
 public final class OsUtils {
+
     private static String os = null;
 
     public static String getOsName() {

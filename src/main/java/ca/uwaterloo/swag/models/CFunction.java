@@ -1,10 +1,8 @@
 package ca.uwaterloo.swag.models;
 
-import org.w3c.dom.Node;
-
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import org.w3c.dom.Node;
 
 public final class CFunction {
 
@@ -15,7 +13,8 @@ public final class CFunction {
     private final Node enclFunctionNode;
     private final List<ArgumentNamePos> funcArgs;
 
-    public CFunction(String name, String position, int argPosIndex, String enclFunctionName, Node enclFunctionNode) {
+    public CFunction(String name, String position, int argPosIndex, String enclFunctionName,
+        Node enclFunctionNode) {
         this.name = name;
         this.position = position;
         this.argPosIndex = argPosIndex;
@@ -24,8 +23,9 @@ public final class CFunction {
         this.funcArgs = null;
     }
 
-    public CFunction(String name, String position, int argPosIndex, String enclFunctionName, Node enclFunctionNode,
-                     List<ArgumentNamePos> funcArgs) {
+    public CFunction(String name, String position, int argPosIndex, String enclFunctionName,
+        Node enclFunctionNode,
+        List<ArgumentNamePos> funcArgs) {
         this.name = name;
         this.position = position;
         this.argPosIndex = argPosIndex;
@@ -79,8 +79,9 @@ public final class CFunction {
         }
         assert this.position != null;
         return this.position.equals(other.position) &&
-                this.argPosIndex == other.argPosIndex && this.enclFunctionName.equals(other.enclFunctionName) &&
-                this.enclFunctionNode == other.enclFunctionNode;
+            this.argPosIndex == other.argPosIndex && this.enclFunctionName
+            .equals(other.enclFunctionName) &&
+            this.enclFunctionNode == other.enclFunctionNode;
     }
 
     @Override

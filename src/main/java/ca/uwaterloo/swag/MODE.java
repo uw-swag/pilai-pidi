@@ -23,8 +23,7 @@ enum MODE {
             this.checkBuffer = false;
             this.skipViolations = true;
             this.lookupString = Arrays.asList("shadePremulSpan");
-        }
-        else {
+        } else {
             this.skipSrcml = false;
             this.startFromCpp = false;
             this.exportGraph = false;

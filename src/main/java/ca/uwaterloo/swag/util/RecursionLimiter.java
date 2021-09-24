@@ -2,6 +2,7 @@ package ca.uwaterloo.swag.util;
 
 @SuppressWarnings("unused")
 public class RecursionLimiter {
+
     public static int maxLevel = 10;
 
     public static void emerge() {

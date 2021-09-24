@@ -1,6 +1,7 @@
 package ca.uwaterloo.swag.models;
 
 public class NamePos {
+
     private final String name;
     private final String type;
     private final String pos;
@@ -37,7 +38,7 @@ public class NamePos {
         }
         NamePos other = (NamePos) obj;
         return this.name.equals(other.name) && this.type.equals(other.type) &&
-                this.pos.equals(other.pos) && this.isPointer == other.isPointer;
+            this.pos.equals(other.pos) && this.isPointer == other.isPointer;
     }
 
     @Override

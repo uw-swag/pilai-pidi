@@ -1,18 +1,39 @@
 package ca.uwaterloo.swag;
 
-import ca.uwaterloo.swag.models.*;
+import static ca.uwaterloo.swag.util.XmlUtil.DataAccessType;
+import static ca.uwaterloo.swag.util.XmlUtil.asList;
+import static ca.uwaterloo.swag.util.XmlUtil.getMacros;
+import static ca.uwaterloo.swag.util.XmlUtil.getNamePosTextPair;
+import static ca.uwaterloo.swag.util.XmlUtil.getNodeByName;
+import static ca.uwaterloo.swag.util.XmlUtil.getNodePos;
+import static ca.uwaterloo.swag.util.XmlUtil.isEmptyTextNode;
+import static ca.uwaterloo.swag.util.XmlUtil.nodeAtIndex;
+
+import ca.uwaterloo.swag.models.CFunction;
+import ca.uwaterloo.swag.models.DataTuple;
+import ca.uwaterloo.swag.models.FunctionNamePos;
+import ca.uwaterloo.swag.models.NamePos;
+import ca.uwaterloo.swag.models.SliceProfile;
+import ca.uwaterloo.swag.models.SliceProfilesInfo;
+import ca.uwaterloo.swag.models.SliceVariableAccess;
 import ca.uwaterloo.swag.util.XmlUtil;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Hashtable;
+import java.util.List;
+import java.util.Objects;
+import java.util.Stack;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
-import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import static ca.uwaterloo.swag.util.XmlUtil.*;
-
 public class SliceGenerator {
 
+    public static final String IDENTIFIER_SEPARATOR = "[^\\w]+";
+    private static final String GLOBAL = "GLOBAL";
+    private static final List<String> ARITHMETIC_OPRTS = Arrays.asList("+", "-", "*", "/");
     private final String fileName;
     private final Node unitNode;
     private final Hashtable<FunctionNamePos, Node> functionNodes;
@@ -22,10 +43,7 @@ public class SliceGenerator {
     private Hashtable<String, Hashtable<String, SliceProfile>> localVariables;
     private String currentFunctionName;
     private Node currentFunctionNode;
-
-    private static final String GLOBAL = "GLOBAL";
-    public static final String IDENTIFIER_SEPARATOR = "[^\\w]+";
-    private static final List<String> ARITHMETIC_OPRTS = Arrays.asList("+", "-", "*", "/");
+    private boolean isLhsExpr;
 
     public SliceGenerator(Node unitNode, String fileName) {
         this.unitNode = unitNode;
@@ -37,6 +55,47 @@ public class SliceGenerator {
         this.globalVariables = new Hashtable<>();
         this.currentFunctionName = "";
         this.currentFunctionNode = null;
+    }
+
+    private static boolean hasPrecedence(String op1, String op2) {
+        if (op2.equals("(") || op2.equals(")")) {
+            return false;
+        }
+        return (!op1.equals("*") && !op1.equals("/")) ||
+            (!op2.equals("+") && !op2.equals("-"));
+    }
+
+    private static boolean isArithmeticOperator(Node expr) {
+        return expr.getNodeName().equals("operator") &&
+            ARITHMETIC_OPRTS.contains(expr.getFirstChild().getNodeValue());
+    }
+
+    private static boolean isOpenBracketOperator(Node expr) {
+        return expr.getNodeName().equals("operator") &&
+            "(".equals(expr.getFirstChild().getNodeValue());
+    }
+
+    private static boolean isCloseBracketOperator(Node expr) {
+        return expr.getNodeName().equals("operator") &&
+            ")".equals(expr.getFirstChild().getNodeValue());
+    }
+
+    private static Hashtable<FunctionNamePos, Node> findFunctionNodes(Node unitNode) {
+        Hashtable<FunctionNamePos, Node> functionNodes = new Hashtable<>();
+        List<Node> functions = getNodeByName(unitNode, "function", true);
+        List<Node> funcDecls = getNodeByName(unitNode, "function_decl", true);
+        List<Node> constructors = getNodeByName(unitNode, "constructor", true);
+        List<Node> destructors = getNodeByName(unitNode, "destructor", true);
+        List<Node> macros = getMacros(unitNode);
+
+        List<Node> funcList = Stream.of(functions, funcDecls, constructors, destructors, macros)
+            .flatMap(Collection::stream)
+            .collect(Collectors.toList());
+
+        for (Node node : funcList) {
+            functionNodes.put(XmlUtil.getFunctionNamePos(node), node);
+        }
+        return functionNodes;
     }
 
     public SliceProfilesInfo generate() {
@@ -120,26 +179,28 @@ public class SliceGenerator {
             return;
         }
 
-        NamePos structTypeNamePos = getNamePosTextPair(structNode);
-        String structTypeName = structTypeNamePos.getType();
-        if (structTypeName.equals("")) {
-            return;
-        }
+        NamePos structNamePos = getNamePosTextPair(structNode);
+        String structName = structNamePos.getName();
+        String structTypeName = structNamePos.getType();
+//        if (structTypeName.equals("")) {
+//            return;
+//        }
         Node structVarNameNode = nodeAtIndex(getNodeByName(structNode, "decl"), 0);
         NamePos structVarNamePos = getNamePosTextPair(structVarNameNode);
-        if (structVarNamePos.getName().equals("")) {
-            return;
+        if (!structVarNamePos.getName().equals("")) {
+            structName = structVarNamePos.getName();
         }
 
-        boolean isPointer = structTypeNamePos.isPointer() || structVarNamePos.isPointer();
-        String structVarName = structVarNamePos.getName();
+        boolean isPointer = structNamePos.isPointer() || structVarNamePos.isPointer();
+//        String structVarName = structVarNamePos.getName();
         String structPos = structVarNamePos.getPos();
-        String sliceKey = structVarName + "%" + structPos + "%" + GLOBAL + "%" + fileName;
-        SliceProfile profile = new SliceProfile(fileName, GLOBAL, structVarName, structTypeName, structPos, isPointer);
+        String sliceKey = structName + "%" + structPos + "%" + GLOBAL + "%" + fileName;
+        SliceProfile profile = new SliceProfile(fileName, GLOBAL, structName, structTypeName, structPos,
+            isPointer);
         sliceProfiles.put(sliceKey, profile);
         Hashtable<String, SliceProfile> structProfile = new Hashtable<>();
-        structProfile.put(structVarName, profile);
-        globalVariables.put(structVarName, structProfile);
+        structProfile.put(structName, profile);
+        globalVariables.put(structName, structProfile);
 
         //analyze struct body
 
@@ -218,9 +279,10 @@ public class SliceGenerator {
             return;
         }
         NamePos namePos = getNamePosTextPair(globalDeclNode);
-        String sliceKey = namePos.getName() + "%" + namePos.getPos() + "%" + GLOBAL + "%" + this.fileName;
+        String sliceKey =
+            namePos.getName() + "%" + namePos.getPos() + "%" + GLOBAL + "%" + this.fileName;
         SliceProfile sliceProfile = new SliceProfile(this.fileName, GLOBAL, namePos.getName(),
-                namePos.getType(), namePos.getPos(), namePos.isPointer());
+            namePos.getType(), namePos.getPos(), namePos.isPointer());
         this.sliceProfiles.put(sliceKey, sliceProfile);
         Hashtable<String, SliceProfile> nameProfile = new Hashtable<>();
         nameProfile.put(namePos.getName(), sliceProfile);
@@ -282,14 +344,20 @@ public class SliceGenerator {
         Node previousFunctionNode = currentFunctionNode;
 
         this.currentFunctionName = functionNamePos.getName();
-        this.currentFunctionNode = macro;
+        Node macroBody = null;
+        Node block = nodeAtIndex(getNodeByName(macro.getParentNode(), "block"), 0);
+        if (block != null) {
+            Node blockContent = nodeAtIndex(getNodeByName(block, "block_content"), 0);
+            macroBody = Objects.requireNonNullElse(blockContent, block);
+        }
+
+        this.currentFunctionNode = macroBody;
         List<Node> argumentList = XmlUtil.getArgumentList(macro);
         for (Node argument : argumentList) {
             analyzeArgumentOfMacro(argument);
         }
 
-        Node block = nodeAtIndex(getNodeByName(macro.getParentNode(), "block"), 0);
-        analyzeBlockContent(block);
+        analyzeBlockContent(macroBody);
         this.currentFunctionName = previousFunctionName;
         this.currentFunctionNode = previousFunctionNode;
     }
@@ -435,9 +503,10 @@ public class SliceGenerator {
         }
         NamePos namePos = getNamePosTextPair(decl);
         String sliceKey = namePos.getName() + "%" + namePos.getPos() + "%" +
-                this.currentFunctionName + "%" + this.fileName;
+            this.currentFunctionName + "%" + this.fileName;
         SliceProfile sliceProfile = new SliceProfile(this.fileName, this.currentFunctionName,
-                namePos.getName(), namePos.getType(), namePos.getPos(), namePos.isPointer(), this.currentFunctionNode);
+            namePos.getName(), namePos.getType(), namePos.getPos(), namePos.isPointer(),
+            this.currentFunctionNode);
         this.sliceProfiles.put(sliceKey, sliceProfile);
         Hashtable<String, SliceProfile> nameProfile = new Hashtable<>();
         nameProfile.put(namePos.getName(), sliceProfile);
@@ -481,11 +550,14 @@ public class SliceGenerator {
 
             boolean isPointer = namePos.isPointer() || typeNamePos.isPointer();
 
-            if (!localVariables.containsKey(cfunctionName) && !globalVariables.containsKey(cfunctionName)) {
+            if (!localVariables.containsKey(cfunctionName) && !globalVariables
+                .containsKey(cfunctionName)) {
                 String cfunctionSliceIdentifier = cfunctionName + "%" + cfunctionPos;
-                String cfuncSliceKey = cfunctionSliceIdentifier + "%" + currentFunctionName + "%" + fileName;
-                SliceProfile cfunctionProfile = new SliceProfile(fileName, currentFunctionName, cfunctionName,
-                        null, cfunctionPos, isPointer, currentFunctionNode);
+                String cfuncSliceKey =
+                    cfunctionSliceIdentifier + "%" + currentFunctionName + "%" + fileName;
+                SliceProfile cfunctionProfile = new SliceProfile(fileName, currentFunctionName,
+                    cfunctionName,
+                    null, cfunctionPos, isPointer, currentFunctionNode);
                 sliceProfiles.put(cfuncSliceKey, cfunctionProfile);
                 Hashtable<String, SliceProfile> cfprofile = new Hashtable<>();
                 cfprofile.put(cfunctionName, cfunctionProfile);
@@ -528,7 +600,7 @@ public class SliceGenerator {
                 case "call":
                     return analyzeCallExpr(expr);
                 case "name":
-                    return getNamePosTextPair(expr);
+                    return analyzeNameExpr(expr);
                 case "cast":
                     analyzeCastExpr(expr);
                     break;
@@ -541,13 +613,35 @@ public class SliceGenerator {
         return new NamePos.DefaultNamePos();
     }
 
+    private NamePos analyzeNameExpr(Node expr) {
+        NamePos namePos = getNamePosTextPair(expr);
+        String varName = namePos.getName();
+        if (isArrayAccessExpr(expr) && !isLhsExpr) {
+            SliceProfile varProfile = null;
+            if (localVariables.containsKey(varName)) {
+                varProfile = localVariables.get(varName).get(varName);
+            } else if (globalVariables.containsKey(varName)) {
+                varProfile = globalVariables.get(varName).get(varName);
+            }
+
+            if (varProfile != null) {
+                DataTuple bufferWriteData = new DataTuple(DataAccessType.BUFFER_READ, namePos);
+                SliceVariableAccess varAccess = new SliceVariableAccess();
+                varAccess.addWritePosition(bufferWriteData);
+                varProfile.usedPositions.add(varAccess);
+            }
+        }
+        return namePos;
+    }
+
     private NamePos analyzeLiteralExpr(Node literal) {
         String literalVal = literal.getTextContent();
         String typeName = literal.getAttributes().getNamedItem("type").getNodeValue();
         String pos = getNodePos(literal);
         String sliceKey = literalVal + "%" + pos + "%" + currentFunctionName + "%" + fileName;
-        SliceProfile profile = new SliceProfile(fileName, currentFunctionName, literalVal, typeName, pos, false,
-                currentFunctionNode);
+        SliceProfile profile = new SliceProfile(fileName, currentFunctionName, literalVal, typeName,
+            pos, false,
+            currentFunctionNode);
         sliceProfiles.put(sliceKey, profile);
         Hashtable<String, SliceProfile> lvar = new Hashtable<>();
         lvar.put(literalVal, profile);
@@ -607,12 +701,12 @@ public class SliceGenerator {
 
         String cfunctionIdentifier = call.getTextContent().split(IDENTIFIER_SEPARATOR)[0];
         if (!localVariables.containsKey(cfunctionIdentifier) &&
-                !globalVariables.containsKey(cfunctionIdentifier)) {
+            !globalVariables.containsKey(cfunctionIdentifier)) {
             String cfunctionSliceIdentifier = cfunctionIdentifier + "%" + cfunctionPos;
             String cfuncSliceKey = cfunctionSliceIdentifier + "%" + currentFunctionName + "%" + fileName;
             SliceProfile cfunctionProfile = new SliceProfile(fileName, currentFunctionName,
-                    cfunctionIdentifier, null, cfunctionPos, cfunctionDetails.isPointer(),
-                    currentFunctionNode);
+                cfunctionIdentifier, null, cfunctionPos, cfunctionDetails.isPointer(),
+                currentFunctionNode);
             sliceProfiles.put(cfuncSliceKey, cfunctionProfile);
             Hashtable<String, SliceProfile> cfprofile = new Hashtable<>();
             cfprofile.put(cfunctionIdentifier, cfunctionProfile);
@@ -624,7 +718,7 @@ public class SliceGenerator {
     }
 
     private void analyzeArgumentList(Node call, String cfunctionName, String cfunctionPos,
-                                     String cfunctionIdentifier) {
+        String cfunctionIdentifier) {
         Node argumentNode = nodeAtIndex(getNodeByName(call, "argument_list"), 0);
         if (argumentNode == null) {
             return;
@@ -646,13 +740,14 @@ public class SliceGenerator {
                 }
                 String varName = varNamePos.getName();
                 String varPos = varNamePos.getPos();
-                String sliceKey = varName + "%" + varPos + "%" + this.currentFunctionName + "%" + this.fileName;
+                String sliceKey =
+                    varName + "%" + varPos + "%" + this.currentFunctionName + "%" + this.fileName;
                 if (varName.equals("")) {
                     continue;
                 }
                 if (localVariables.containsKey(varName)) {
                     updateCFunctionsSliceProfile(varName, cfunctionName, cfunctionPos, argPosIndex,
-                            "local_variables", sliceKey);
+                        "local_variables", sliceKey);
                     if (!cfunctionIdentifier.isEmpty()) {
                         updateDVarSliceProfile(cfunctionIdentifier, varName, "local_variables");
                     }
@@ -661,7 +756,7 @@ public class SliceGenerator {
 //                    }
                 } else if (globalVariables.containsKey(varName)) {
                     updateCFunctionsSliceProfile(varName, cfunctionName, cfunctionPos, argPosIndex,
-                            "global_variables", sliceKey);
+                        "global_variables", sliceKey);
                     if (!cfunctionIdentifier.isEmpty()) {
                         updateDVarSliceProfile(cfunctionIdentifier, varName, "global_variables");
                     }
@@ -671,7 +766,7 @@ public class SliceGenerator {
                 } else if (isLiteralExpr(expr)) {
                     String typeName = varNamePos.getType();
                     SliceProfile sliceProfile = new SliceProfile(this.fileName, this.currentFunctionName,
-                            varName, typeName, varPos, varNamePos.isPointer(), this.currentFunctionNode);
+                        varName, typeName, varPos, varNamePos.isPointer(), this.currentFunctionNode);
                     CFunction cFun = new CFunction(argPosIndex, currentFunctionName, currentFunctionNode);
                     sliceProfile.cfunctions.add(cFun);
                     sliceProfiles.put(sliceKey, sliceProfile);
@@ -708,8 +803,9 @@ public class SliceGenerator {
         }
     }
 
-    private void updateCFunctionsSliceProfile(String varName, String cfunctionName, String cfunctionPos,
-                                              int argPosIndex, String sliceVariablesString, String sliceKey) {
+    private void updateCFunctionsSliceProfile(String varName, String cfunctionName,
+        String cfunctionPos,
+        int argPosIndex, String sliceVariablesString, String sliceKey) {
         Hashtable<String, Hashtable<String, SliceProfile>> sliceVariables;
         if (sliceVariablesString.equals("local_variables")) {
             sliceVariables = localVariables;
@@ -718,7 +814,7 @@ public class SliceGenerator {
         }
         SliceProfile sliceProfile = sliceVariables.get(varName).get(varName);
         CFunction cFun = new CFunction(cfunctionName, cfunctionPos, argPosIndex, currentFunctionName,
-                currentFunctionNode);
+            currentFunctionNode);
         sliceProfile.cfunctions.add(cFun);
         sliceProfiles.put(sliceKey, sliceProfile);
         Hashtable<String, SliceProfile> body = sliceVariables.get(varName);
@@ -810,7 +906,8 @@ public class SliceGenerator {
         if (expr == null) {
             return null;
         }
-        NamePos conditionNamePos = analyzeConditionExpr(nodeAtIndex(getNodeByName(expr, "condition"), 0));
+        NamePos conditionNamePos = analyzeConditionExpr(
+            nodeAtIndex(getNodeByName(expr, "condition"), 0));
         NamePos thenNamePos = analyzeCompoundExpr(nodeAtIndex(getNodeByName(expr, "then"), 0));
         NamePos elseNamePos = analyzeCompoundExpr(nodeAtIndex(getNodeByName(expr, "else"), 0));
         checkAndUpdateDVarSliceProfile(conditionNamePos, thenNamePos);
@@ -829,14 +926,17 @@ public class SliceGenerator {
             return;
         }
         String[] parts = paramNameWithType.split("\\s+");
-        if (parts.length == 2) {
-            String type = parts[0];
-            String name = parts[1];
+        if (parts.length >= 2) {
+            String type = parts[parts.length - 2];
+            String name = parts[parts.length - 1];
             String pos = getNodePos(param);
+
+            boolean isPointer =
+                type.endsWith("*") || name.endsWith("*") || type.endsWith("&") || name.endsWith("&");
 
             String sliceKey = name + "%" + pos + "%" + this.currentFunctionName + "%" + this.fileName;
             SliceProfile sliceProfile = new SliceProfile(this.fileName, this.currentFunctionName,
-                    name, type, pos, false, this.currentFunctionNode);
+                name, type, pos, isPointer, this.currentFunctionNode);
             this.sliceProfiles.put(sliceKey, sliceProfile);
             Hashtable<String, SliceProfile> nameProfile = new Hashtable<>();
             nameProfile.put(name, sliceProfile);
@@ -868,9 +968,9 @@ public class SliceGenerator {
             if (exprs.size() > 0) {
                 if (isAssignmentExpr(exprs)) {
                     analyzeAssignmentExpr(exprs);
+                } else {
+                    return evaluateExprs(exprs);
                 }
-
-                return evaluateExprs(exprs);
             }
         }
 
@@ -884,6 +984,10 @@ public class SliceGenerator {
         Stack<String> ops = new Stack<>();
 
         for (Node currentNode : exprNodes) {
+            if (isEmptyTextNode(currentNode)) {
+                continue;
+            }
+
             if (isOpenBracketOperator(currentNode)) {
                 ops.push("(");
             } else if (isCloseBracketOperator(currentNode)) {
@@ -931,29 +1035,6 @@ public class SliceGenerator {
         return exprs.pop();
     }
 
-    private static boolean hasPrecedence(String op1, String op2) {
-        if (op2.equals("(") || op2.equals(")")) {
-            return false;
-        }
-        return (!op1.equals("*") && !op1.equals("/")) ||
-                (!op2.equals("+") && !op2.equals("-"));
-    }
-
-    private static boolean isArithmeticOperator(Node expr) {
-        return expr.getNodeName().equals("operator") &&
-                ARITHMETIC_OPRTS.contains(expr.getFirstChild().getNodeValue());
-    }
-
-    private static boolean isOpenBracketOperator(Node expr) {
-        return expr.getNodeName().equals("operator") &&
-                "(".equals(expr.getFirstChild().getNodeValue());
-    }
-
-    private static boolean isCloseBracketOperator(Node expr) {
-        return expr.getNodeName().equals("operator") &&
-                ")".equals(expr.getFirstChild().getNodeValue());
-    }
-
     private NamePos analyzeBinaryExpr(NamePos lhsExprNamePos, NamePos rhsExprNamePos) {
         String lhsExprVarName = lhsExprNamePos.getName();
         String rhsExprVarName = rhsExprNamePos.getName();
@@ -972,7 +1053,9 @@ public class SliceGenerator {
         Node lhsExpr = exprs.get(0);
         Node rhsExpr = exprs.get(4);
 
+        isLhsExpr = true;
         NamePos lhsExprNamePos = analyzeExpr(lhsExpr);
+        isLhsExpr = false;
         NamePos rhsExprNamePos = analyzeExpr(rhsExpr);
 
         String lhsExprVarName = lhsExprNamePos.getName();
@@ -995,7 +1078,7 @@ public class SliceGenerator {
             functionDeclMap.put(lhsExprVarName, alias);
         }
 
-        boolean isBufferWrite = isBufferWriteExpr(lhsExpr);
+        boolean isBufferWrite = isArrayAccessExpr(lhsExpr);
         if (!isBufferWrite && lhsExprVarName.equals(rhsExprVarName)) {
             return;
         }
@@ -1023,7 +1106,6 @@ public class SliceGenerator {
             return;
         }
 
-
         SliceProfile rhsVarProfile = null;
         if (localVariables.containsKey(rhsExprVarName)) {
             rhsVarProfile = localVariables.get(rhsExprVarName).get(rhsExprVarName);
@@ -1038,14 +1120,16 @@ public class SliceGenerator {
         DataTuple bufferWriteData = new DataTuple(XmlUtil.DataAccessType.BUFFER_WRITE, lhsExprNamePos);
         SliceVariableAccess varAccess = new SliceVariableAccess();
         varAccess.addWritePosition(bufferWriteData);
-        rhsVarProfile.usedPositions.add(varAccess);
+//        rhsVarProfile.usedPositions.add(varAccess);
+        lhsVarProfile.usedPositions.add(varAccess);
     }
 
     private boolean isLhsExprFunctionPointer(String lhsExprVarName) {
-        return functionNodes.keySet().stream().anyMatch(namePos -> namePos.getName().equals(lhsExprVarName));
+        return functionNodes.keySet().stream()
+            .anyMatch(namePos -> namePos.getName().equals(lhsExprVarName));
     }
 
-    private boolean isBufferWriteExpr(Node expr) {
+    private boolean isArrayAccessExpr(Node expr) {
         if (!expr.getNodeName().equals("name")) {
             return false;
         }
@@ -1063,7 +1147,8 @@ public class SliceGenerator {
         return false;
     }
 
-    private void checkAndUpdateDVarSliceProfile(NamePos lhsExprVarNamePos, NamePos rhsExprVarNamePos) {
+    private void checkAndUpdateDVarSliceProfile(NamePos lhsExprVarNamePos,
+        NamePos rhsExprVarNamePos) {
         if (lhsExprVarNamePos == null || lhsExprVarNamePos.getName().isEmpty()) {
             return;
         }
@@ -1098,8 +1183,9 @@ public class SliceGenerator {
             return;
         }
 
-        NamePos dataWriteVarNamePos = new NamePos(lVarName, lVarEnclFunctionName, lVarProfile.definedPosition,
-                lVarProfile.isPointer);
+        NamePos dataWriteVarNamePos = new NamePos(lVarName, lVarEnclFunctionName,
+            lVarProfile.definedPosition,
+            lVarProfile.isPointer);
 
         DataTuple dataWrite = new DataTuple(DataAccessType.DATA_WRITE, dataWriteVarNamePos);
         SliceVariableAccess varAccess = new SliceVariableAccess();
@@ -1107,7 +1193,8 @@ public class SliceGenerator {
         rVarProfile.dataAccess.add(varAccess);
     }
 
-    private void updateDVarSliceProfile(String lVarName, String rVarName, String sliceVariablesString) {
+    private void updateDVarSliceProfile(String lVarName, String rVarName,
+        String sliceVariablesString) {
         Hashtable<String, Hashtable<String, SliceProfile>> sliceVariables;
         if (sliceVariablesString.equals("local_variables")) {
             sliceVariables = localVariables;
@@ -1149,29 +1236,19 @@ public class SliceGenerator {
         }
         Node operatorExpr = exprs.get(2);
         return operatorExpr.getNodeName().equals("operator") &&
-                (operatorExpr.getFirstChild().getNodeValue().equals("=") ||
-                        operatorExpr.getFirstChild().getNodeValue().equals("+="));
+            (operatorExpr.getFirstChild().getNodeValue().equals("=") ||
+                operatorExpr.getFirstChild().getNodeValue().equals("+="));
     }
 
     private boolean isLiteralExpr(Node expr) {
-        return expr.getFirstChild().getNodeName().equals("literal");
-    }
-
-    private static Hashtable<FunctionNamePos, Node> findFunctionNodes(Node unitNode) {
-        Hashtable<FunctionNamePos, Node> functionNodes = new Hashtable<>();
-        List<Node> functions = getNodeByName(unitNode, "function", true);
-        List<Node> funcDecls = getNodeByName(unitNode, "function_decl", true);
-        List<Node> constructors = getNodeByName(unitNode, "constructor", true);
-        List<Node> destructors = getNodeByName(unitNode, "destructor", true);
-        List<Node> macros = getMacros(unitNode);
-
-        List<Node> funcList = Stream.of(functions, funcDecls, constructors, destructors, macros)
-                .flatMap(Collection::stream)
-                .collect(Collectors.toList());
-
-        for (Node node : funcList) {
-            functionNodes.put(XmlUtil.getFunctionNamePos(node), node);
+        if (expr == null) {
+            return false;
         }
-        return functionNodes;
+
+        if (expr.getFirstChild() == null) {
+            return false;
+        }
+
+        return "literal".equals(expr.getFirstChild().getNodeName());
     }
 }

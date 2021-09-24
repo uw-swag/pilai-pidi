@@ -1,10 +1,14 @@
 package ca.uwaterloo.swag.models;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import org.w3c.dom.Node;
 
-import java.util.*;
 
 public class SliceProfile {
+
     public final String fileName;
     public final String functionName;
     public final String varName;
@@ -18,7 +22,7 @@ public class SliceProfile {
     public final Node functionNode;
 
     public SliceProfile(String fileName, String functionName, String varName, String typeName,
-                        String definedPosition, boolean isPointer) {
+        String definedPosition, boolean isPointer) {
         this.fileName = fileName;
         this.functionName = functionName;
         this.varName = varName;
@@ -29,7 +33,7 @@ public class SliceProfile {
     }
 
     public SliceProfile(String fileName, String functionName, String varName, String typeName,
-                        String definedPosition, boolean isPointer, Node functionNode) {
+        String definedPosition, boolean isPointer, Node functionNode) {
         this.fileName = fileName;
         this.functionName = functionName;
         this.varName = varName;
@@ -37,5 +41,30 @@ public class SliceProfile {
         this.definedPosition = definedPosition;
         this.isPointer = isPointer;
         this.functionNode = functionNode;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof SliceProfile)) {
+            return false;
+        }
+        SliceProfile other = (SliceProfile) obj;
+
+        assert this.varName != null;
+        if (!this.varName.equals(other.varName)) {
+            return false;
+        }
+        return this.functionName.equals(other.functionName) &&
+            this.fileName.equals(other.fileName) && this.definedPosition.equals(other.definedPosition);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = 17;
+        result = 31 * result + this.varName.hashCode();
+        result = 31 * result + this.functionName.hashCode();
+        result = 31 * result + this.fileName.hashCode();
+        result = 31 * result + this.definedPosition.hashCode();
+        return result;
     }
 }

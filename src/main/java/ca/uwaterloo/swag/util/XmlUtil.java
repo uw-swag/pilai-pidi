@@ -1,20 +1,30 @@
 package ca.uwaterloo.swag.util;
 
-import java.util.*;
-import java.util.stream.Collectors;
-
-import ca.uwaterloo.swag.models.*;
-import org.jgrapht.Graph;
-import org.jgrapht.graph.DefaultEdge;
-import org.w3c.dom.*;
-
 import static ca.uwaterloo.swag.SliceGenerator.IDENTIFIER_SEPARATOR;
 
-public final class XmlUtil {
+import ca.uwaterloo.swag.models.ArgumentNamePos;
+import ca.uwaterloo.swag.models.EnclNamePosTuple;
+import ca.uwaterloo.swag.models.FunctionNamePos;
+import ca.uwaterloo.swag.models.NamePos;
+import ca.uwaterloo.swag.models.SliceProfilesInfo;
+import java.util.AbstractList;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Hashtable;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Objects;
+import java.util.RandomAccess;
+import java.util.Set;
+import java.util.stream.Collectors;
+import org.jgrapht.Graph;
+import org.jgrapht.graph.DefaultEdge;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
-    public enum DataAccessType {
-        @SuppressWarnings("unused") BUFFER_READ, BUFFER_WRITE, DATA_READ, DATA_WRITE
-    }
+public final class XmlUtil {
 
     private XmlUtil() {
     }
@@ -23,9 +33,11 @@ public final class XmlUtil {
         if (nodeList.getLength() == 0) {
             return Collections.emptyList();
         }
-        return new NodeListWrapper(nodeList).stream()
-                .filter(node -> !(node.getNodeName().equals("#text") && node.getNodeValue().isBlank()))
-                .collect(Collectors.toList());
+        return new NodeListWrapper(nodeList);
+    }
+
+    public static boolean isEmptyTextNode(Node node) {
+        return node.getNodeName().equals("#text") && node.getNodeValue().isBlank();
     }
 
     public static String getNodePos(Node tempNode) {
@@ -75,8 +87,7 @@ public final class XmlUtil {
     }
 
     public static List<Node> getMacros(Node unitNode) {
-        List<Node> macros = getNodesByName(unitNode, "macro", true);
-        return macros;
+        return getNodesByName(unitNode, "macro", true);
     }
 
     public static List<Node> getNodeByName(Node parent, String tag, Boolean all) {
@@ -132,7 +143,6 @@ public final class XmlUtil {
         return new FunctionNamePos(namePos, functionDeclName);
     }
 
-
     public static NamePos getNamePosTextPair(Node node) {
         NamePos namePos = new NamePos.DefaultNamePos();
         if (node == null) {
@@ -145,7 +155,8 @@ public final class XmlUtil {
         for (int count = 0; count < nodeList.getLength(); count++) {
             Node tempNode = nodeList.item(count);
 
-            if (tempNode.getNodeType() != Node.ELEMENT_NODE || !tempNode.hasAttributes() || !tempNode.hasChildNodes()) {
+            if (tempNode.getNodeType() != Node.ELEMENT_NODE || !tempNode.hasAttributes() || !tempNode
+                .hasChildNodes()) {
                 continue;
             }
             if (tempNode.getNodeName().equals("name")) {
@@ -167,7 +178,7 @@ public final class XmlUtil {
 //                                if(tempType.getChildNodes().getLength()) std :: String [ERR]
                                 if (tempType.getLastChild().getNodeType() == Node.ELEMENT_NODE) {
                                     varType.append(filler).append(tempType.getLastChild().
-                                            getFirstChild().getNodeValue());
+                                        getFirstChild().getNodeValue());
                                 } else {
                                     varType.append(filler).append(tempType.getLastChild().getNodeValue());
                                 }
@@ -186,37 +197,37 @@ public final class XmlUtil {
                 if (tempNode.getFirstChild().getNodeType() == Node.ELEMENT_NODE) {
                     List<Node> nameChildren = getNodeByName(tempNode, "name");
                     namePos = new NamePos(nameChildren.get(nameChildren.size() - 1).getTextContent(),
-                            varType.toString(), linePos, isPointer);
+                        varType.toString(), linePos, isPointer);
                 } else {
                     namePos = new NamePos(tempNode.getFirstChild().getNodeValue(), varType.toString(),
-                            linePos, isPointer);
+                        linePos, isPointer);
                 }
                 break;
             } else if (tempNode.getNodeName().equals("literal")) {
                 return new NamePos(tempNode.getTextContent(),
-                        tempNode.getAttributes().getNamedItem("type").getNodeValue(), getNodePos(tempNode),
-                        isPointer(tempNode));
+                    tempNode.getAttributes().getNamedItem("type").getNodeValue(), getNodePos(tempNode),
+                    isPointer(tempNode));
             } else if (names.contains(tempNode.getNodeName())) {
                 return getNamePosTextPair(tempNode);
             }
         }
         if (node.getNodeName().equals("name") && namePos.getName().equals("")) {
             namePos = new NamePos(node.getFirstChild().getNodeValue(), "", getNodePos(node),
-                    false);
+                false);
         }
         return namePos;
     }
 
     private static boolean isPointer(Node node) {
         if (node.getNextSibling() == null ||
-                node.getNextSibling().getNodeType() != Node.ELEMENT_NODE) {
+            node.getNextSibling().getNodeType() != Node.ELEMENT_NODE) {
             return false;
         }
 
         Node nextSibling = node.getNextSibling();
 
         if (((Element) nextSibling).getTagName().equals("modifier") &&
-                nextSibling.getFirstChild() != null) {
+            nextSibling.getFirstChild() != null) {
             return nextSibling.getFirstChild().getTextContent().equals("*");
         }
 
@@ -225,14 +236,16 @@ public final class XmlUtil {
         }
 
         return nextSibling.getNodeValue().equals("*") ||
-                nextSibling.getNodeValue().equals("&");
+            nextSibling.getNodeValue().equals("&");
 
     }
 
     public static Node nodeAtIndex(final List<Node> list, int index) {
         if (index < 0 || index >= list.size()) {
             return null;
-        } else return list.get(index);
+        } else {
+            return list.get(index);
+        }
     }
 
     public static List<Node> findAllNodes(Node unitNode, String tag) {
@@ -248,25 +261,29 @@ public final class XmlUtil {
             List<Node> argumentList = XmlUtil.getArgumentList(functionNode);
             if (argumentList.size() > 0) {
                 parameters = argumentList
-                        .stream()
-                        .map(XmlUtil::getArgumentOfMacro)
-                        .filter(Objects::nonNull)
-                        .collect(Collectors.toList());
+                    .stream()
+                    .map(XmlUtil::getArgumentOfMacro)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
             }
             return parameters;
         }
         List<ArgumentNamePos> finalParameters = parameters;
-        getNodeByName(parameterList, "parameter").forEach(param -> {
-            Node paramDecl = getNodeByName(param, "decl").get(0);
+        for (Node param : getNodeByName(parameterList, "parameter")) {
+            List<Node> decls = getNodeByName(param, "decl");
+            if (decls.size() == 0) {
+                continue;
+            }
+            Node paramDecl = decls.get(0);
             List<Node> nameNode = getNodeByName(paramDecl, "name");
             boolean isOptional = getNodeByName(paramDecl, "init").size() > 0;
             if (nameNode.size() < 1) {
                 finalParameters.add(new ArgumentNamePos("NoNameParam", "",
-                        String.valueOf(finalParameters.size()), false, isOptional));
+                    String.valueOf(finalParameters.size()), false, isOptional));
             } else {
                 finalParameters.add(new ArgumentNamePos(getNamePosTextPair(nameNode.get(0)), isOptional));
             }
-        });
+        }
         return parameters;
     }
 
@@ -280,9 +297,9 @@ public final class XmlUtil {
             return null;
         }
         String[] parts = paramNameWithType.split("\\s+");
-        if (parts.length == 2) {
-            String type = parts[0];
-            String name = parts[1];
+        if (parts.length >= 2) {
+            String type = parts[parts.length - 2];
+            String name = parts[parts.length - 1];
             String pos = getNodePos(param);
             return new ArgumentNamePos(name, type, pos, false, false);
         }
@@ -290,7 +307,12 @@ public final class XmlUtil {
         return null;
     }
 
+    public enum DataAccessType {
+        @SuppressWarnings("unused") BUFFER_READ, BUFFER_WRITE, DATA_READ, DATA_WRITE
+    }
+
     static final class NodeListWrapper extends AbstractList<Node> implements RandomAccess {
+
         private final NodeList list;
 
         NodeListWrapper(NodeList list) {
@@ -308,14 +330,15 @@ public final class XmlUtil {
 
     @SuppressWarnings("unused")
     public static final class MyResult {
+
         private final ArrayList<EnclNamePosTuple> first;
         private final Hashtable<EnclNamePosTuple, ArrayList<String>> second;
         private final Hashtable<String, SliceProfilesInfo> javaSliceProfilesInfo;
         private final Graph<EnclNamePosTuple, DefaultEdge> dg;
 
         public MyResult(ArrayList<EnclNamePosTuple> first, Hashtable<EnclNamePosTuple,
-                ArrayList<String>> second, Hashtable<String, SliceProfilesInfo> javaSliceProfilesInfo,
-                        Graph<EnclNamePosTuple, DefaultEdge> dg) {
+            ArrayList<String>> second, Hashtable<String, SliceProfilesInfo> javaSliceProfilesInfo,
+            Graph<EnclNamePosTuple, DefaultEdge> dg) {
             this.first = first;
             this.second = second;
             this.javaSliceProfilesInfo = javaSliceProfilesInfo;
