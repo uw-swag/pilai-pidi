@@ -15,9 +15,9 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.lang.System.Logger.Level;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.Charset;
@@ -31,12 +31,16 @@ import java.nio.file.spi.FileSystemProvider;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Scanner;
 import java.util.Set;
 import java.util.Stack;
 import java.util.logging.Logger;
@@ -60,10 +64,10 @@ import org.xml.sax.SAXException;
 
 public class Main {
 
-    private static final List<String> BUFFER_ERROR_FUNCTIONS = Arrays
-        .asList("strcat", "strdup", "strncat", "strcmp", "strncmp", "strcpy", "strncpy", "strlen", "strchr", "strrchr",
-            "index", "rindex", "strpbrk", "strspn", "strcspn", "strstr", "strtok", "memccpy", "memchr", "memmove",
-            "memcpy", "memcmp", "memset", "bcopy", "bzero", "bcmp");
+    private static List<String> BUFFER_ERROR_FUNCTIONS = Arrays.asList("strcat", "strdup", "strncat", "strcmp",
+        "strncmp", "strcpy", "strncpy", "strlen", "strchr", "strrchr", "index", "rindex", "strpbrk", "strspn",
+        "strcspn", "strstr", "strtok", "memccpy", "memchr", "memmove", "memcpy", "memcmp", "memset", "bcopy",
+        "bzero", "bcmp");
     private static final String JNI_NATIVE_METHOD_MODIFIER = "native";
     private static final Map<String, SliceProfilesInfo> sliceProfilesInfo = new Hashtable<>();
     private static final Map<String, SliceProfilesInfo> javaSliceProfilesInfo = new Hashtable<>();
@@ -71,9 +75,10 @@ public class Main {
     private static final Graph<EnclNamePosTuple, DefaultEdge> DG = new DefaultDirectedGraph<>(DefaultEdge.class);
     private static final Map<EnclNamePosTuple, ArrayList<String>> detectedViolations = new Hashtable<>();
     private static final String JAR = "jar";
-    private static final MODE mode = MODE.NON_TESTING;
     private static final Set<SliceProfile> analyzedProfiles = new HashSet<>();
     private static final Logger log = Logger.getLogger(Main.class.getName());
+    private static String[] singleTarget;
+    private static MODE mode = MODE.NON_TESTING;
 
     public static void main(String[] args) {
         nonCLI(args);
@@ -87,8 +92,39 @@ public class Main {
         File file;
         File tempLoc = null;
         String result = null;
+        String functionsFile;
 
+        List<String> argsList = new ArrayList<>();
+        Map<String, String> optsList = new HashMap<>();
+        List<String> doubleOptsList = new ArrayList<>();
+
+        for (int i = 0; i < args.length; i++) {
+            if (args[i].charAt(0) == '-') {
+                if (args[i].length() < 2) {
+                    throw new IllegalArgumentException("Not a valid argument: " + args[i]);
+                }
+                if (args[i].charAt(1) == '-') {
+                    if (args[i].length() < 3) {
+                        throw new IllegalArgumentException("Not a valid argument: " + args[i]);
+                    }
+                    // --opt
+                    doubleOptsList.add(args[i].substring(2));
+                } else {
+                    if (args.length - 1 == i) {
+                        throw new IllegalArgumentException("Expected arg after: " + args[i]);
+                    }
+                    // -opt
+                    optsList.put(args[i], args[i + 1]);
+                    i++;
+                }
+            } else {// arg
+                argsList.add(args[i]);
+            }
+        }
         try {
+            if (doubleOptsList.size() > 0 && doubleOptsList.contains("debug")) {
+                mode = MODE.TESTING;
+            }
             if (Files.exists(Path.of("skip.txt")) && mode.skipSrcml()) {
                 result = Files.readString(Path.of("skip.txt"), StandardCharsets.UTF_8);
             } else {
@@ -106,20 +142,40 @@ public class Main {
                         }
                     }
                 }
-                if (args.length > 1) {
+                if (argsList.size() > 0) {
                     projectLocation = args[0];
-                    srcML = args[1];
-                } else if (args.length == 1) {
-                    projectLocation = args[0];
-                    if (OsUtils.isWindows()) {
-                        srcML = "windows/srcml.exe";
-                    } else if (OsUtils.isLinux()) {
-                        srcML = "ubuntu/srcml";
-                    } else if (OsUtils.isMac()) {
-                        srcML = "mac/srcml";
+                    if (optsList.containsKey("-srcml")) {
+                        srcML = optsList.get("-srcml");
                     } else {
-                        System.err.println("Please specify location of srcML, binary not included for current OS");
-                        System.exit(1);
+                        if (OsUtils.isWindows()) {
+                            srcML = "windows/srcml.exe";
+                        } else if (OsUtils.isLinux()) {
+                            srcML = "ubuntu/srcml";
+                        } else if (OsUtils.isMac()) {
+                            srcML = "mac/srcml";
+                        } else {
+                            System.err.println("Please specify location of srcML, binary not included for current OS");
+                            System.exit(1);
+                        }
+                    }
+                    if (optsList.containsKey("-functions")) {
+                        functionsFile = optsList.get("-functions");
+                        Path functionFilePath = Path.of(functionsFile);
+                        if (Files.exists(functionFilePath)) {
+                            try (Scanner sc = new Scanner(functionFilePath.toFile(), StandardCharsets.UTF_8)) {
+                                BUFFER_ERROR_FUNCTIONS = new ArrayList<>();
+                                while (sc.hasNextLine()) {
+                                    BUFFER_ERROR_FUNCTIONS.add(sc.nextLine());
+                                }
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    if (optsList.containsKey("-node")) {
+                        singleTarget = optsList.get("-node").split("@AT@");
+                    } else {
+                        singleTarget = null;
                     }
                 } else {
                     System.err.println("Please specify location of project to be analysed");
@@ -128,7 +184,7 @@ public class Main {
             }
             if (!mode.skipSrcml() || result == null) {
                 ProcessBuilder pb;
-                if (args.length > 1) {
+                if (argsList.size() > 1) {
                     pb = new ProcessBuilder(srcML, projectLocation, "--position");
                 } else {
                     Path zipPath = Paths.get(Objects.requireNonNull(Main.class.getClassLoader().
@@ -147,9 +203,9 @@ public class Main {
                     pb = new ProcessBuilder(file.getAbsolutePath(), projectLocation, "--position");
                 }
                 result = IOUtils.toString(pb.start().getInputStream(), StandardCharsets.UTF_8);
-                try (PrintWriter out = new PrintWriter("skip.txt")) {
-                    out.println(result);
-                }
+//                try (PrintWriter out = new PrintWriter("skip.txt")) {
+//                    out.println(result);
+//                }
             }
             System.out.println("Converted to XML, beginning parsing ...");
             DocumentBuilder documentBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
@@ -267,6 +323,7 @@ public class Main {
     }
 
     private static Hashtable<String, Set<List<EnclNamePosTuple>>> printViolations(long start) {
+        BFSShortestPath<EnclNamePosTuple, DefaultEdge> bfsShortestPath = new BFSShortestPath<>(DG);
         Hashtable<String, Set<List<EnclNamePosTuple>>> violationsToPrint = new Hashtable<>();
         ArrayList<EnclNamePosTuple> sourceNodes = new ArrayList<>();
         for (EnclNamePosTuple node : DG.vertexSet()) {
@@ -279,6 +336,13 @@ public class Main {
             if (mode.skipViolations()) {
                 bfsSolution(sourceNode, mode.lookupString());
                 continue;
+            }
+            if (singleTarget != null) {
+                Optional<EnclNamePosTuple> actualTarget = DG.vertexSet().stream().filter(
+                    ENPtuple -> ENPtuple.fileName().equals(singleTarget[1]) && ENPtuple.varName()
+                        .equals(singleTarget[0]) && ENPtuple.definedPosition().equals(singleTarget[2])).findFirst();
+                actualTarget.ifPresent(enclNamePosTuple -> detectedViolations.put(enclNamePosTuple,
+                    new ArrayList<>(Collections.singletonList(String.join("@AT@", singleTarget)))));
             }
 
             for (EnclNamePosTuple violatedNodePos : detectedViolations.keySet()) {
@@ -293,7 +357,6 @@ public class Main {
 //                GraphPath<Encl_name_pos_tuple,DefaultEdge> requiredPath =
 //                        bellmanFordShortestPath.getPath(source_node, violated_node_pos_pair);
 
-                BFSShortestPath<EnclNamePosTuple, DefaultEdge> bfsShortestPath = new BFSShortestPath<>(DG);
                 GraphPath<EnclNamePosTuple, DefaultEdge> requiredPath =
                     bfsShortestPath.getPath(sourceNode, violatedNodePos);
 
@@ -314,7 +377,9 @@ public class Main {
             }
         }
 
-        violationsToPrint.forEach((key, violations) -> {
+        for (Entry<String, Set<List<EnclNamePosTuple>>> entry : violationsToPrint.entrySet()) {
+            String key = entry.getKey();
+            Set<List<EnclNamePosTuple>> violations = entry.getValue();
             violations.forEach(violation -> {
                 System.err.print("Possible out-of-bounds operation path : ");
                 StringBuilder vPath = new StringBuilder();
@@ -329,7 +394,7 @@ public class Main {
                 System.err.println(vPath);
             });
             System.err.println(key + "\n");
-        });
+        }
 
         System.out.println("No of files analyzed " +
             (javaSliceProfilesInfo.size() + cppSliceProfilesInfo.size()));
@@ -409,6 +474,10 @@ public class Main {
             return;
         }
 
+        if (singleTarget != null) {
+            return;
+        }
+
         for (SliceVariableAccess varAccess : profile.usedPositions) {
             for (DataTuple access : varAccess.writePositions) {
                 if (XmlUtil.DataAccessType.BUFFER_WRITE == access.accessType) {
@@ -455,7 +524,8 @@ public class Main {
                     analyzeSliceProfile(dvarSliceProfile, rawProfilesInfo);
                 }
 
-                if (dvarSliceProfile.isPointer && XmlUtil.DataAccessType.DATA_WRITE == access.accessType) {
+                if (dvarSliceProfile.isPointer && XmlUtil.DataAccessType.DATA_WRITE == access.accessType
+                    && singleTarget == null) {
                     ArrayList<String> violations;
                     if (detectedViolations.containsKey(dvarNamePosTuple)) {
                         violations = new ArrayList<>(detectedViolations.get(dvarNamePosTuple));
@@ -474,6 +544,10 @@ public class Main {
                                          String varTypeName, Node enclFunctionNode,
                                          EnclNamePosTuple enclNamePosTuple,
                                          Map<String, SliceProfilesInfo> sliceProfilesInfo) {
+
+        if (singleTarget != null) {
+            return;
+        }
 
         if (BUFFER_ERROR_FUNCTIONS.contains(cfunctionName)) {
             DG.addVertex(enclNamePosTuple);
