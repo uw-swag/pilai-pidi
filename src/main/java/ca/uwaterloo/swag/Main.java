@@ -17,7 +17,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
 import java.io.StringWriter;
-import java.lang.System.Logger.Level;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.Charset;
@@ -43,6 +42,7 @@ import java.util.Optional;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.Stack;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import javax.xml.parsers.DocumentBuilder;
@@ -64,7 +64,7 @@ import org.xml.sax.SAXException;
 
 public class Main {
 
-    private static List<String> BUFFER_ERROR_FUNCTIONS = Arrays.asList("strcat", "strdup", "strncat", "strcmp",
+    private static List<String> SINK_FUNCTIONS = Arrays.asList("strcat", "strdup", "strncat", "strcmp",
         "strncmp", "strcpy", "strncpy", "strlen", "strchr", "strrchr", "index", "rindex", "strpbrk", "strspn",
         "strcspn", "strstr", "strtok", "memccpy", "memchr", "memmove", "memcpy", "memcmp", "memset", "bcopy",
         "bzero", "bcmp");
@@ -163,9 +163,9 @@ public class Main {
                         Path functionFilePath = Path.of(functionsFile);
                         if (Files.exists(functionFilePath)) {
                             try (Scanner sc = new Scanner(functionFilePath.toFile(), StandardCharsets.UTF_8)) {
-                                BUFFER_ERROR_FUNCTIONS = new ArrayList<>();
+                                SINK_FUNCTIONS = new ArrayList<>();
                                 while (sc.hasNextLine()) {
-                                    BUFFER_ERROR_FUNCTIONS.add(sc.nextLine());
+                                    SINK_FUNCTIONS.add(sc.nextLine());
                                 }
                             } catch (IOException e) {
                                 e.printStackTrace();
@@ -271,7 +271,7 @@ public class Main {
 
     private static boolean isAnalyzedProfile(SliceProfile profile) {
         boolean contains = analyzedProfiles.contains(profile);
-//        log.log(Level.INFO, "Profile '" + profile.toString() + "'" + " analyzed ? : " + contains);
+//        log.log(Level.INFO, "Profile '" + profile.toString() + "'" + " analyzed : " + contains);
         return contains;
     }
 
@@ -314,8 +314,8 @@ public class Main {
     }
 
     public static boolean containsAllWords(String word, List<String> keywords) {
-        for (String k : keywords) {
-            if (!word.contains(k)) {
+        for (String keyword : keywords) {
+            if (!word.contains(keyword)) {
                 return false;
             }
         }
@@ -549,7 +549,7 @@ public class Main {
             return;
         }
 
-        if (BUFFER_ERROR_FUNCTIONS.contains(cfunctionName)) {
+        if (SINK_FUNCTIONS.contains(cfunctionName)) {
             DG.addVertex(enclNamePosTuple);
             ArrayList<String> cErrors = new ArrayList<>();
             cErrors.add("Use of " + cfunctionName + " at " + cfunctionPos);
