@@ -4,8 +4,7 @@ public class ArgumentNamePos extends NamePos {
 
     private final boolean isOptional;
 
-    public ArgumentNamePos(String name, String type, String pos, boolean isPointer,
-        boolean isOptional) {
+    public ArgumentNamePos(String name, String type, String pos, boolean isPointer, boolean isOptional) {
         super(name, type, pos, isPointer);
         this.isOptional = isOptional;
     }

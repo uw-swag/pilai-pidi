@@ -8,7 +8,7 @@ public final class EnclNamePosTuple {
     private final String definedPosition;
 
     public EnclNamePosTuple(String varName, String functionName, String fileName,
-        String definedPosition) {
+                            String definedPosition) {
         assert functionName != null;
         this.varName = varName;
         this.functionName = functionName;

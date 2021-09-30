@@ -35,9 +35,11 @@ import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.Stack;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -59,23 +61,19 @@ import org.xml.sax.SAXException;
 public class Main {
 
     private static final List<String> BUFFER_ERROR_FUNCTIONS = Arrays
-        .asList("strcat", "strdup", "strncat", "strcmp",
-            "strncmp", "strcpy", "strncpy", "strlen", "strchr", "strrchr", "index", "rindex",
-            "strpbrk", "strspn",
-            "strcspn", "strstr", "strtok", "memccpy", "memchr", "memmove", "memcpy", "memcmp",
-            "memset", "bcopy",
-            "bzero", "bcmp");
+        .asList("strcat", "strdup", "strncat", "strcmp", "strncmp", "strcpy", "strncpy", "strlen", "strchr", "strrchr",
+            "index", "rindex", "strpbrk", "strspn", "strcspn", "strstr", "strtok", "memccpy", "memchr", "memmove",
+            "memcpy", "memcmp", "memset", "bcopy", "bzero", "bcmp");
     private static final String JNI_NATIVE_METHOD_MODIFIER = "native";
-    private static final Hashtable<String, SliceProfilesInfo> sliceProfilesInfo = new Hashtable<>();
-    private static final Hashtable<String, SliceProfilesInfo> javaSliceProfilesInfo = new Hashtable<>();
-    private static final Hashtable<String, SliceProfilesInfo> cppSliceProfilesInfo = new Hashtable<>();
-    private static final Graph<EnclNamePosTuple, DefaultEdge> DG = new DefaultDirectedGraph<>(
-        DefaultEdge.class);
-    private static final Hashtable<EnclNamePosTuple, ArrayList<String>> detectedViolations = new Hashtable<>();
+    private static final Map<String, SliceProfilesInfo> sliceProfilesInfo = new Hashtable<>();
+    private static final Map<String, SliceProfilesInfo> javaSliceProfilesInfo = new Hashtable<>();
+    private static final Map<String, SliceProfilesInfo> cppSliceProfilesInfo = new Hashtable<>();
+    private static final Graph<EnclNamePosTuple, DefaultEdge> DG = new DefaultDirectedGraph<>(DefaultEdge.class);
+    private static final Map<EnclNamePosTuple, ArrayList<String>> detectedViolations = new Hashtable<>();
     private static final String JAR = "jar";
     private static final MODE mode = MODE.NON_TESTING;
-
     private static final Set<SliceProfile> analyzedProfiles = new HashSet<>();
+    private static final Logger log = Logger.getLogger(Main.class.getName());
 
     public static void main(String[] args) {
         nonCLI(args);
@@ -120,9 +118,7 @@ public class Main {
                     } else if (OsUtils.isMac()) {
                         srcML = "mac/srcml";
                     } else {
-                        System.err
-                            .println(
-                                "Please specify location of srcML, binary not included for current OS");
+                        System.err.println("Please specify location of srcML, binary not included for current OS");
                         System.exit(1);
                     }
                 } else {
@@ -185,7 +181,7 @@ public class Main {
                 System.out.println("Beginning test...");
                 for (SliceProfilesInfo currentSlice : cppSliceProfilesInfo.values()) {
                     for (SliceProfile profile : currentSlice.sliceProfiles.values()) {
-                        if (analyzedProfiles.contains(profile)) {
+                        if (isAnalyzedProfile(profile)) {
                             continue;
                         }
                         analyzeSliceProfile(profile, cppSliceProfilesInfo);
@@ -194,16 +190,18 @@ public class Main {
             } else {
                 for (SliceProfilesInfo currentSlice : javaSliceProfilesInfo.values()) {
                     for (SliceProfile profile : currentSlice.sliceProfiles.values()) {
-                        if (analyzedProfiles.contains(profile)) {
+                        if (isAnalyzedProfile(profile)) {
                             continue;
                         }
+//                        log.log(Level.INFO, "Source Prof -> " + profile.varName + "%" + profile.functionName +
+//                            "%" + profile.fileName + "%" + profile.definedPosition);
                         analyzeSliceProfile(profile, javaSliceProfilesInfo);
                     }
                 }
             }
 
             long mid = System.currentTimeMillis();
-            System.out.println("Completed building slice profiles in " + (mid - start) / 1000 + "s");
+            System.out.println("Completed analyzing slice profiles in " + (mid - start) / 1000 + "s");
             if (mode.exportGraph()) {
                 exportGraph(DG);
             }
@@ -215,6 +213,12 @@ public class Main {
         return null;
     }
 
+    private static boolean isAnalyzedProfile(SliceProfile profile) {
+        boolean contains = analyzedProfiles.contains(profile);
+//        log.log(Level.INFO, "Profile '" + profile.toString() + "'" + " analyzed ? : " + contains);
+        return contains;
+    }
+
     private static void exportGraph(Graph<EnclNamePosTuple, DefaultEdge> graph) throws IOException {
         System.out.println("Exporting graph...");
         DOTExporter<EnclNamePosTuple, DefaultEdge> exporter = new DOTExporter<>(
@@ -224,13 +228,6 @@ public class Main {
         final File file = new File(FileSystems.getDefault().getPath(".").toString(), "graph.dot");
         FileUtils.writeStringToFile(file, writer.toString(), Charset.defaultCharset());
     }
-
-//    public static void inspectXML(String xmlSource)
-//            throws IOException {
-//        java.io.FileWriter fw = new java.io.FileWriter("temp.xml");
-//        fw.write(xmlSource);
-//        fw.close();
-//    }
 
     @SuppressWarnings("unused")
     public static void bfsSolution(EnclNamePosTuple source, List<String> lookup) {
@@ -342,8 +339,7 @@ public class Main {
         return violationsToPrint;
     }
 
-    private static void analyzeSliceProfile(SliceProfile profile,
-        Hashtable<String, SliceProfilesInfo> rawProfilesInfo) {
+    private static void analyzeSliceProfile(SliceProfile profile, Map<String, SliceProfilesInfo> rawProfilesInfo) {
         analyzedProfiles.add(profile);
 
 //      step-01 : analyse cfunctions of the slice variable
@@ -387,7 +383,7 @@ public class Main {
             if (!hasNoEdge(enclNamePosTuple, dvarNamePosTuple)) {
                 continue;
             }
-            if (analyzedProfiles.contains(dvarSliceProfile)) {
+            if (isAnalyzedProfile(dvarSliceProfile)) {
                 continue;
             }
             analyzeSliceProfile(dvarSliceProfile, rawProfilesInfo);
@@ -455,8 +451,7 @@ public class Main {
                 EnclNamePosTuple dvarNamePosTuple = new EnclNamePosTuple(dvarSliceProfile.varName,
                     dvarSliceProfile.functionName, dvarSliceProfile.fileName,
                     dvarSliceProfile.definedPosition);
-                if (hasNoEdge(enclNamePosTuple, dvarNamePosTuple) && !analyzedProfiles
-                    .contains(dvarSliceProfile)) {
+                if (hasNoEdge(enclNamePosTuple, dvarNamePosTuple) && !isAnalyzedProfile(dvarSliceProfile)) {
                     analyzeSliceProfile(dvarSliceProfile, rawProfilesInfo);
                 }
 
@@ -476,27 +471,9 @@ public class Main {
     }
 
     private static void analyzeCfunction(String cfunctionName, String cfunctionPos, int argPosIndex,
-        String varTypeName, Node enclFunctionNode,
-        EnclNamePosTuple enclNamePosTuple, Hashtable<String,
-        SliceProfilesInfo> sliceProfilesInfo) {
-        LinkedList<SliceProfile> dependentSliceProfiles = findDependentSliceProfiles(cfunctionName,
-            argPosIndex, varTypeName, enclFunctionNode, sliceProfilesInfo);
-        for (SliceProfile dependentSliceProfile : dependentSliceProfiles) {
-            EnclNamePosTuple depNamePosTuple = new EnclNamePosTuple(dependentSliceProfile.varName,
-                dependentSliceProfile.functionName, dependentSliceProfile.fileName,
-                dependentSliceProfile.definedPosition);
-            if (!hasNoEdge(enclNamePosTuple, depNamePosTuple)) {
-                continue;
-            }
-            if (analyzedProfiles.contains(dependentSliceProfile)) {
-                continue;
-            }
-            analyzeSliceProfile(dependentSliceProfile, sliceProfilesInfo);
-        }
-
-        if (dependentSliceProfiles.size() > 0) {
-            return;
-        }
+                                         String varTypeName, Node enclFunctionNode,
+                                         EnclNamePosTuple enclNamePosTuple,
+                                         Map<String, SliceProfilesInfo> sliceProfilesInfo) {
 
         if (BUFFER_ERROR_FUNCTIONS.contains(cfunctionName)) {
             DG.addVertex(enclNamePosTuple);
@@ -507,17 +484,33 @@ public class Main {
                     enclNamePosTuple.functionName(), enclNamePosTuple.fileName(), cfunctionPos);
             hasNoEdge(enclNamePosTuple, bufferErrorFunctionPosTuple);
             detectedViolations.put(bufferErrorFunctionPosTuple, cErrors);
+            return;
+        }
+
+        LinkedList<SliceProfile> dependentSliceProfiles = findDependentSliceProfiles(cfunctionName,
+            argPosIndex, varTypeName, enclFunctionNode, sliceProfilesInfo);
+        for (SliceProfile dependentSliceProfile : dependentSliceProfiles) {
+            EnclNamePosTuple depNamePosTuple = new EnclNamePosTuple(dependentSliceProfile.varName,
+                dependentSliceProfile.functionName, dependentSliceProfile.fileName,
+                dependentSliceProfile.definedPosition);
+            if (!hasNoEdge(enclNamePosTuple, depNamePosTuple)) {
+                continue;
+            }
+            if (isAnalyzedProfile(dependentSliceProfile)) {
+                continue;
+            }
+            analyzeSliceProfile(dependentSliceProfile, sliceProfilesInfo);
         }
     }
 
     @SuppressWarnings("unused")
     private static LinkedList<SliceProfile> findDependentSliceProfiles(String cfunctionName,
-        int argPosIndex, String typeName,
-        Node currentFunctionNode,
-        Hashtable<String, SliceProfilesInfo> sliceProfileInfo) {
+                                                                       int argPosIndex, String typeName,
+                                                                       Node currentFunctionNode,
+                                                                       Map<String, SliceProfilesInfo> profilesInfoMap) {
         LinkedList<SliceProfile> dependentSliceProfiles = new LinkedList<>();
-        for (String filePath : sliceProfileInfo.keySet()) {
-            SliceProfilesInfo profileInfo = sliceProfileInfo.get(filePath);
+        for (String filePath : profilesInfoMap.keySet()) {
+            SliceProfilesInfo profileInfo = profilesInfoMap.get(filePath);
             for (CFunction cfunction : findPossibleFunctions(profileInfo.functionNodes,
                 profileInfo.functionDeclMap,
                 cfunctionName, argPosIndex, currentFunctionNode)) {
@@ -536,9 +529,8 @@ public class Main {
     }
 
 
-    private static void analyzeNativeFunction(SliceProfile profile,
-        Hashtable<String, SliceProfilesInfo> profilesInfo,
-        Node enclFunctionNode, EnclNamePosTuple enclNamePosTuple) {
+    private static void analyzeNativeFunction(SliceProfile profile, Map<String, SliceProfilesInfo> profilesInfo,
+                                              Node enclFunctionNode, EnclNamePosTuple enclNamePosTuple) {
         Node enclUnitNode = profilesInfo.get(profile.fileName).unitNode;
         String jniFunctionName = profile.functionName;
         if (jniFunctionName.length() > 2 && jniFunctionName.startsWith("n")
@@ -555,9 +547,8 @@ public class Main {
             index++;
         }
         int jniArgPosIndex = index + 2;
-        String clazzName = XmlUtil
-            .getNodeByName(XmlUtil.getNodeByName(enclUnitNode, "class").get(0), "name").get(0).
-                getTextContent();
+        String clazzName = XmlUtil.getNodeByName(XmlUtil.getNodeByName(enclUnitNode, "class").get(0), "name").
+            get(0).getTextContent();
         String jniFunctionSearchStr = clazzName + "_" + jniFunctionName;
 
         for (String filePath : cppSliceProfilesInfo.keySet()) {
@@ -594,7 +585,7 @@ public class Main {
                 if (!hasNoEdge(enclNamePosTuple, analyzedNamePosTuple)) {
                     continue;
                 }
-                if (analyzedProfiles.contains(possibleSliceProfile)) {
+                if (isAnalyzedProfile(possibleSliceProfile)) {
                     continue;
                 }
                 analyzeSliceProfile(possibleSliceProfile, cppSliceProfilesInfo);
@@ -614,7 +605,7 @@ public class Main {
     }
 
     private static boolean hasNoEdge(EnclNamePosTuple sourceNamePosTuple,
-        EnclNamePosTuple targetNamePosTuple) {
+                                     EnclNamePosTuple targetNamePosTuple) {
         if (sourceNamePosTuple.equals(targetNamePosTuple)) {
             return false;
         }
@@ -633,11 +624,10 @@ public class Main {
         return true;
     }
 
-    private static LinkedList<CFunction> findPossibleFunctions(
-        Hashtable<FunctionNamePos, Node> functionNodes,
-        Hashtable<String, List<FunctionNamePos>> functionDeclMap,
-        String cfunctionName, int argPosIndex,
-        Node enclFunctionNode) {
+    private static LinkedList<CFunction> findPossibleFunctions(Hashtable<FunctionNamePos, Node> functionNodes,
+                                                               Hashtable<String, List<FunctionNamePos>> functionDeclMap,
+                                                               String cfunctionName, int argPosIndex,
+                                                               Node enclFunctionNode) {
         LinkedList<CFunction> possibleFunctions = new LinkedList<>();
 
         if (enclFunctionNode == null) {
@@ -677,27 +667,25 @@ public class Main {
                     continue;
                 }
 
-                possibleFunctions
-                    .add(new CFunction(cfunctionName, "", argIndex, functionName, enclFunctionNode,
-                        funcArgs));
+                possibleFunctions.add(new CFunction(cfunctionName, "", argIndex, functionName, enclFunctionNode,
+                    funcArgs));
             }
         }
         return possibleFunctions;
     }
 
     @SuppressWarnings("unused")
-    private static boolean validateFunctionAgainstCallExpr(Node enclFunctionNode,
-        String cfunctionName,
-        int argIndex, List<ArgumentNamePos> funcArgs) {
+    private static boolean validateFunctionAgainstCallExpr(Node enclFunctionNode, String cfunctionName,
+                                                           int argIndex, List<ArgumentNamePos> funcArgs) {
         List<Node> callArgumentList;
         for (Node call : XmlUtil.getNodeByName(enclFunctionNode, "call", true)) {
             String functionName = XmlUtil.getNamePosTextPair(call).getName();
             if (!cfunctionName.equals(functionName)) {
                 continue;
             }
-            callArgumentList = XmlUtil
-                .getNodeByName(XmlUtil.getNodeByName(call, "argument_list").get(0), "argument");
-            if (callArgumentList.size() > funcArgs.size()) {
+            callArgumentList = XmlUtil.getNodeByName(XmlUtil.getNodeByName(call, "argument_list").get(0),
+                "argument");
+            if (callArgumentList.size() != funcArgs.size()) {
                 continue;
 //                int sizeWithoutOptionalArgs = (int) funcArgs.stream().filter(arg -> !arg.isOptional()).count();
 //                if (callArgumentList.size() != sizeWithoutOptionalArgs) {
@@ -733,8 +721,7 @@ public class Main {
         return false;
     }
 
-    private static SliceProfilesInfo analyzeSourceUnitAndBuildSlices(Node unitNode,
-        String sourceFilePath) {
+    private static SliceProfilesInfo analyzeSourceUnitAndBuildSlices(Node unitNode, String sourceFilePath) {
         SliceGenerator sliceGenerator = new SliceGenerator(unitNode, sourceFilePath);
         return sliceGenerator.generate();
     }

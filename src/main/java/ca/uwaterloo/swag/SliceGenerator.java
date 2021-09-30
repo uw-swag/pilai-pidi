@@ -718,7 +718,7 @@ public class SliceGenerator {
     }
 
     private void analyzeArgumentList(Node call, String cfunctionName, String cfunctionPos,
-        String cfunctionIdentifier) {
+                                     String cfunctionIdentifier) {
         Node argumentNode = nodeAtIndex(getNodeByName(call, "argument_list"), 0);
         if (argumentNode == null) {
             return;
@@ -803,9 +803,8 @@ public class SliceGenerator {
         }
     }
 
-    private void updateCFunctionsSliceProfile(String varName, String cfunctionName,
-        String cfunctionPos,
-        int argPosIndex, String sliceVariablesString, String sliceKey) {
+    private void updateCFunctionsSliceProfile(String varName, String cfunctionName, String cfunctionPos,
+                                              int argPosIndex, String sliceVariablesString, String sliceKey) {
         Hashtable<String, Hashtable<String, SliceProfile>> sliceVariables;
         if (sliceVariablesString.equals("local_variables")) {
             sliceVariables = localVariables;
@@ -1120,8 +1119,8 @@ public class SliceGenerator {
         DataTuple bufferWriteData = new DataTuple(XmlUtil.DataAccessType.BUFFER_WRITE, lhsExprNamePos);
         SliceVariableAccess varAccess = new SliceVariableAccess();
         varAccess.addWritePosition(bufferWriteData);
-//        rhsVarProfile.usedPositions.add(varAccess);
-        lhsVarProfile.usedPositions.add(varAccess);
+        rhsVarProfile.usedPositions.add(varAccess);
+//        lhsVarProfile.usedPositions.add(varAccess);
     }
 
     private boolean isLhsExprFunctionPointer(String lhsExprVarName) {
@@ -1147,8 +1146,7 @@ public class SliceGenerator {
         return false;
     }
 
-    private void checkAndUpdateDVarSliceProfile(NamePos lhsExprVarNamePos,
-        NamePos rhsExprVarNamePos) {
+    private void checkAndUpdateDVarSliceProfile(NamePos lhsExprVarNamePos, NamePos rhsExprVarNamePos) {
         if (lhsExprVarNamePos == null || lhsExprVarNamePos.getName().isEmpty()) {
             return;
         }
@@ -1193,8 +1191,7 @@ public class SliceGenerator {
         rVarProfile.dataAccess.add(varAccess);
     }
 
-    private void updateDVarSliceProfile(String lVarName, String rVarName,
-        String sliceVariablesString) {
+    private void updateDVarSliceProfile(String lVarName, String rVarName, String sliceVariablesString) {
         Hashtable<String, Hashtable<String, SliceProfile>> sliceVariables;
         if (sliceVariablesString.equals("local_variables")) {
             sliceVariables = localVariables;

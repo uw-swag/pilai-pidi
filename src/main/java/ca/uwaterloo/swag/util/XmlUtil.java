@@ -338,7 +338,7 @@ public final class XmlUtil {
 
         public MyResult(ArrayList<EnclNamePosTuple> first, Hashtable<EnclNamePosTuple,
             ArrayList<String>> second, Hashtable<String, SliceProfilesInfo> javaSliceProfilesInfo,
-            Graph<EnclNamePosTuple, DefaultEdge> dg) {
+                        Graph<EnclNamePosTuple, DefaultEdge> dg) {
             this.first = first;
             this.second = second;
             this.javaSliceProfilesInfo = javaSliceProfilesInfo;

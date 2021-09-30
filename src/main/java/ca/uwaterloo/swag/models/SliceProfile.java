@@ -22,7 +22,7 @@ public class SliceProfile {
     public final Node functionNode;
 
     public SliceProfile(String fileName, String functionName, String varName, String typeName,
-        String definedPosition, boolean isPointer) {
+                        String definedPosition, boolean isPointer) {
         this.fileName = fileName;
         this.functionName = functionName;
         this.varName = varName;
@@ -33,7 +33,7 @@ public class SliceProfile {
     }
 
     public SliceProfile(String fileName, String functionName, String varName, String typeName,
-        String definedPosition, boolean isPointer, Node functionNode) {
+                        String definedPosition, boolean isPointer, Node functionNode) {
         this.fileName = fileName;
         this.functionName = functionName;
         this.varName = varName;
@@ -66,5 +66,9 @@ public class SliceProfile {
         result = 31 * result + this.fileName.hashCode();
         result = 31 * result + this.definedPosition.hashCode();
         return result;
+    }
+
+    public String toString() {
+        return varName + "," + functionName + "," + fileName + ":" + definedPosition;
     }
 }

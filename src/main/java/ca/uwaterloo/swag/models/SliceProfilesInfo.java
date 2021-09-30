@@ -12,9 +12,9 @@ public class SliceProfilesInfo {
     public final Node unitNode;
 
     public SliceProfilesInfo(Hashtable<String, SliceProfile> sliceProfiles,
-        Hashtable<FunctionNamePos, Node> functionNodes,
-        Hashtable<String, List<FunctionNamePos>> functionDeclMap,
-        Node unitNode) {
+                             Hashtable<FunctionNamePos, Node> functionNodes,
+                             Hashtable<String, List<FunctionNamePos>> functionDeclMap,
+                             Node unitNode) {
         this.sliceProfiles = sliceProfiles;
         this.functionNodes = functionNodes;
         this.functionDeclMap = functionDeclMap;

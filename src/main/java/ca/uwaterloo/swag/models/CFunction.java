@@ -13,8 +13,7 @@ public final class CFunction {
     private final Node enclFunctionNode;
     private final List<ArgumentNamePos> funcArgs;
 
-    public CFunction(String name, String position, int argPosIndex, String enclFunctionName,
-        Node enclFunctionNode) {
+    public CFunction(String name, String position, int argPosIndex, String enclFunctionName, Node enclFunctionNode) {
         this.name = name;
         this.position = position;
         this.argPosIndex = argPosIndex;
@@ -23,9 +22,8 @@ public final class CFunction {
         this.funcArgs = null;
     }
 
-    public CFunction(String name, String position, int argPosIndex, String enclFunctionName,
-        Node enclFunctionNode,
-        List<ArgumentNamePos> funcArgs) {
+    public CFunction(String name, String position, int argPosIndex, String enclFunctionName, Node enclFunctionNode,
+                     List<ArgumentNamePos> funcArgs) {
         this.name = name;
         this.position = position;
         this.argPosIndex = argPosIndex;
