@@ -54,7 +54,7 @@ public class SliceProfile {
         this.typeName = typeName;
         this.definedPosition = definedPosition;
         this.isPointer = false;
-        this.functionNode = null;
+        this.functionNode = functionNode;
         this.isFunctionNameProfile = isFunctionNameProfile;
     }
 
