@@ -12,6 +12,7 @@ public final class CFunction {
     private final String enclFunctionName;
     private final Node enclFunctionNode;
     private final List<ArgumentNamePos> funcArgs;
+    private final boolean isEmptyArgFunc;
 
     public CFunction(String name, String position, int argPosIndex, String enclFunctionName, Node enclFunctionNode) {
         this.name = name;
@@ -20,6 +21,7 @@ public final class CFunction {
         this.enclFunctionName = enclFunctionName;
         this.enclFunctionNode = enclFunctionNode;
         this.funcArgs = null;
+        this.isEmptyArgFunc = argPosIndex == -1;
     }
 
     public CFunction(String name, String position, int argPosIndex, String enclFunctionName, Node enclFunctionNode,
@@ -30,6 +32,7 @@ public final class CFunction {
         this.enclFunctionName = enclFunctionName;
         this.enclFunctionNode = enclFunctionNode;
         this.funcArgs = funcArgs;
+        this.isEmptyArgFunc = argPosIndex == -1;
     }
 
     public CFunction(int argPosIndex, String enclFunctionName, Node enclFunctionNode) {
@@ -39,6 +42,7 @@ public final class CFunction {
         this.name = null;
         this.position = null;
         this.funcArgs = null;
+        this.isEmptyArgFunc = argPosIndex == -1;
     }
 
     public Node getEnclFunctionNode() {
@@ -63,6 +67,10 @@ public final class CFunction {
 
     public String getName() {
         return name;
+    }
+
+    public boolean isEmptyArgFunc() {
+        return isEmptyArgFunc;
     }
 
     @Override

@@ -42,7 +42,6 @@ import java.util.Optional;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.Stack;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import javax.xml.parsers.DocumentBuilder;
@@ -270,9 +269,8 @@ public class Main {
     }
 
     private static boolean isAnalyzedProfile(SliceProfile profile) {
-        boolean contains = analyzedProfiles.contains(profile);
 //        log.log(Level.INFO, "Profile '" + profile.toString() + "'" + " analyzed : " + contains);
-        return contains;
+        return analyzedProfiles.contains(profile);
     }
 
     private static void exportGraph(Graph<EnclNamePosTuple, DefaultEdge> graph) throws IOException {
@@ -408,18 +406,9 @@ public class Main {
         analyzedProfiles.add(profile);
 
 //      step-01 : analyse cfunctions of the slice variable
-
         EnclNamePosTuple enclNamePosTuple;
-        for (CFunction cfunction : profile.cfunctions) {
-            String cfunctionName = cfunction.getName();
-            int argPosIndex = cfunction.getArgPosIndex();
-            String cfunctionPos = cfunction.getPosition();
-            String enclFunctionName = cfunction.getEnclFunctionName();
-            Node enclFunctionNode = cfunction.getEnclFunctionNode();
-            enclNamePosTuple = new EnclNamePosTuple(profile.varName, enclFunctionName, profile.fileName,
-                profile.definedPosition);
-            analyzeCfunction(cfunctionName, cfunctionPos, argPosIndex, profile.typeName, enclFunctionNode,
-                enclNamePosTuple, rawProfilesInfo);
+        for (CFunction cFunction : profile.cfunctions) {
+            analyzeCfunction(cFunction, profile, rawProfilesInfo);
         }
         enclNamePosTuple = new EnclNamePosTuple(profile.varName, profile.functionName, profile.fileName,
             profile.definedPosition);
@@ -428,13 +417,11 @@ public class Main {
         }
 
 //      step-02 : analyze data dependent vars of the slice variable
-
         for (NamePos dependentVar : profile.dependentVars) {
             String dvarName = dependentVar.getName();
             String dvarEnclFunctionName = dependentVar.getType();
             String dvarPos = dependentVar.getPos();
-            Hashtable<String, SliceProfile> sourceSliceProfiles =
-                rawProfilesInfo.get(profile.fileName).sliceProfiles;
+            Map<String, SliceProfile> sourceSliceProfiles = rawProfilesInfo.get(profile.fileName).sliceProfiles;
             String sliceKey =
                 dvarName + "%" + dvarPos + "%" + dvarEnclFunctionName + "%" + profile.fileName;
             if (!sourceSliceProfiles.containsKey(sliceKey)) {
@@ -455,7 +442,6 @@ public class Main {
         }
 
 //      step-03 : analyze if given function node is a native method
-
         if (!profile.functionName.equals("GLOBAL") && profile.cfunctions.size() < 1
             && profile.functionNode != null) {
             Node enclFunctionNode = profile.functionNode;
@@ -465,7 +451,6 @@ public class Main {
         }
 
 //      step-04 : check and add buffer reads and writes for this profile
-
         if (!mode.checkBuffer()) {
             return;
         }
@@ -508,12 +493,9 @@ public class Main {
                 String dvarName = dependentVar.getName();
                 String dvarEnclFunctionName = dependentVar.getType();
                 String dvarPos = dependentVar.getPos();
-                Hashtable<String, SliceProfile> sourceSliceProfiles =
-                    rawProfilesInfo.get(profile.fileName).sliceProfiles;
-                String sliceKey =
-                    dvarName + "%" + dvarPos + "%" + dvarEnclFunctionName + "%" + profile.fileName;
-                if (!sourceSliceProfiles
-                    .containsKey(sliceKey)) {//not capturing struct/class var assignments
+                Map<String, SliceProfile> sourceSliceProfiles = rawProfilesInfo.get(profile.fileName).sliceProfiles;
+                String sliceKey = dvarName + "%" + dvarPos + "%" + dvarEnclFunctionName + "%" + profile.fileName;
+                if (!sourceSliceProfiles.containsKey(sliceKey)) {//not capturing struct/class var assignments
                     continue;
                 }
                 SliceProfile dvarSliceProfile = sourceSliceProfiles.get(sliceKey);
@@ -540,14 +522,17 @@ public class Main {
         }
     }
 
-    private static void analyzeCfunction(String cfunctionName, String cfunctionPos, int argPosIndex,
-                                         String varTypeName, Node enclFunctionNode,
-                                         EnclNamePosTuple enclNamePosTuple,
+    private static void analyzeCfunction(CFunction cFunction, SliceProfile profile,
                                          Map<String, SliceProfilesInfo> sliceProfilesInfo) {
-
         if (singleTarget != null) {
             return;
         }
+
+        String cfunctionName = cFunction.getName();
+        String cfunctionPos = cFunction.getPosition();
+        String enclFunctionName = cFunction.getEnclFunctionName();
+        EnclNamePosTuple enclNamePosTuple = new EnclNamePosTuple(profile.varName, enclFunctionName, profile.fileName,
+            profile.definedPosition);
 
         if (SINK_FUNCTIONS.contains(cfunctionName)) {
             DG.addVertex(enclNamePosTuple);
@@ -561,8 +546,8 @@ public class Main {
             return;
         }
 
-        LinkedList<SliceProfile> dependentSliceProfiles = findDependentSliceProfiles(cfunctionName,
-            argPosIndex, varTypeName, enclFunctionNode, sliceProfilesInfo);
+        LinkedList<SliceProfile> dependentSliceProfiles = findDependentSliceProfiles(cFunction, profile.typeName,
+            sliceProfilesInfo);
         for (SliceProfile dependentSliceProfile : dependentSliceProfiles) {
             EnclNamePosTuple depNamePosTuple = new EnclNamePosTuple(dependentSliceProfile.varName,
                 dependentSliceProfile.functionName, dependentSliceProfile.fileName,
@@ -578,21 +563,24 @@ public class Main {
     }
 
     @SuppressWarnings("unused")
-    private static LinkedList<SliceProfile> findDependentSliceProfiles(String cfunctionName,
-                                                                       int argPosIndex, String typeName,
-                                                                       Node currentFunctionNode,
+    private static LinkedList<SliceProfile> findDependentSliceProfiles(CFunction cFunction, String typeName,
                                                                        Map<String, SliceProfilesInfo> profilesInfoMap) {
         LinkedList<SliceProfile> dependentSliceProfiles = new LinkedList<>();
         for (String filePath : profilesInfoMap.keySet()) {
             SliceProfilesInfo profileInfo = profilesInfoMap.get(filePath);
-            for (CFunction cfunction : findPossibleFunctions(profileInfo.functionNodes,
-                profileInfo.functionDeclMap,
-                cfunctionName, argPosIndex, currentFunctionNode)) {
-                NamePos param = cfunction.getFuncArgs().get(argPosIndex - 1);
-                String param_name = param.getName();
-                String param_pos = param.getPos();
-                String key =
-                    param_name + "%" + param_pos + "%" + cfunction.getEnclFunctionName() + "%" + filePath;
+            List<CFunction> possibleFunctions = findPossibleFunctions(profileInfo.functionNodes,
+                profileInfo.functionDeclMap, cFunction);
+            for (CFunction cfunction : possibleFunctions) {
+                String key;
+                if (cfunction.isEmptyArgFunc()) {
+                    key = cfunction.getName() + "%" + cfunction.getPosition() + "%" + cfunction.getEnclFunctionName() +
+                        "%" + filePath;
+                } else {
+                    NamePos param = cfunction.getFuncArgs().get(cFunction.getArgPosIndex() - 1);
+                    String param_name = param.getName();
+                    String param_pos = param.getPos();
+                    key = param_name + "%" + param_pos + "%" + cfunction.getEnclFunctionName() + "%" + filePath;
+                }
                 if (!profileInfo.sliceProfiles.containsKey(key)) {
                     continue;
                 }
@@ -689,7 +677,6 @@ public class Main {
         if (!DG.containsVertex(targetNamePosTuple)) {
             DG.addVertex(targetNamePosTuple);
         }
-
         if (DG.containsEdge(sourceNamePosTuple, targetNamePosTuple)) {
             return false;
         }
@@ -698,10 +685,12 @@ public class Main {
         return true;
     }
 
-    private static LinkedList<CFunction> findPossibleFunctions(Hashtable<FunctionNamePos, Node> functionNodes,
-                                                               Hashtable<String, List<FunctionNamePos>> functionDeclMap,
-                                                               String cfunctionName, int argPosIndex,
-                                                               Node enclFunctionNode) {
+    private static LinkedList<CFunction> findPossibleFunctions(Map<FunctionNamePos, Node> functionNodes,
+                                                               Map<String, List<FunctionNamePos>> functionDeclMap,
+                                                               CFunction cFunction) {
+        String cfunctionName = cFunction.getName();
+        int argPosIndex = cFunction.getArgPosIndex();
+        Node enclFunctionNode = cFunction.getEnclFunctionNode();
         LinkedList<CFunction> possibleFunctions = new LinkedList<>();
 
         if (enclFunctionNode == null) {
@@ -718,14 +707,18 @@ public class Main {
                 collect(Collectors.toList()));
         }
 
-        for (String cFunc : cFunctionsWithAlias) {
+        for (String cFuncName : cFunctionsWithAlias) {
             for (FunctionNamePos key : functionNodes.keySet()) {
                 Node possibleFunctionNode = functionNodes.get(key);
                 String functionName = key.getName();
-                if (!functionName.equals(cFunc)) {
+                if (!functionName.equals(cFuncName)) {
                     continue;
                 }
-
+                if (cFunction.isEmptyArgFunc()) {
+                    possibleFunctions.add(new CFunction(cfunctionName, key.getPos(), -1, functionName,
+                        enclFunctionNode, null));
+                    continue;
+                }
                 List<ArgumentNamePos> funcArgs = XmlUtil.findFunctionParameters(possibleFunctionNode);
                 if (funcArgs.size() == 0 || argPosIndex > funcArgs.size()) {
                     continue;
@@ -799,5 +792,4 @@ public class Main {
         SliceGenerator sliceGenerator = new SliceGenerator(unitNode, sourceFilePath);
         return sliceGenerator.generate();
     }
-
 }

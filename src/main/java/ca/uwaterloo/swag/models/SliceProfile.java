@@ -20,6 +20,7 @@ public class SliceProfile {
     public final Set<NamePos> dependentVars = new HashSet<>();
     public final Set<CFunction> cfunctions = new HashSet<>();
     public final Node functionNode;
+    public final boolean isFunctionNameProfile;
 
     public SliceProfile(String fileName, String functionName, String varName, String typeName,
                         String definedPosition, boolean isPointer) {
@@ -30,6 +31,7 @@ public class SliceProfile {
         this.definedPosition = definedPosition;
         this.isPointer = isPointer;
         this.functionNode = null;
+        this.isFunctionNameProfile = false;
     }
 
     public SliceProfile(String fileName, String functionName, String varName, String typeName,
@@ -41,6 +43,19 @@ public class SliceProfile {
         this.definedPosition = definedPosition;
         this.isPointer = isPointer;
         this.functionNode = functionNode;
+        this.isFunctionNameProfile = false;
+    }
+
+    public SliceProfile(String fileName, String functionName, String varName, String typeName,
+                        String definedPosition, Node functionNode, boolean isFunctionNameProfile) {
+        this.fileName = fileName;
+        this.functionName = functionName;
+        this.varName = varName;
+        this.typeName = typeName;
+        this.definedPosition = definedPosition;
+        this.isPointer = false;
+        this.functionNode = null;
+        this.isFunctionNameProfile = isFunctionNameProfile;
     }
 
     @Override
