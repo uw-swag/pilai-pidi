@@ -6,6 +6,7 @@ public final class EnclNamePosTuple {
     private final String functionName;
     private final String fileName;
     private final String definedPosition;
+    private final boolean isFunctionNamePos;
 
     public EnclNamePosTuple(String varName, String functionName, String fileName,
                             String definedPosition) {
@@ -14,21 +15,22 @@ public final class EnclNamePosTuple {
         this.functionName = functionName;
         this.fileName = fileName;
         this.definedPosition = definedPosition;
+        this.isFunctionNamePos = false;
+    }
+
+    public EnclNamePosTuple(String varName, String functionName, String fileName,
+                            String definedPosition, boolean isFunctionNamePos) {
+        assert functionName != null;
+        this.varName = varName;
+        this.functionName = functionName;
+        this.fileName = fileName;
+        this.definedPosition = definedPosition;
+        this.isFunctionNamePos = isFunctionNamePos;
     }
 
     @Override
     public String toString() {
-        String mode = "not_testing";
-        String ret_test = "XXXX" + this.varName + "XXXX" + this.functionName + "XXXX" +
-            this.fileName.replaceAll(":", "COLON").replaceAll("\\.", "DOT").
-                replaceAll("/", "SLASH") + "XXXX" + this.definedPosition;
-        //noinspection ConstantConditions
-        if (!mode.equals("testing")) {
-            return this.varName + "," + this.functionName + "," + this.fileName + ","
-                + this.definedPosition;
-        } else {
-            return ret_test.replaceAll("\\W", "");
-        }
+        return this.varName + "," + this.functionName + "," + this.fileName + "," + this.definedPosition;
     }
 
     @Override
@@ -66,5 +68,9 @@ public final class EnclNamePosTuple {
     @SuppressWarnings("unused")
     public String definedPosition() {
         return this.definedPosition;
+    }
+
+    public boolean isFunctionNamePos() {
+        return isFunctionNamePos;
     }
 }

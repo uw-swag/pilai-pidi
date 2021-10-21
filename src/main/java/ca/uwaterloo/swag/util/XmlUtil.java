@@ -149,7 +149,6 @@ public final class XmlUtil {
             return namePos;
         }
         NodeList nodeList = node.getChildNodes();
-//        boolean isPointer;
         Set<String> names = new HashSet<>();
         names.add("decl");
         for (int count = 0; count < nodeList.getLength(); count++) {
@@ -164,7 +163,6 @@ public final class XmlUtil {
                 boolean isPointer = isPointer(tempNode);
                 StringBuilder varType = new StringBuilder();
                 try {
-//                        NodeList typeList = tempNode.getParentNode().getChildNodes().item(0).getChildNodes();
                     List<Node> typNode = getNodeByName(tempNode.getParentNode(), "type");
                     if (!(typNode.size() < 1)) {
                         NodeList typeList = typNode.get(0).getChildNodes();
@@ -175,7 +173,6 @@ public final class XmlUtil {
                                 if (varType.toString().equals("")) {
                                     filler = "";
                                 }
-//                                if(tempType.getChildNodes().getLength()) std :: String [ERR]
                                 if (tempType.getLastChild().getNodeType() == Node.ELEMENT_NODE) {
                                     varType.append(filler).append(tempType.getLastChild().
                                         getFirstChild().getNodeValue());
@@ -189,7 +186,6 @@ public final class XmlUtil {
                             }
                         }
                     }
-//                      varType = tempNode.getParentNode().getNextSibling().getNextSibling().getChildNodes().item(0).getNodeValue();
                 } catch (NullPointerException | IndexOutOfBoundsException e) {
                     varType = new StringBuilder();
                     e.printStackTrace();

@@ -2,6 +2,7 @@ package ca.uwaterloo.swag;
 
 import static ca.uwaterloo.swag.util.XmlUtil.DataAccessType;
 import static ca.uwaterloo.swag.util.XmlUtil.asList;
+import static ca.uwaterloo.swag.util.XmlUtil.getFunctionNamePos;
 import static ca.uwaterloo.swag.util.XmlUtil.getMacros;
 import static ca.uwaterloo.swag.util.XmlUtil.getNamePosTextPair;
 import static ca.uwaterloo.swag.util.XmlUtil.getNodeByName;
@@ -23,7 +24,6 @@ import java.util.Collection;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Stack;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -45,12 +45,14 @@ public class SliceGenerator {
     private String currentFunctionName;
     private Node currentFunctionNode;
     private boolean isLhsExpr;
+    private boolean withinDeclStmt;
 
     public SliceGenerator(Node unitNode, String fileName) {
         this.unitNode = unitNode;
         this.fileName = fileName;
         this.sliceProfiles = new Hashtable<>();
         this.functionNodes = findFunctionNodes(unitNode);
+//        this.functionNodes = new Hashtable<>();
         this.functionDeclMap = new Hashtable<>();
         this.localVariables = new Hashtable<>();
         this.globalVariables = new Hashtable<>();
@@ -127,7 +129,6 @@ public class SliceGenerator {
 //                    this.analyzeTypeDef(node);
 //                    break;
                 case "macro":
-                    this.localVariables = new Hashtable<>();
                     this.analyzeMacro(node);
                     break;
                 case "function_decl":
@@ -308,7 +309,12 @@ public class SliceGenerator {
         if (macro == null) {
             return;
         }
-        NamePos functionNamePos = getNamePosTextPair(macro);
+
+        if (!withinDeclStmt) {
+            this.localVariables = new Hashtable<>();
+        }
+
+        FunctionNamePos functionNamePos = getFunctionNamePos(macro);
 
         String previousFunctionName = currentFunctionName;
         Node previousFunctionNode = currentFunctionNode;
@@ -318,14 +324,24 @@ public class SliceGenerator {
         Node block = nodeAtIndex(getNodeByName(macro.getParentNode(), "block"), 0);
         if (block != null) {
             Node blockContent = nodeAtIndex(getNodeByName(block, "block_content"), 0);
-            macroBody = Objects.requireNonNullElse(blockContent, block);
+            if (blockContent != null && blockContent.getParentNode() == block) {
+                macroBody = blockContent;
+            } else {
+                macroBody = block;
+            }
         }
 
         this.currentFunctionNode = macroBody;
         List<Node> argumentList = XmlUtil.getArgumentList(macro);
+        List<NamePos> argumentNames = new ArrayList<>();
         for (Node argument : argumentList) {
-            analyzeArgumentOfMacro(argument);
+            NamePos paramNamePos = analyzeArgumentOfMacro(argument);
+            if (paramNamePos != null) {
+                argumentNames.add(paramNamePos);
+            }
         }
+        functionNamePos.setArguments(argumentNames);
+//        this.functionNodes.put(functionNamePos, macro);
 
         analyzeBlockContent(macroBody);
         this.currentFunctionName = previousFunctionName;
@@ -336,25 +352,41 @@ public class SliceGenerator {
         if (function == null) {
             return;
         }
-        NamePos functionNamePos = getNamePosTextPair(function);
+        FunctionNamePos functionNamePos = getFunctionNamePos(function);
         String previousFunctionName = currentFunctionName;
         Node previousFunctionNode = currentFunctionNode;
         this.currentFunctionName = functionNamePos.getName();
         this.currentFunctionNode = function;
         List<Node> params = XmlUtil.getFunctionParamList(function);
+        List<NamePos> argumentNames = new ArrayList<>();
         for (Node param : params) {
-            analyzeParam(param);
+            NamePos paramNamePos = analyzeParam(param);
+            if (paramNamePos != null) {
+                argumentNames.add(paramNamePos);
+            }
         }
+        functionNamePos.setArguments(argumentNames);
+//        this.functionNodes.put(functionNamePos, function);
         analyzeMemberInitList(function);
         analyzeBlock(nodeAtIndex(getNodeByName(function, "block"), 0));
-        if (params.size() == 0) {
-            checkForEmptyArgFunction(functionNamePos);
-        }
+        updateFunctionArgDependencies(functionNamePos);
+//        if (params.size() == 0) {
+//            updateFunctionArgDependencies(functionNamePos);
+//        }
         this.currentFunctionName = previousFunctionName;
         this.currentFunctionNode = previousFunctionNode;
     }
 
-    private void checkForEmptyArgFunction(NamePos functionNamePos) {
+//    private void updateEmptyArgFunctionDependencies(NamePos functionNamePos) {
+//        String functionName = functionNamePos.getName();
+//        String functionPos = functionNamePos.getPos();
+//        addFunctionNameSliceProfile(functionName, functionPos);
+//        for (String localVarName : localVariables.keySet()) {
+//            updateDVarSliceProfile(localVarName, functionName, globalVariables);
+//        }
+//    }
+
+    private void updateFunctionArgDependencies(NamePos functionNamePos) {
         String functionName = functionNamePos.getName();
         String functionPos = functionNamePos.getPos();
         addFunctionNameSliceProfile(functionName, functionPos);
@@ -474,12 +506,14 @@ public class SliceGenerator {
         if (stmt == null) {
             return;
         }
+        this.withinDeclStmt = true;
         analyzeDecl(nodeAtIndex(getNodeByName(stmt, "decl"), 0));
+        this.withinDeclStmt = false;
     }
 
-    private void analyzeDecl(Node decl) {
+    private NamePos analyzeDecl(Node decl) {
         if (decl == null) {
-            return;
+            return null;
         }
         NamePos namePos = getNamePosTextPair(decl);
         String varName = namePos.getName();
@@ -505,7 +539,7 @@ public class SliceGenerator {
 
         Node argumentListNode = nodeAtIndex(getNodeByName(decl, "argument_list"), 0);
         if (argumentListNode == null) {
-            return;
+            return namePos;
         }
 
         List<Node> argumentList = getNodeByName(argumentListNode, "argument");
@@ -530,6 +564,8 @@ public class SliceGenerator {
             analyzeCallArgumentList(decl, cfunctionName, cfunctionPos, cfunctionName);
             checkAndUpdateDVarSliceProfile(namePos, typeNamePos);
         }
+
+        return namePos;
     }
 
     private void analyzeExprAndUpdateDVar(NamePos namePos, Node expr) {
@@ -568,7 +604,6 @@ public class SliceGenerator {
                     analyzeCastExpr(expr);
                     break;
                 case "macro":
-                    this.localVariables = new Hashtable<>();
                     analyzeMacro(expr);
                     break;
             }
@@ -730,6 +765,16 @@ public class SliceGenerator {
                         localVariables);
                     if (!cfunctionIdentifier.isEmpty()) {
                         updateDVarSliceProfile(cfunctionIdentifier, varName, localVariables);
+//                        /*
+//                            adding dvar for the following case
+//                            1. SkPixmap pmap;
+//                            2. if (bm.peekPixels(&pmap)) {
+//                            3.     return MakeRasterCopyPriv(pmap, idForCopy);
+//                            4. }
+//                        */
+//                        if (localVariables.containsKey(cfunctionIdentifier)) {
+//                            updateDVarSliceProfile(varName, cfunctionIdentifier, localVariables);
+//                        }
                     }
                 } else if (globalVariables.containsKey(varName)) {
                     updateCFunctionsSliceProfile(varName, cfunctionName, cfunctionPos, argPosIndex, sliceKey,
@@ -862,34 +907,39 @@ public class SliceGenerator {
         return conditionNamePos;
     }
 
-    private void analyzeArgumentOfMacro(Node param) {
+    private NamePos analyzeArgumentOfMacro(Node param) {
         if (param == null) {
-            return;
+            return null;
         }
 
         String paramNameWithType = param.getTextContent();
         if (paramNameWithType == null || paramNameWithType.isBlank()) {
-            return;
+            return null;
         }
         String[] parts = paramNameWithType.split("\\s+");
-        if (parts.length >= 2) {
-            String type = parts[parts.length - 2];
-            String name = parts[parts.length - 1];
-            String pos = getNodePos(param);
-            boolean isPointer = type.endsWith("*") || name.endsWith("*") || type.endsWith("&") || name.endsWith("&");
-            String sliceKey = name + "%" + pos + "%" + this.currentFunctionName + "%" + this.fileName;
-            SliceProfile sliceProfile = new SliceProfile(this.fileName, this.currentFunctionName, name, type, pos,
-                isPointer, this.currentFunctionNode);
-            sliceProfiles.put(sliceKey, sliceProfile);
-            localVariables.put(name, sliceProfile);
+
+        if (parts.length < 2) {
+            return null;
         }
+
+        String type = parts[parts.length - 2];
+        String name = parts[parts.length - 1];
+        String pos = getNodePos(param);
+        boolean isPointer = type.endsWith("*") || name.endsWith("*") || type.endsWith("&") || name.endsWith("&");
+        String sliceKey = name + "%" + pos + "%" + this.currentFunctionName + "%" + this.fileName;
+        SliceProfile sliceProfile = new SliceProfile(this.fileName, this.currentFunctionName, name, type, pos,
+            isPointer, this.currentFunctionNode);
+        sliceProfiles.put(sliceKey, sliceProfile);
+        localVariables.put(name, sliceProfile);
+
+        return new NamePos(name, type, pos, isPointer);
     }
 
-    private void analyzeParam(Node param) {
+    private NamePos analyzeParam(Node param) {
         if (param == null) {
-            return;
+            return null;
         }
-        analyzeDecl(nodeAtIndex(getNodeByName(param, "decl"), 0));
+        return analyzeDecl(nodeAtIndex(getNodeByName(param, "decl"), 0));
     }
 
     private void analyzeExprStmt(Node exprStmt) {
@@ -1006,7 +1056,7 @@ public class SliceGenerator {
             return;
         }
 
-        if (isLhsExprFunctionPointer(lhsExprVarName)) {
+        if (isLhsExprFunctionPointer(lhsExprVarName)) { // this is track static function pointer load
             List<FunctionNamePos> alias;
             if (functionDeclMap.containsKey(lhsExprVarName)) {
                 alias = functionDeclMap.get(lhsExprVarName);

@@ -116,7 +116,7 @@ public class Main {
                     optsList.put(args[i], args[i + 1]);
                     i++;
                 }
-            } else {// arg
+            } else { // arg
                 argsList.add(args[i]);
             }
         }
@@ -283,16 +283,14 @@ public class Main {
         FileUtils.writeStringToFile(file, writer.toString(), Charset.defaultCharset());
     }
 
-    @SuppressWarnings("unused")
     public static void bfsSolution(EnclNamePosTuple source, List<String> lookup) {
         List<List<EnclNamePosTuple>> completePaths = new ArrayList<>();
 
-        //Run a BFS from the source vertex. Each time a new vertex is encountered, construct a new path.
-        BreadthFirstIterator<EnclNamePosTuple, DefaultEdge> bfs = new BreadthFirstIterator<>(DG,
-            source);
+        // Run a BFS from the source vertex. Each time a new vertex is encountered, construct a new path.
+        BreadthFirstIterator<EnclNamePosTuple, DefaultEdge> bfs = new BreadthFirstIterator<>(DG, source);
         while (bfs.hasNext()) {
             EnclNamePosTuple vertex = bfs.next();
-            //Create path P that ends in the vertex by backtracking from the new vertex we encountered
+            // Create path P that ends in the vertex by backtracking from the new vertex we encountered
             Stack<EnclNamePosTuple> partialPathP = new Stack<>();
             while (vertex != null) {
                 partialPathP.push(vertex);
@@ -336,9 +334,12 @@ public class Main {
                 continue;
             }
             if (singleTarget != null) {
-                Optional<EnclNamePosTuple> actualTarget = DG.vertexSet().stream().filter(
-                    ENPtuple -> ENPtuple.fileName().equals(singleTarget[1]) && ENPtuple.varName()
-                        .equals(singleTarget[0]) && ENPtuple.definedPosition().equals(singleTarget[2])).findFirst();
+                Optional<EnclNamePosTuple> actualTarget = DG.vertexSet()
+                    .stream()
+                    .filter(enclNamePosTuple -> enclNamePosTuple.fileName().equals(singleTarget[1]) &&
+                        enclNamePosTuple.varName().equals(singleTarget[0]) &&
+                        enclNamePosTuple.definedPosition().equals(singleTarget[2]))
+                    .findFirst();
                 actualTarget.ifPresent(enclNamePosTuple -> detectedViolations.put(enclNamePosTuple,
                     new ArrayList<>(Collections.singletonList(String.join("@AT@", singleTarget)))));
             }
@@ -386,8 +387,11 @@ public class Main {
                     size = violation.size();
                 }
                 for (int i = 0; i < size; i++) {
-                    EnclNamePosTuple x = violation.get(i);
-                    vPath.append(x).append(" -> ");
+                    EnclNamePosTuple node = violation.get(i);
+                    if (MODE.TESTING == mode && node.isFunctionNamePos()) {
+                        continue;
+                    }
+                    vPath.append(node).append(" -> ");
                 }
                 System.err.println(vPath);
             });
@@ -540,7 +544,7 @@ public class Main {
             cErrors.add("Use of " + cfunctionName + " at " + cfunctionPos);
             EnclNamePosTuple bufferErrorFunctionPosTuple =
                 new EnclNamePosTuple(enclNamePosTuple.varName() + "#" + cfunctionName,
-                    enclNamePosTuple.functionName(), enclNamePosTuple.fileName(), cfunctionPos);
+                    enclNamePosTuple.functionName(), enclNamePosTuple.fileName(), cfunctionPos, true);
             hasNoEdge(enclNamePosTuple, bufferErrorFunctionPosTuple);
             detectedViolations.put(bufferErrorFunctionPosTuple, cErrors);
             return;
@@ -551,7 +555,7 @@ public class Main {
         for (SliceProfile dependentSliceProfile : dependentSliceProfiles) {
             EnclNamePosTuple depNamePosTuple = new EnclNamePosTuple(dependentSliceProfile.varName,
                 dependentSliceProfile.functionName, dependentSliceProfile.fileName,
-                dependentSliceProfile.definedPosition);
+                dependentSliceProfile.definedPosition, dependentSliceProfile.isFunctionNameProfile);
             if (!hasNoEdge(enclNamePosTuple, depNamePosTuple)) {
                 continue;
             }
@@ -571,16 +575,23 @@ public class Main {
             List<CFunction> possibleFunctions = findPossibleFunctions(profileInfo.functionNodes,
                 profileInfo.functionDeclMap, cFunction);
             for (CFunction cfunction : possibleFunctions) {
-                String key;
-                if (cfunction.isEmptyArgFunc()) {
-                    key = cfunction.getName() + "%" + cfunction.getPosition() + "%" + cfunction.getEnclFunctionName() +
-                        "%" + filePath;
-                } else {
-                    NamePos param = cfunction.getFuncArgs().get(cFunction.getArgPosIndex() - 1);
-                    String param_name = param.getName();
-                    String param_pos = param.getPos();
-                    key = param_name + "%" + param_pos + "%" + cfunction.getEnclFunctionName() + "%" + filePath;
+                // 01 - Add cfunction profile
+                String key = cfunction.getName() + "%" + cfunction.getPosition() + "%" +
+                    cfunction.getEnclFunctionName() + "%" + filePath;
+                if (!profileInfo.sliceProfiles.containsKey(key)) {
+                    continue;
                 }
+                dependentSliceProfiles.add(profileInfo.sliceProfiles.get(key));
+
+                if (cfunction.getFuncArgs() == null || cfunction.getFuncArgs().isEmpty()) {
+                    continue;
+                }
+
+                // 02 - Add function arg index based profile
+                NamePos param = cfunction.getFuncArgs().get(cFunction.getArgPosIndex() - 1);
+                String param_name = param.getName();
+                String param_pos = param.getPos();
+                key = param_name + "%" + param_pos + "%" + cfunction.getEnclFunctionName() + "%" + filePath;
                 if (!profileInfo.sliceProfiles.containsKey(key)) {
                     continue;
                 }
@@ -714,9 +725,10 @@ public class Main {
                 if (!functionName.equals(cFuncName)) {
                     continue;
                 }
+                possibleFunctions.add(new CFunction(cfunctionName, key.getPos(), -1, functionName,
+                    enclFunctionNode, null));
+
                 if (cFunction.isEmptyArgFunc()) {
-                    possibleFunctions.add(new CFunction(cfunctionName, key.getPos(), -1, functionName,
-                        enclFunctionNode, null));
                     continue;
                 }
                 List<ArgumentNamePos> funcArgs = XmlUtil.findFunctionParameters(possibleFunctionNode);
@@ -724,7 +736,7 @@ public class Main {
                     continue;
                 }
 
-                int argIndex = argPosIndex - 1;
+                int argIndex = argPosIndex - 1; // index is always -1
                 String paramName = funcArgs.get(argIndex).getName();
                 if (paramName.equals("")) {
                     continue;
@@ -752,7 +764,7 @@ public class Main {
             }
             callArgumentList = XmlUtil.getNodeByName(XmlUtil.getNodeByName(call, "argument_list").get(0),
                 "argument");
-            if (callArgumentList.size() != funcArgs.size()) {
+            if (callArgumentList.size() > funcArgs.size()) {
                 continue;
 //                int sizeWithoutOptionalArgs = (int) funcArgs.stream().filter(arg -> !arg.isOptional()).count();
 //                if (callArgumentList.size() != sizeWithoutOptionalArgs) {
