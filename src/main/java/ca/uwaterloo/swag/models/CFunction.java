@@ -1,6 +1,5 @@
 package ca.uwaterloo.swag.models;
 
-import java.util.List;
 import java.util.Objects;
 import org.w3c.dom.Node;
 
@@ -11,38 +10,28 @@ public final class CFunction {
     private final String position;
     private final String enclFunctionName;
     private final Node enclFunctionNode;
-    private final List<ArgumentNamePos> funcArgs;
     private final boolean isEmptyArgFunc;
-
-    public CFunction(String name, String position, int argPosIndex, String enclFunctionName, Node enclFunctionNode) {
-        this.name = name;
-        this.position = position;
-        this.argPosIndex = argPosIndex;
-        this.enclFunctionName = enclFunctionName;
-        this.enclFunctionNode = enclFunctionNode;
-        this.funcArgs = null;
-        this.isEmptyArgFunc = argPosIndex == -1;
-    }
+    private final int numberOfArguments;
 
     public CFunction(String name, String position, int argPosIndex, String enclFunctionName, Node enclFunctionNode,
-                     List<ArgumentNamePos> funcArgs) {
+                     int numberOfArguments) {
         this.name = name;
         this.position = position;
         this.argPosIndex = argPosIndex;
         this.enclFunctionName = enclFunctionName;
         this.enclFunctionNode = enclFunctionNode;
-        this.funcArgs = funcArgs;
         this.isEmptyArgFunc = argPosIndex == -1;
+        this.numberOfArguments = numberOfArguments;
     }
 
-    public CFunction(int argPosIndex, String enclFunctionName, Node enclFunctionNode) {
+    public CFunction(int argPosIndex, String enclFunctionName, Node enclFunctionNode, int numberOfArguments) {
         this.argPosIndex = argPosIndex;
         this.enclFunctionName = enclFunctionName;
         this.enclFunctionNode = enclFunctionNode;
         this.name = null;
         this.position = null;
-        this.funcArgs = null;
         this.isEmptyArgFunc = argPosIndex == -1;
+        this.numberOfArguments = numberOfArguments;
     }
 
     public Node getEnclFunctionNode() {
@@ -57,10 +46,6 @@ public final class CFunction {
         return argPosIndex;
     }
 
-    public List<ArgumentNamePos> getFuncArgs() {
-        return funcArgs;
-    }
-
     public String getPosition() {
         return position;
     }
@@ -71,6 +56,10 @@ public final class CFunction {
 
     public boolean isEmptyArgFunc() {
         return isEmptyArgFunc;
+    }
+
+    public int getNumberOfArguments() {
+        return numberOfArguments;
     }
 
     @Override
@@ -85,8 +74,7 @@ public final class CFunction {
         }
         assert this.position != null;
         return this.position.equals(other.position) &&
-            this.argPosIndex == other.argPosIndex && this.enclFunctionName
-            .equals(other.enclFunctionName) &&
+            this.argPosIndex == other.argPosIndex && this.enclFunctionName.equals(other.enclFunctionName) &&
             this.enclFunctionNode == other.enclFunctionNode;
     }
 

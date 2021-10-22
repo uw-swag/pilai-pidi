@@ -10,6 +10,7 @@ import ca.uwaterloo.swag.models.SliceProfile;
 import ca.uwaterloo.swag.models.SliceProfilesInfo;
 import ca.uwaterloo.swag.models.SliceVariableAccess;
 import ca.uwaterloo.swag.util.OsUtils;
+import ca.uwaterloo.swag.util.TypeChecker;
 import ca.uwaterloo.swag.util.XmlUtil;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -189,7 +190,6 @@ public class Main {
                     Path zipPath = Paths.get(Objects.requireNonNull(Main.class.getClassLoader().
                         getResource(srcML)).toURI());
                     InputStream in = Files.newInputStream(zipPath);
-                    //noinspection ConstantConditions
                     file = File.createTempFile("PREFIX", "SUFFIX", tempLoc);
                     boolean execStatus = file.setExecutable(true);
                     if (!execStatus) {
@@ -202,9 +202,6 @@ public class Main {
                     pb = new ProcessBuilder(file.getAbsolutePath(), projectLocation, "--position");
                 }
                 result = IOUtils.toString(pb.start().getInputStream(), StandardCharsets.UTF_8);
-//                try (PrintWriter out = new PrintWriter("skip.txt")) {
-//                    out.println(result);
-//                }
             }
             System.out.println("Converted to XML, beginning parsing ...");
             DocumentBuilder documentBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
@@ -409,7 +406,7 @@ public class Main {
     private static void analyzeSliceProfile(SliceProfile profile, Map<String, SliceProfilesInfo> rawProfilesInfo) {
         analyzedProfiles.add(profile);
 
-//      step-01 : analyse cfunctions of the slice variable
+        // step-01 : analyse cfunctions of the slice variable
         EnclNamePosTuple enclNamePosTuple;
         for (CFunction cFunction : profile.cfunctions) {
             analyzeCfunction(cFunction, profile, rawProfilesInfo);
@@ -420,7 +417,7 @@ public class Main {
             DG.addVertex(enclNamePosTuple);
         }
 
-//      step-02 : analyze data dependent vars of the slice variable
+        // step-02 : analyze data dependent vars of the slice variable
         for (NamePos dependentVar : profile.dependentVars) {
             String dvarName = dependentVar.getName();
             String dvarEnclFunctionName = dependentVar.getType();
@@ -429,7 +426,7 @@ public class Main {
             String sliceKey =
                 dvarName + "%" + dvarPos + "%" + dvarEnclFunctionName + "%" + profile.fileName;
             if (!sourceSliceProfiles.containsKey(sliceKey)) {
-//              not capturing struct/class var assignments
+                // not capturing struct/class var assignments
                 continue;
             }
             SliceProfile dvarSliceProfile = sourceSliceProfiles.get(sliceKey);
@@ -445,7 +442,7 @@ public class Main {
             analyzeSliceProfile(dvarSliceProfile, rawProfilesInfo);
         }
 
-//      step-03 : analyze if given function node is a native method
+        // step-03 : analyze if given function node is a native method
         if (!profile.functionName.equals("GLOBAL") && profile.cfunctions.size() < 1
             && profile.functionNode != null) {
             Node enclFunctionNode = profile.functionNode;
@@ -454,7 +451,6 @@ public class Main {
             }
         }
 
-//      step-04 : check and add buffer reads and writes for this profile
         if (!mode.checkBuffer()) {
             return;
         }
@@ -467,6 +463,7 @@ public class Main {
             return;
         }
 
+        // step-04 : check and add buffer reads and writes for this profile
         for (SliceVariableAccess varAccess : profile.usedPositions) {
             for (DataTuple access : varAccess.writePositions) {
                 if (XmlUtil.DataAccessType.BUFFER_WRITE == access.accessType) {
@@ -499,7 +496,7 @@ public class Main {
                 String dvarPos = dependentVar.getPos();
                 Map<String, SliceProfile> sourceSliceProfiles = rawProfilesInfo.get(profile.fileName).sliceProfiles;
                 String sliceKey = dvarName + "%" + dvarPos + "%" + dvarEnclFunctionName + "%" + profile.fileName;
-                if (!sourceSliceProfiles.containsKey(sliceKey)) {//not capturing struct/class var assignments
+                if (!sourceSliceProfiles.containsKey(sliceKey)) { // not capturing struct/class var assignments
                     continue;
                 }
                 SliceProfile dvarSliceProfile = sourceSliceProfiles.get(sliceKey);
@@ -566,32 +563,32 @@ public class Main {
         }
     }
 
-    @SuppressWarnings("unused")
     private static LinkedList<SliceProfile> findDependentSliceProfiles(CFunction cFunction, String typeName,
                                                                        Map<String, SliceProfilesInfo> profilesInfoMap) {
         LinkedList<SliceProfile> dependentSliceProfiles = new LinkedList<>();
         for (String filePath : profilesInfoMap.keySet()) {
             SliceProfilesInfo profileInfo = profilesInfoMap.get(filePath);
-            List<CFunction> possibleFunctions = findPossibleFunctions(profileInfo.functionNodes,
-                profileInfo.functionDeclMap, cFunction);
-            for (CFunction cfunction : possibleFunctions) {
+            List<FunctionNamePos> possibleFunctions = findPossibleFunctions(profileInfo.functionNodes,
+                profileInfo.functionDeclMap, cFunction, typeName);
+            for (FunctionNamePos functionNamePos : possibleFunctions) {
                 // 01 - Add cfunction profile
-                String key = cfunction.getName() + "%" + cfunction.getPosition() + "%" +
-                    cfunction.getEnclFunctionName() + "%" + filePath;
+                String key = functionNamePos.getName() + "%" + functionNamePos.getPos() + "%" +
+                    functionNamePos.getName() + "%" + filePath;
                 if (!profileInfo.sliceProfiles.containsKey(key)) {
                     continue;
                 }
                 dependentSliceProfiles.add(profileInfo.sliceProfiles.get(key));
 
-                if (cfunction.getFuncArgs() == null || cfunction.getFuncArgs().isEmpty()) {
+                if (cFunction.isEmptyArgFunc() || functionNamePos.getArguments() == null ||
+                    functionNamePos.getArguments().isEmpty()) {
                     continue;
                 }
 
                 // 02 - Add function arg index based profile
-                NamePos param = cfunction.getFuncArgs().get(cFunction.getArgPosIndex() - 1);
+                NamePos param = functionNamePos.getArguments().get(cFunction.getArgPosIndex());
                 String param_name = param.getName();
                 String param_pos = param.getPos();
-                key = param_name + "%" + param_pos + "%" + cfunction.getEnclFunctionName() + "%" + filePath;
+                key = param_name + "%" + param_pos + "%" + functionNamePos.getName() + "%" + filePath;
                 if (!profileInfo.sliceProfiles.containsKey(key)) {
                     continue;
                 }
@@ -696,13 +693,13 @@ public class Main {
         return true;
     }
 
-    private static LinkedList<CFunction> findPossibleFunctions(Map<FunctionNamePos, Node> functionNodes,
+    private static List<FunctionNamePos> findPossibleFunctions(Map<FunctionNamePos, Node> functionNodes,
                                                                Map<String, List<FunctionNamePos>> functionDeclMap,
-                                                               CFunction cFunction) {
+                                                               CFunction cFunction, String argTypeName) {
         String cfunctionName = cFunction.getName();
         int argPosIndex = cFunction.getArgPosIndex();
         Node enclFunctionNode = cFunction.getEnclFunctionNode();
-        LinkedList<CFunction> possibleFunctions = new LinkedList<>();
+        List<FunctionNamePos> possibleFunctions = new ArrayList<>();
 
         if (enclFunctionNode == null) {
             return possibleFunctions;
@@ -712,92 +709,55 @@ public class Main {
         cFunctionsWithAlias.add(cfunctionName);
 
         if (functionDeclMap.containsKey(cfunctionName)) {
-            cFunctionsWithAlias.addAll(functionDeclMap.get(cfunctionName).
-                stream().
-                map(FunctionNamePos::getFunctionDeclName).
-                collect(Collectors.toList()));
+            cFunctionsWithAlias.addAll(functionDeclMap.get(cfunctionName)
+                .stream()
+                .map(FunctionNamePos::getFunctionDeclName)
+                .collect(Collectors.toList()));
         }
 
         for (String cFuncName : cFunctionsWithAlias) {
-            for (FunctionNamePos key : functionNodes.keySet()) {
-                Node possibleFunctionNode = functionNodes.get(key);
-                String functionName = key.getName();
+            for (FunctionNamePos functionNamePos : functionNodes.keySet()) {
+                String functionName = functionNamePos.getName();
                 if (!functionName.equals(cFuncName)) {
                     continue;
                 }
-                possibleFunctions.add(new CFunction(cfunctionName, key.getPos(), -1, functionName,
-                    enclFunctionNode, null));
-
                 if (cFunction.isEmptyArgFunc()) {
+                    possibleFunctions.add(functionNamePos);
                     continue;
                 }
-                List<ArgumentNamePos> funcArgs = XmlUtil.findFunctionParameters(possibleFunctionNode);
-                if (funcArgs.size() == 0 || argPosIndex > funcArgs.size()) {
+                if (!typeCheckFunctionSignature(functionNamePos, argPosIndex, argTypeName, cFunction)) {
                     continue;
                 }
-
-                int argIndex = argPosIndex - 1; // index is always -1
-                String paramName = funcArgs.get(argIndex).getName();
-                if (paramName.equals("")) {
-                    continue;
-                }
-
-                if (!validateFunctionAgainstCallExpr(enclFunctionNode, cfunctionName, argIndex, funcArgs)) {
-                    continue;
-                }
-
-                possibleFunctions.add(new CFunction(cfunctionName, "", argIndex, functionName, enclFunctionNode,
-                    funcArgs));
+                possibleFunctions.add(functionNamePos);
             }
         }
         return possibleFunctions;
     }
 
-    @SuppressWarnings("unused")
-    private static boolean validateFunctionAgainstCallExpr(Node enclFunctionNode, String cfunctionName,
-                                                           int argIndex, List<ArgumentNamePos> funcArgs) {
-        List<Node> callArgumentList;
-        for (Node call : XmlUtil.getNodeByName(enclFunctionNode, "call", true)) {
-            String functionName = XmlUtil.getNamePosTextPair(call).getName();
-            if (!cfunctionName.equals(functionName)) {
-                continue;
-            }
-            callArgumentList = XmlUtil.getNodeByName(XmlUtil.getNodeByName(call, "argument_list").get(0),
-                "argument");
-            if (callArgumentList.size() > funcArgs.size()) {
-                continue;
-//                int sizeWithoutOptionalArgs = (int) funcArgs.stream().filter(arg -> !arg.isOptional()).count();
-//                if (callArgumentList.size() != sizeWithoutOptionalArgs) {
-//                    continue;
-//                }
-            }
-            return true;
+    private static boolean typeCheckFunctionSignature(FunctionNamePos functionNamePos, int argPosIndex,
+                                                      String argTypeName, CFunction cFunction) {
+        List<ArgumentNamePos> funcArgs = functionNamePos.getArguments();
+        if (funcArgs.size() == 0 || argPosIndex >= funcArgs.size()) {
+            return false;
+        }
+        ArgumentNamePos namePos = funcArgs.get(argPosIndex);
+        if (namePos == null) {
+            return false;
+        }
+        String paramName = namePos.getName();
+        if (paramName.equals("")) {
+            return false;
         }
 
-        for (Node decl : XmlUtil.getNodeByName(enclFunctionNode, "decl", true)) {
-            Node init = XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(decl, "init"), 0);
-            if (init != null) {
-                continue;
-            }
-
-            String constructorTypeName = XmlUtil.getNamePosTextPair(decl).getType();
-            if (!cfunctionName.equals(constructorTypeName)) {
-                continue;
-            }
-
-            Node argumentList = XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(decl, "argument_list"), 0);
-            if (argumentList == null) {
-                continue;
-            }
-
-            callArgumentList = XmlUtil.getNodeByName(argumentList, "argument");
-            if (callArgumentList.size() != funcArgs.size()) {
-                continue;
-            }
-            return true;
+        if (cFunction.getNumberOfArguments() < getRequiredArgumentsSize(funcArgs)) {
+            return false;
         }
 
-        return false;
+        return TypeChecker.isAssignable(namePos.getType(), argTypeName);
+    }
+
+    private static int getRequiredArgumentsSize(List<ArgumentNamePos> funcArgs) {
+        return (int) funcArgs.stream().filter(arg -> !arg.isOptional()).count();
     }
 
     private static SliceProfilesInfo analyzeSourceUnitAndBuildSlices(Node unitNode, String sourceFilePath) {

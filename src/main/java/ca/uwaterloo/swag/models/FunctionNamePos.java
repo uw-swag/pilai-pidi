@@ -5,7 +5,7 @@ import java.util.List;
 public class FunctionNamePos extends NamePos {
 
     private final String functionDeclName;
-    private List<NamePos> arguments;
+    private List<ArgumentNamePos> arguments;
 
     public FunctionNamePos(NamePos namePosTextPair, String functionDeclName) {
         super(namePosTextPair.getName(), namePosTextPair.getType(), namePosTextPair.getPos(),
@@ -17,11 +17,11 @@ public class FunctionNamePos extends NamePos {
         return functionDeclName;
     }
 
-    public void setArguments(List<NamePos> arguments) {
+    public void setArguments(List<ArgumentNamePos> arguments) {
         this.arguments = arguments;
     }
 
-    public List<NamePos> getArguments() {
+    public List<ArgumentNamePos> getArguments() {
         return arguments;
     }
 }

@@ -1,6 +1,5 @@
 package ca.uwaterloo.swag.models;
 
-import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
 import org.w3c.dom.Node;
