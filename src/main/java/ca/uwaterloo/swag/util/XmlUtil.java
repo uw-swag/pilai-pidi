@@ -3,23 +3,16 @@ package ca.uwaterloo.swag.util;
 import static ca.uwaterloo.swag.SliceGenerator.IDENTIFIER_SEPARATOR;
 
 import ca.uwaterloo.swag.models.ArgumentNamePos;
-import ca.uwaterloo.swag.models.EnclNamePosTuple;
 import ca.uwaterloo.swag.models.FunctionNamePos;
 import ca.uwaterloo.swag.models.NamePos;
-import ca.uwaterloo.swag.models.SliceProfilesInfo;
 import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
-import java.util.Hashtable;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.RandomAccess;
-import java.util.Set;
 import java.util.stream.Collectors;
-import org.jgrapht.Graph;
-import org.jgrapht.graph.DefaultEdge;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -37,7 +30,7 @@ public final class XmlUtil {
     }
 
     public static boolean isEmptyTextNode(Node node) {
-        return node.getNodeName().equals("#text") && node.getNodeValue().isBlank();
+        return node != null && node.getNodeName().equals("#text") && node.getNodeValue().isBlank();
     }
 
     public static String getNodePos(Node tempNode) {
@@ -86,8 +79,23 @@ public final class XmlUtil {
         return namedNodes;
     }
 
-    public static List<Node> getMacros(Node unitNode) {
-        return getNodesByName(unitNode, "macro", true);
+    public static List<Node> getNodeByNameAtSameLevel(Node parent, String tag) {
+        List<Node> namedNodes = getNodesBase(parent, tag);
+        if (namedNodes.size() > 0) {
+            return namedNodes;
+        }
+        NodeList deep = parent.getChildNodes();
+        for (int i = 0, len = deep.getLength(); i < len; i++) {
+            if (deep.item(i).getNodeType() == Node.ELEMENT_NODE) {
+                Node childElement = deep.item(i);
+                List<Node> attr = getNodesBase(childElement, tag);
+                if (attr.size() > 0) {
+                    return attr;
+                }
+            }
+        }
+
+        return namedNodes;
     }
 
     public static List<Node> getNodeByName(Node parent, String tag, Boolean all) {
@@ -120,13 +128,11 @@ public final class XmlUtil {
 
     public static FunctionNamePos getFunctionNamePos(Node node) {
         NamePos namePos = getNamePosTextPair(node);
-
         String functionDeclName = namePos.getName();
-
-        if (node.getNodeName().equals("name")) {
+        String nodeName = node.getNodeName();
+        if (nodeName.equals("name")) {
             functionDeclName = node.getTextContent();
         }
-
         List<Node> nameNodeList = getNodeByName(node, "name");
         if (nameNodeList.size() == 1) {
             Node functionNameNode = nodeAtIndex(nameNodeList, 0);
@@ -134,79 +140,68 @@ public final class XmlUtil {
                 functionDeclName = functionNameNode.getTextContent();
             }
         }
-
         String[] parts = functionDeclName.split(IDENTIFIER_SEPARATOR);
         if (parts.length > 1) {
             functionDeclName = parts[parts.length - 1];
         }
 
-        return new FunctionNamePos(namePos, functionDeclName);
+        String functionType = namePos.getType();
+        if ("constructor".equals(nodeName) || "destructor".equals(nodeName)) {
+            functionType = functionDeclName;
+        }
+        return new FunctionNamePos(new NamePos(functionDeclName, functionType, namePos.getPos(),
+            namePos.isPointer()), functionDeclName);
     }
 
     public static NamePos getNamePosTextPair(Node node) {
+        // TODO refactor this method
         NamePos namePos = new NamePos.DefaultNamePos();
         if (node == null) {
             return namePos;
         }
+        String linePos = "";
+        StringBuilder nodeName = new StringBuilder();
+        String typeName = "";
+        boolean isPointer = false;
         NodeList nodeList = node.getChildNodes();
-        Set<String> names = new HashSet<>();
-        names.add("decl");
-        for (int count = 0; count < nodeList.getLength(); count++) {
-            Node tempNode = nodeList.item(count);
-
-            if (tempNode.getNodeType() != Node.ELEMENT_NODE || !tempNode.hasAttributes() || !tempNode
-                .hasChildNodes()) {
+        for (int i = 0; i < nodeList.getLength(); i++) {
+            Node currentNode = nodeList.item(i);
+            if (currentNode.getNodeType() != Node.ELEMENT_NODE || !currentNode.hasAttributes() ||
+                !currentNode.hasChildNodes()) {
                 continue;
             }
-            if (tempNode.getNodeName().equals("name")) {
-                String linePos = getNodePos(tempNode);
-                boolean isPointer = isPointer(tempNode);
-                StringBuilder varType = new StringBuilder();
-                try {
-                    List<Node> typNode = getNodeByName(tempNode.getParentNode(), "type");
-                    if (!(typNode.size() < 1)) {
-                        NodeList typeList = typNode.get(0).getChildNodes();
-                        for (int c = 0; c < typeList.getLength(); c++) {
-                            Node tempType = typeList.item(c);
-                            if (tempType.getNodeName().equals("name")) {
-                                String filler = "~";
-                                if (varType.toString().equals("")) {
-                                    filler = "";
+            switch (currentNode.getNodeName()) {
+                case "name":
+                    nodeName.append(getNodeName(currentNode));
+                    linePos = getNodePos(currentNode);
+                    isPointer = isPointer(currentNode);
+                    List<Node> typeNodeList = getNodeByNameAtSameLevel(currentNode.getParentNode(), "type");
+                    if (typeNodeList.size() > 0) {
+                        NodeList typeList = typeNodeList.get(0).getChildNodes();
+                        for (int j = 0; j < typeList.getLength(); j++) {
+                            Node typeNode = typeList.item(j);
+                            if (typeNode.getNodeName().equals("name")) {
+                                typeName = getNodeName(typeNode);
+                                if (!isPointer) {
+                                    isPointer = isPointer(typeNode);
                                 }
-                                if (tempType.getLastChild().getNodeType() == Node.ELEMENT_NODE) {
-                                    varType.append(filler).append(tempType.getLastChild().
-                                        getFirstChild().getNodeValue());
-                                } else {
-                                    varType.append(filler).append(tempType.getLastChild().getNodeValue());
-                                }
-                            }
-
-                            if (!isPointer) {
-                                isPointer = isPointer(tempType);
                             }
                         }
                     }
-                } catch (NullPointerException | IndexOutOfBoundsException e) {
-                    varType = new StringBuilder();
-                    e.printStackTrace();
-                }
-                if (tempNode.getFirstChild().getNodeType() == Node.ELEMENT_NODE) {
-                    List<Node> nameChildren = getNodeByName(tempNode, "name");
-                    namePos = new NamePos(nameChildren.get(nameChildren.size() - 1).getTextContent(),
-                        varType.toString(), linePos, isPointer);
-                } else {
-                    namePos = new NamePos(tempNode.getFirstChild().getNodeValue(), varType.toString(),
-                        linePos, isPointer);
-                }
-                break;
-            } else if (tempNode.getNodeName().equals("literal")) {
-                return new NamePos(tempNode.getTextContent(),
-                    tempNode.getAttributes().getNamedItem("type").getNodeValue(), getNodePos(tempNode),
-                    isPointer(tempNode));
-            } else if (names.contains(tempNode.getNodeName())) {
-                return getNamePosTextPair(tempNode);
+                    break;
+                case "operator":
+                    nodeName.append(currentNode.getFirstChild().getNodeValue());
+                    break;
+                case "literal":
+                    return new NamePos(currentNode.getTextContent(),
+                        currentNode.getAttributes().getNamedItem("type").getNodeValue(), getNodePos(currentNode),
+                        isPointer(currentNode));
+                case "decl":
+                    return getNamePosTextPair(currentNode);
             }
         }
+
+        namePos = new NamePos(nodeName.toString(), typeName, linePos, isPointer);
         if (node.getNodeName().equals("name") && namePos.getName().equals("")) {
             namePos = new NamePos(node.getFirstChild().getNodeValue(), "", getNodePos(node),
                 false);
@@ -215,25 +210,19 @@ public final class XmlUtil {
     }
 
     private static boolean isPointer(Node node) {
-        if (node.getNextSibling() == null ||
-            node.getNextSibling().getNodeType() != Node.ELEMENT_NODE) {
+        if (node.getNextSibling() == null || node.getNextSibling().getNodeType() != Node.ELEMENT_NODE) {
             return false;
         }
-
         Node nextSibling = node.getNextSibling();
-
-        if (((Element) nextSibling).getTagName().equals("modifier") &&
-            nextSibling.getFirstChild() != null) {
-            return nextSibling.getFirstChild().getTextContent().equals("*");
+        if (((Element) nextSibling).getTagName().equals("modifier") && nextSibling.getFirstChild() != null) {
+            String modifer = nextSibling.getFirstChild().getTextContent();
+            return "*".equals(modifer) || "&".equals(modifer);
         }
-
-        if (nextSibling.getNodeValue() == null) {
+        String nodeValue = nextSibling.getNodeValue();
+        if (nodeValue == null) {
             return false;
         }
-
-        return nextSibling.getNodeValue().equals("*") ||
-            nextSibling.getNodeValue().equals("&");
-
+        return "*".equals(nodeValue) || "&".equals(nodeValue);
     }
 
     public static Node nodeAtIndex(final List<Node> list, int index) {
@@ -324,37 +313,38 @@ public final class XmlUtil {
         }
     }
 
-    @SuppressWarnings("unused")
-    public static final class MyResult {
-
-        private final ArrayList<EnclNamePosTuple> first;
-        private final Hashtable<EnclNamePosTuple, ArrayList<String>> second;
-        private final Hashtable<String, SliceProfilesInfo> javaSliceProfilesInfo;
-        private final Graph<EnclNamePosTuple, DefaultEdge> dg;
-
-        public MyResult(ArrayList<EnclNamePosTuple> first, Hashtable<EnclNamePosTuple,
-            ArrayList<String>> second, Hashtable<String, SliceProfilesInfo> javaSliceProfilesInfo,
-                        Graph<EnclNamePosTuple, DefaultEdge> dg) {
-            this.first = first;
-            this.second = second;
-            this.javaSliceProfilesInfo = javaSliceProfilesInfo;
-            this.dg = dg;
+    public static String getNodeName(final Node base) {
+        StringBuilder value = new StringBuilder();
+        NodeList nodeList = base.getChildNodes();
+        if (nodeList.getLength() <= 0) {
+            return value.toString();
         }
+        int length = nodeList.getLength();
+        for (int i = 0; i < length; i++) {
+            Node node = nodeList.item(i);
 
-        public ArrayList<EnclNamePosTuple> getSourceNodes() {
-            return first;
-        }
+            if (node.getNodeType() == Node.TEXT_NODE && !isEmptyTextNode(node)) {
+                value.append(node.getNodeValue());
+            }
 
-        public Hashtable<EnclNamePosTuple, ArrayList<String>> getDetectedViolations() {
-            return second;
-        }
+            if (node.getNodeType() != Node.ELEMENT_NODE || !node.hasAttributes() || !node.hasChildNodes()) {
+                continue;
+            }
 
-        public Hashtable<String, SliceProfilesInfo> getJavaSliceProfilesInfo() {
-            return javaSliceProfilesInfo;
+            NodeList chileNodeList = node.getChildNodes();
+            if (chileNodeList.getLength() > 1) {
+                value.append(getNodeName(node));
+            } else {
+                Node elNode = node.getFirstChild();
+                if (elNode != null) {
+                    if (elNode.getFirstChild() == null) {
+                        value.append(elNode.getNodeValue());
+                    } else {
+                        value.append(getNodeName(elNode));
+                    }
+                }
+            }
         }
-
-        public Graph<EnclNamePosTuple, DefaultEdge> getDG() {
-            return dg;
-        }
+        return value.toString();
     }
 }
