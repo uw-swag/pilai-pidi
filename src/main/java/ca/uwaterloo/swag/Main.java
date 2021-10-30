@@ -9,6 +9,7 @@ import ca.uwaterloo.swag.models.NamePos;
 import ca.uwaterloo.swag.models.SliceProfile;
 import ca.uwaterloo.swag.models.SliceProfilesInfo;
 import ca.uwaterloo.swag.models.SliceVariableAccess;
+import ca.uwaterloo.swag.models.TypeSymbol;
 import ca.uwaterloo.swag.util.OsUtils;
 import ca.uwaterloo.swag.util.TypeChecker;
 import ca.uwaterloo.swag.util.XmlUtil;
@@ -206,6 +207,8 @@ public class Main {
             System.out.println("Converted to XML, beginning parsing ...");
             DocumentBuilder documentBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
             Document document = documentBuilder.parse(new InputSource(new StringReader(result)));
+
+            Set<TypeSymbol> typeSymbols = new HashSet<>();
             for (Node unitNode : XmlUtil.asList(document.getElementsByTagName("unit"))) {
                 Node fileName = unitNode.getAttributes().getNamedItem("filename");
                 if (fileName != null) {
@@ -213,8 +216,20 @@ public class Main {
                     if (unitNode.getNodeType() != Node.ELEMENT_NODE) {
                         continue;
                     }
-                    SliceProfilesInfo profilesInfo = analyzeSourceUnitAndBuildSlices(unitNode,
-                        sourceFilePath);
+                    SymbolEnter symbolEnter = new SymbolEnter(unitNode, sourceFilePath, typeSymbols);
+                    symbolEnter.invoke();
+                }
+            }
+
+            for (Node unitNode : XmlUtil.asList(document.getElementsByTagName("unit"))) {
+                Node fileName = unitNode.getAttributes().getNamedItem("filename");
+                if (fileName != null) {
+                    String sourceFilePath = fileName.getNodeValue();
+                    if (unitNode.getNodeType() != Node.ELEMENT_NODE) {
+                        continue;
+                    }
+                    SliceProfilesInfo profilesInfo = analyzeSourceUnitAndBuildSlices(unitNode, sourceFilePath,
+                        typeSymbols);
                     sliceProfilesInfo.put(sourceFilePath, profilesInfo);
                 }
             }
@@ -603,22 +618,22 @@ public class Main {
                                               Node enclFunctionNode, EnclNamePosTuple enclNamePosTuple) {
         Node enclUnitNode = profilesInfo.get(profile.fileName).unitNode;
         String jniFunctionName = profile.functionName;
-        if (jniFunctionName.length() > 2 && jniFunctionName.startsWith("n")
-            && Character.isUpperCase(jniFunctionName.charAt(1))) {
+        if (jniFunctionName.length() > 2 && jniFunctionName.startsWith("n") &&
+            Character.isUpperCase(jniFunctionName.charAt(1))) {
             jniFunctionName = jniFunctionName.substring(1);
         }
         String jniArgName = profile.varName;
-        List<ArgumentNamePos> params = XmlUtil.findFunctionParameters(enclFunctionNode);
+        List<ArgumentNamePos> parameters = XmlUtil.findFunctionParameters(enclFunctionNode);
         int index = 0;
-        for (NamePos par : params) {
-            if (par.getName().equals(jniArgName)) {
+        for (NamePos parameter : parameters) {
+            if (parameter.getName().equals(jniArgName)) {
                 break;
             }
             index++;
         }
-        int jniArgPosIndex = index + 2;
-        String clazzName = XmlUtil.getNodeByName(XmlUtil.getNodeByName(enclUnitNode, "class").get(0), "name").
-            get(0).getTextContent();
+        int jniArgPosIndex = index + 2; // first two arugments in native jni methods are env and obj
+        String clazzName = XmlUtil.getNodeByName(XmlUtil.getNodeByName(enclUnitNode, "class").get(0),
+            "name").get(0).getTextContent();
         String jniFunctionSearchStr = clazzName + "_" + jniFunctionName;
 
         for (String filePath : cppSliceProfilesInfo.keySet()) {
@@ -760,8 +775,9 @@ public class Main {
         return (int) funcArgs.stream().filter(arg -> !arg.isOptional()).count();
     }
 
-    private static SliceProfilesInfo analyzeSourceUnitAndBuildSlices(Node unitNode, String sourceFilePath) {
-        SliceGenerator sliceGenerator = new SliceGenerator(unitNode, sourceFilePath);
+    private static SliceProfilesInfo analyzeSourceUnitAndBuildSlices(Node unitNode, String sourceFilePath,
+                                                                     Set<TypeSymbol> typeSymbols) {
+        SliceGenerator sliceGenerator = new SliceGenerator(unitNode, sourceFilePath, typeSymbols);
         return sliceGenerator.generate();
     }
 }
