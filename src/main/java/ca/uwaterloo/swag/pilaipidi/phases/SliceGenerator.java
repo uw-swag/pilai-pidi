@@ -1,24 +1,16 @@
-package ca.uwaterloo.swag;
+package ca.uwaterloo.swag.pilaipidi.phases;
 
-import static ca.uwaterloo.swag.util.XmlUtil.DataAccessType;
-import static ca.uwaterloo.swag.util.XmlUtil.asList;
-import static ca.uwaterloo.swag.util.XmlUtil.getFunctionNamePos;
-import static ca.uwaterloo.swag.util.XmlUtil.getNamePosTextPair;
-import static ca.uwaterloo.swag.util.XmlUtil.getNodeByName;
-import static ca.uwaterloo.swag.util.XmlUtil.getNodePos;
-import static ca.uwaterloo.swag.util.XmlUtil.isEmptyTextNode;
-import static ca.uwaterloo.swag.util.XmlUtil.nodeAtIndex;
-
-import ca.uwaterloo.swag.models.ArgumentNamePos;
-import ca.uwaterloo.swag.models.CFunction;
-import ca.uwaterloo.swag.models.DataTuple;
-import ca.uwaterloo.swag.models.FunctionNamePos;
-import ca.uwaterloo.swag.models.NamePos;
-import ca.uwaterloo.swag.models.SliceProfile;
-import ca.uwaterloo.swag.models.SliceProfilesInfo;
-import ca.uwaterloo.swag.models.SliceVariableAccess;
-import ca.uwaterloo.swag.models.TypeSymbol;
-import ca.uwaterloo.swag.util.XmlUtil;
+import ca.uwaterloo.swag.pilaipidi.models.ArgumentNamePos;
+import ca.uwaterloo.swag.pilaipidi.models.CFunction;
+import ca.uwaterloo.swag.pilaipidi.models.DataTuple;
+import ca.uwaterloo.swag.pilaipidi.models.FunctionNamePos;
+import ca.uwaterloo.swag.pilaipidi.models.NamePos;
+import ca.uwaterloo.swag.pilaipidi.models.SliceProfile;
+import ca.uwaterloo.swag.pilaipidi.models.SliceProfilesInfo;
+import ca.uwaterloo.swag.pilaipidi.models.SliceVariableAccess;
+import ca.uwaterloo.swag.pilaipidi.models.TypeSymbol;
+import ca.uwaterloo.swag.pilaipidi.util.XmlUtil;
+import ca.uwaterloo.swag.pilaipidi.util.XmlUtil.DataAccessType;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Hashtable;
@@ -131,7 +123,7 @@ public class SliceGenerator {
         if (namespaceNode == null) {
             return;
         }
-        Node block = nodeAtIndex(getNodeByName(namespaceNode, "block"), 0);
+        Node block = XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(namespaceNode, "block"), 0);
         if (block == null) {
             return;
         }
@@ -142,11 +134,11 @@ public class SliceGenerator {
         if (structNode == null) {
             return;
         }
-        NamePos structNamePos = getNamePosTextPair(structNode);
+        NamePos structNamePos = XmlUtil.getNamePosTextPair(structNode);
         String structName = structNamePos.getName();
         String structTypeName = structNamePos.getType();
-        Node structVarNameNode = nodeAtIndex(getNodeByName(structNode, "decl"), 0);
-        NamePos structVarNamePos = getNamePosTextPair(structVarNameNode);
+        Node structVarNameNode = XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(structNode, "decl"), 0);
+        NamePos structVarNamePos = XmlUtil.getNamePosTextPair(structVarNameNode);
         if (!structVarNamePos.getName().equals("")) {
             structName = structVarNamePos.getName();
         }
@@ -159,15 +151,15 @@ public class SliceGenerator {
         globalVariables.put(structName, profile);
 
         // analyze struct body
-        Node structNodeBlock = nodeAtIndex(getNodeByName(structNode, "block"), 0);
+        Node structNodeBlock = XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(structNode, "block"), 0);
         if (structNodeBlock == null) {
             return;
         }
         String previousStructName = currentStructName;
         this.currentStructName = structName;
-        analyzeCppClassBlockContent(getNodeByName(structNodeBlock, "private"));
-        analyzeCppClassBlockContent(getNodeByName(structNodeBlock, "protected"));
-        analyzeCppClassBlockContent(getNodeByName(structNodeBlock, "public"));
+        analyzeCppClassBlockContent(XmlUtil.getNodeByName(structNodeBlock, "private"));
+        analyzeCppClassBlockContent(XmlUtil.getNodeByName(structNodeBlock, "protected"));
+        analyzeCppClassBlockContent(XmlUtil.getNodeByName(structNodeBlock, "public"));
         analyzeCppSourceContent(structNodeBlock.getChildNodes());
         this.currentStructName = previousStructName;
     }
@@ -176,17 +168,17 @@ public class SliceGenerator {
         if (classNode == null) {
             return;
         }
-        NamePos classNamePos = getNamePosTextPair(classNode);
+        NamePos classNamePos = XmlUtil.getNamePosTextPair(classNode);
         String className = classNamePos.getName();
-        Node cppClassBlock = nodeAtIndex(getNodeByName(classNode, "block"), 0);
+        Node cppClassBlock = XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(classNode, "block"), 0);
         if (cppClassBlock == null) {
             return;
         }
         String previousStructName = currentStructName;
         this.currentStructName = className;
-        analyzeCppClassBlockContent(getNodeByName(cppClassBlock, "private"));
-        analyzeCppClassBlockContent(getNodeByName(cppClassBlock, "protected"));
-        analyzeCppClassBlockContent(getNodeByName(cppClassBlock, "public"));
+        analyzeCppClassBlockContent(XmlUtil.getNodeByName(cppClassBlock, "private"));
+        analyzeCppClassBlockContent(XmlUtil.getNodeByName(cppClassBlock, "protected"));
+        analyzeCppClassBlockContent(XmlUtil.getNodeByName(cppClassBlock, "public"));
         this.currentStructName = previousStructName;
     }
 
@@ -237,7 +229,7 @@ public class SliceGenerator {
         if (globalDeclNode == null) {
             return null;
         }
-        NamePos namePos = getNamePosTextPair(globalDeclNode);
+        NamePos namePos = XmlUtil.getNamePosTextPair(globalDeclNode);
         String sliceKey = namePos.getName() + "%" + namePos.getPos() + "%" + GLOBAL + "%" + fileName;
         SliceProfile sliceProfile = new SliceProfile(fileName, GLOBAL, namePos.getName(), namePos.getType(),
             namePos.getPos(), namePos.isPointer());
@@ -249,9 +241,9 @@ public class SliceGenerator {
 
         this.currentFunctionName = GLOBAL;
         this.currentFunctionNode = null;
-        List<Node> decls = getNodeByName(globalDeclNode, "decl");
+        List<Node> decls = XmlUtil.getNodeByName(globalDeclNode, "decl");
         for (Node decl : decls) {
-            List<Node> nodeList = getNodeByName(decl, "block");
+            List<Node> nodeList = XmlUtil.getNodeByName(decl, "block");
             for (Node block : nodeList) {
                 analyzeGlobaDeclBlock(block);
             }
@@ -271,7 +263,7 @@ public class SliceGenerator {
 
         currentFunctionName = GLOBAL;
         currentFunctionNode = staticBlock;
-        analyzeBlock(nodeAtIndex(getNodeByName(staticBlock, "block"), 0));
+        analyzeBlock(XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(staticBlock, "block"), 0));
         currentFunctionName = previousFunctionName;
         currentFunctionNode = previousFunctionNode;
     }
@@ -300,7 +292,7 @@ public class SliceGenerator {
             this.localVariables = new Hashtable<>();
         }
 
-        FunctionNamePos functionNamePos = getFunctionNamePos(macro);
+        FunctionNamePos functionNamePos = XmlUtil.getFunctionNamePos(macro);
         if (functionNamePos.getType() == null || functionNamePos.getType().isBlank()) {
             String typeName = findTypeOfMacro(macro);
             functionNamePos = new FunctionNamePos(new NamePos(functionNamePos.getName(), typeName,
@@ -312,9 +304,9 @@ public class SliceGenerator {
 
         this.currentFunctionName = functionNamePos.getName();
         Node macroBody = null;
-        Node block = nodeAtIndex(getNodeByName(macro.getParentNode(), "block"), 0);
+        Node block = XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(macro.getParentNode(), "block"), 0);
         if (block != null) {
-            Node blockContent = nodeAtIndex(getNodeByName(block, "block_content"), 0);
+            Node blockContent = XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(block, "block_content"), 0);
             if (blockContent != null && blockContent.getParentNode() == block) {
                 macroBody = blockContent;
             } else {
@@ -341,17 +333,17 @@ public class SliceGenerator {
 
     private String findTypeOfMacro(Node macro) {
         Node previousSibling = macro.getPreviousSibling();
-        if (isEmptyTextNode(previousSibling)) {
+        if (XmlUtil.isEmptyTextNode(previousSibling)) {
             return findTypeOfMacro(previousSibling);
         }
-        return getNamePosTextPair(previousSibling).getName();
+        return XmlUtil.getNamePosTextPair(previousSibling).getName();
     }
 
     private FunctionNamePos analyzeFunction(Node function) {
         if (function == null) {
             return null;
         }
-        FunctionNamePos functionNamePos = getFunctionNamePos(function);
+        FunctionNamePos functionNamePos = XmlUtil.getFunctionNamePos(function);
         String previousFunctionName = currentFunctionName;
         Node previousFunctionNode = currentFunctionNode;
         this.currentFunctionName = functionNamePos.getName();
@@ -368,7 +360,7 @@ public class SliceGenerator {
         functionNamePos.setArguments(argumentNames);
         this.functionNodes.put(functionNamePos, function);
         analyzeMemberInitList(function);
-        analyzeBlock(nodeAtIndex(getNodeByName(function, "block"), 0));
+        analyzeBlock(XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(function, "block"), 0));
         updateFunctionArgDependencies(functionNamePos);
         this.currentFunctionName = previousFunctionName;
         this.currentFunctionNode = previousFunctionNode;
@@ -383,9 +375,9 @@ public class SliceGenerator {
     }
 
     private void analyzeMemberInitList(Node functionNode) {
-        List<Node> memberInitList = getNodeByName(functionNode, "member_init_list");
+        List<Node> memberInitList = XmlUtil.getNodeByName(functionNode, "member_init_list");
         for (Node memberInit : memberInitList) {
-            for (Node expr : asList(memberInit.getChildNodes())) {
+            for (Node expr : XmlUtil.asList(memberInit.getChildNodes())) {
                 analyzeExpr(expr);
             }
         }
@@ -395,10 +387,10 @@ public class SliceGenerator {
         if (block == null) {
             return;
         }
-        Node blockContent = nodeAtIndex(getNodeByName(block, "block_content"), 0);
+        Node blockContent = XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(block, "block_content"), 0);
         if (blockContent != null) {
             NodeList childNodes = blockContent.getChildNodes();
-            for (Node stmt : asList(childNodes)) {
+            for (Node stmt : XmlUtil.asList(childNodes)) {
                 String stmtTag = stmt.getNodeName();
                 switch (stmtTag) {
                     case "expr_stmt":
@@ -441,7 +433,7 @@ public class SliceGenerator {
         if (block == null) {
             return;
         }
-        Node blockContent = nodeAtIndex(getNodeByName(block, "block_content"), 0);
+        Node blockContent = XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(block, "block_content"), 0);
         analyzeBlockContent(blockContent);
     }
 
@@ -451,7 +443,7 @@ public class SliceGenerator {
         }
 
         NodeList childNodes = blockContent.getChildNodes();
-        for (Node stmt : asList(childNodes)) {
+        for (Node stmt : XmlUtil.asList(childNodes)) {
             String stmtTag = stmt.getNodeName();
             switch (stmtTag) {
                 case "expr_stmt":
@@ -494,7 +486,7 @@ public class SliceGenerator {
             return;
         }
         this.withinDeclStmt = true;
-        analyzeDecl(nodeAtIndex(getNodeByName(stmt, "decl"), 0));
+        analyzeDecl(XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(stmt, "decl"), 0));
         this.withinDeclStmt = false;
     }
 
@@ -502,7 +494,7 @@ public class SliceGenerator {
         if (decl == null) {
             return null;
         }
-        NamePos namePos = getNamePosTextPair(decl);
+        NamePos namePos = XmlUtil.getNamePosTextPair(decl);
         String varName = namePos.getName();
         String varPos = namePos.getPos();
         String sliceKey = varName + "%" + varPos + "%" + this.currentFunctionName + "%" + this.fileName;
@@ -511,12 +503,12 @@ public class SliceGenerator {
         sliceProfiles.put(sliceKey, sliceProfile);
         localVariables.put(varName, sliceProfile);
 
-        Node init = nodeAtIndex(getNodeByName(decl, "init"), 0);
+        Node init = XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(decl, "init"), 0);
         if (init != null) {
-            List<Node> initExprs = getNodeByName(init, "expr");
-            Node initNode = nodeAtIndex(initExprs, 0);
+            List<Node> initExprs = XmlUtil.getNodeByName(init, "expr");
+            Node initNode = XmlUtil.nodeAtIndex(initExprs, 0);
             if (initNode != null) {
-                List<Node> initExpr = asList(initNode.getChildNodes());
+                List<Node> initExpr = XmlUtil.asList(initNode.getChildNodes());
                 if (initExpr.size() > 0) {
                     NamePos initExprNamePos = evaluateExprs(initExpr);
                     checkAndUpdateDVarSliceProfile(namePos, initExprNamePos);
@@ -524,19 +516,19 @@ public class SliceGenerator {
             }
         }
 
-        Node argumentListNode = nodeAtIndex(getNodeByName(decl, "argument_list"), 0);
+        Node argumentListNode = XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(decl, "argument_list"), 0);
         if (argumentListNode == null) {
             return namePos;
         }
 
-        List<Node> argumentList = getNodeByName(argumentListNode, "argument");
+        List<Node> argumentList = XmlUtil.getNodeByName(argumentListNode, "argument");
         for (Node argument : argumentList) {
-            List<Node> argExprList = getNodeByName(argument, "expr");
-            Node argExpr = nodeAtIndex(argExprList, 0);
+            List<Node> argExprList = XmlUtil.getNodeByName(argument, "expr");
+            Node argExpr = XmlUtil.nodeAtIndex(argExprList, 0);
             if (argExpr == null) {
                 continue;
             }
-            for (Node expr : asList(argExpr.getChildNodes())) {
+            for (Node expr : XmlUtil.asList(argExpr.getChildNodes())) {
                 analyzeExprAndUpdateDVar(namePos, expr);
             }
         }
@@ -599,7 +591,7 @@ public class SliceGenerator {
     }
 
     private NamePos analyzeNameExpr(Node expr) {
-        NamePos namePos = getNamePosTextPair(expr);
+        NamePos namePos = XmlUtil.getNamePosTextPair(expr);
         String varName = namePos.getName();
         if (isArrayAccessExpr(expr) && !isLhsExpr) {
             SliceProfile varProfile = null;
@@ -621,7 +613,7 @@ public class SliceGenerator {
     private NamePos analyzeLiteralExpr(Node literal) {
         String literalVal = literal.getTextContent();
         String typeName = literal.getAttributes().getNamedItem("type").getNodeValue();
-        String pos = getNodePos(literal);
+        String pos = XmlUtil.getNodePos(literal);
         String sliceKey = literalVal + "%" + pos + "%" + currentFunctionName + "%" + fileName;
         SliceProfile profile = new SliceProfile(fileName, currentFunctionName, literalVal, typeName, pos,
             false, currentFunctionNode);
@@ -632,32 +624,32 @@ public class SliceGenerator {
 
     private NamePos analyzeOperatorExpr(Node expr) {
         String text;
-        Node specificOpNode = nodeAtIndex(getNodeByName(expr.getParentNode(), "name"), 0);
+        Node specificOpNode = XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(expr.getParentNode(), "name"), 0);
         if (specificOpNode == null) {
-            text = getNamePosTextPair(expr.getParentNode()).getName();
+            text = XmlUtil.getNamePosTextPair(expr.getParentNode()).getName();
         } else {
             text = specificOpNode.getTextContent();
         }
-        return new NamePos(text.split(IDENTIFIER_SEPARATOR)[0], "", getNodePos(expr), false);
+        return new NamePos(text.split(IDENTIFIER_SEPARATOR)[0], "", XmlUtil.getNodePos(expr), false);
     }
 
     private void analyzeTryBlock(Node stmt) {
         if (stmt == null) {
             return;
         }
-        analyzeBlock(nodeAtIndex(getNodeByName(stmt, "block"), 0));
-        analyzeCatchBlock(nodeAtIndex(getNodeByName(stmt, "catch"), 0));
+        analyzeBlock(XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(stmt, "block"), 0));
+        analyzeCatchBlock(XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(stmt, "catch"), 0));
     }
 
     private void analyzeCatchBlock(Node catchBlock) {
         if (catchBlock == null) {
             return;
         }
-        List<Node> param = getNodeByName(catchBlock, "parameter");
+        List<Node> param = XmlUtil.getNodeByName(catchBlock, "parameter");
         for (Node node : param) {
             analyzeParam(node);
         }
-        analyzeBlock(nodeAtIndex(getNodeByName(catchBlock, "block"), 0));
+        analyzeBlock(XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(catchBlock, "block"), 0));
     }
 
     private void analyzeSwitchStmt(Node stmt) {
@@ -675,7 +667,7 @@ public class SliceGenerator {
     }
 
     private NamePos analyzeCallExpr(Node call) {
-        NamePos cfunctionDetails = getNamePosTextPair(call);
+        NamePos cfunctionDetails = XmlUtil.getNamePosTextPair(call);
         String cfunctionName = cfunctionDetails.getName();
         String cfunctionPos = cfunctionDetails.getPos();
         String cfunctionIdentifier = cfunctionName.split(IDENTIFIER_SEPARATOR)[0];
@@ -737,11 +729,11 @@ public class SliceGenerator {
 
     private void analyzeCallArgumentList(Node call, String cfunctionName, String cfunctionPos,
                                          String cfunctionIdentifier) {
-        Node argumentNode = nodeAtIndex(getNodeByName(call, "argument_list"), 0);
+        Node argumentNode = XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(call, "argument_list"), 0);
         if (argumentNode == null) {
             return;
         }
-        List<Node> argumentList = getNodeByName(argumentNode, "argument");
+        List<Node> argumentList = XmlUtil.getNodeByName(argumentNode, "argument");
         if (argumentList.size() == 0) {
             for (String localVarName : localVariables.keySet()) {
                 if (localVarName.equals("")) {
@@ -755,11 +747,11 @@ public class SliceGenerator {
         }
         for (int argPosIndex = 0; argPosIndex < argumentList.size(); argPosIndex++) {
             Node argExpr = argumentList.get(argPosIndex);
-            Node argExprNode = nodeAtIndex(getNodeByName(argExpr, "expr"), 0);
+            Node argExprNode = XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(argExpr, "expr"), 0);
             if (argExprNode == null) {
                 return;
             }
-            for (Node expr : asList(argExprNode.getChildNodes())) {
+            for (Node expr : XmlUtil.asList(argExprNode.getChildNodes())) {
                 NamePos varNamePos = analyzeExpr(expr);
                 if (varNamePos == null) {
                     continue;
@@ -795,11 +787,11 @@ public class SliceGenerator {
         if (castExpr == null) {
             return;
         }
-        for (Node argumentList : getNodeByName(castExpr, "argument_list", true)) {
-            for (Node argument : getNodeByName(argumentList, "argument")) {
-                Node argExprNode = nodeAtIndex(getNodeByName(argument, "expr"), 0);
+        for (Node argumentList : XmlUtil.getNodeByName(castExpr, "argument_list", true)) {
+            for (Node argument : XmlUtil.getNodeByName(argumentList, "argument")) {
+                Node argExprNode = XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(argument, "expr"), 0);
                 if (argExprNode != null) {
-                    for (Node expr : asList(argExprNode.getChildNodes())) {
+                    for (Node expr : XmlUtil.asList(argExprNode.getChildNodes())) {
                         analyzeExpr(expr);
                     }
                 }
@@ -822,12 +814,12 @@ public class SliceGenerator {
         if (stmt == null) {
             return;
         }
-        List<Node> ifBlocks = getNodeByName(stmt, "if");
+        List<Node> ifBlocks = XmlUtil.getNodeByName(stmt, "if");
         for (Node ifBlock : ifBlocks) {
             analyzeIfBlock(ifBlock);
         }
 
-        analyzeElseBlock(nodeAtIndex(getNodeByName(stmt, "else"), 0));
+        analyzeElseBlock(XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(stmt, "else"), 0));
     }
 
     private void analyzeIfBlock(Node stmt) {
@@ -841,8 +833,8 @@ public class SliceGenerator {
         if (stmt == null) {
             return;
         }
-        analyzeCompoundExpr(nodeAtIndex(getNodeByName(stmt, "condition"), 0));
-        analyzeBlock(nodeAtIndex(getNodeByName(stmt, "block"), 0));
+        analyzeCompoundExpr(XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(stmt, "condition"), 0));
+        analyzeBlock(XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(stmt, "block"), 0));
     }
 
     private void analyzeReturnStmt(Node stmt) {
@@ -856,27 +848,27 @@ public class SliceGenerator {
         if (node == null) {
             return;
         }
-        analyzeBlock(nodeAtIndex(getNodeByName(node, "block"), 0));
+        analyzeBlock(XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(node, "block"), 0));
     }
 
     private void analyzeForStmt(Node stmt) {
         if (stmt == null) {
             return;
         }
-        analyzeControl(nodeAtIndex(getNodeByName(stmt, "control"), 0));
-        analyzeBlock(nodeAtIndex(getNodeByName(stmt, "block"), 0));
+        analyzeControl(XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(stmt, "control"), 0));
+        analyzeBlock(XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(stmt, "block"), 0));
     }
 
     private void analyzeControl(Node control) {
         if (control == null) {
             return;
         }
-        Node init = nodeAtIndex(getNodeByName(control, "init"), 0);
+        Node init = XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(control, "init"), 0);
         if (init != null) {
-            analyzeDecl(nodeAtIndex(getNodeByName(init, "decl"), 0));
+            analyzeDecl(XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(init, "decl"), 0));
         }
-        analyzeConditionExpr(nodeAtIndex(getNodeByName(control, "condition"), 0));
-        analyzeExpr(nodeAtIndex(getNodeByName(control, "incr"), 0));
+        analyzeConditionExpr(XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(control, "condition"), 0));
+        analyzeExpr(XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(control, "incr"), 0));
     }
 
     private void analyzeWhileStmt(Node stmt) {
@@ -897,9 +889,9 @@ public class SliceGenerator {
         if (expr == null) {
             return null;
         }
-        NamePos conditionNamePos = analyzeConditionExpr(nodeAtIndex(getNodeByName(expr, "condition"), 0));
-        NamePos thenNamePos = analyzeCompoundExpr(nodeAtIndex(getNodeByName(expr, "then"), 0));
-        NamePos elseNamePos = analyzeCompoundExpr(nodeAtIndex(getNodeByName(expr, "else"), 0));
+        NamePos conditionNamePos = analyzeConditionExpr(XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(expr, "condition"), 0));
+        NamePos thenNamePos = analyzeCompoundExpr(XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(expr, "then"), 0));
+        NamePos elseNamePos = analyzeCompoundExpr(XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(expr, "else"), 0));
         checkAndUpdateDVarSliceProfile(conditionNamePos, thenNamePos);
         checkAndUpdateDVarSliceProfile(conditionNamePos, elseNamePos);
         return conditionNamePos;
@@ -922,7 +914,7 @@ public class SliceGenerator {
 
         String type = parts[parts.length - 2];
         String name = parts[parts.length - 1];
-        String pos = getNodePos(param);
+        String pos = XmlUtil.getNodePos(param);
         boolean isPointer = type.endsWith("*") || name.endsWith("*") || type.endsWith("&") || name.endsWith("&");
         String sliceKey = name + "%" + pos + "%" + this.currentFunctionName + "%" + this.fileName;
         SliceProfile sliceProfile = new SliceProfile(this.fileName, this.currentFunctionName, name, type, pos,
@@ -937,12 +929,12 @@ public class SliceGenerator {
         if (param == null) {
             return null;
         }
-        Node decl = nodeAtIndex(getNodeByName(param, "decl"), 0);
+        Node decl = XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(param, "decl"), 0);
         NamePos namePos = analyzeDecl(decl);
         if (namePos == null) {
             return null;
         }
-        boolean isOptional = getNodeByName(decl, "init").size() > 0;
+        boolean isOptional = XmlUtil.getNodeByName(decl, "init").size() > 0;
         return new ArgumentNamePos(namePos, isOptional);
     }
 
@@ -957,9 +949,9 @@ public class SliceGenerator {
         if (compoundExpr == null) {
             return null;
         }
-        Node exprNode = nodeAtIndex(getNodeByName(compoundExpr, "expr"), 0);
+        Node exprNode = XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(compoundExpr, "expr"), 0);
         if (exprNode != null) {
-            List<Node> exprs = asList(exprNode.getChildNodes());
+            List<Node> exprs = XmlUtil.asList(exprNode.getChildNodes());
             if (exprs.size() > 0) {
                 if (isAssignmentExpr(exprs)) {
                     analyzeAssignmentExpr(exprs);
@@ -979,7 +971,7 @@ public class SliceGenerator {
         Stack<String> ops = new Stack<>();
 
         for (Node currentNode : exprNodes) {
-            if (isEmptyTextNode(currentNode)) {
+            if (XmlUtil.isEmptyTextNode(currentNode)) {
                 continue;
             }
 
@@ -1128,11 +1120,11 @@ public class SliceGenerator {
         if (!expr.getNodeName().equals("name")) {
             return false;
         }
-        Node compTag = nodeAtIndex(getNodeByName(expr, "index"), 0);
+        Node compTag = XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(expr, "index"), 0);
         if (compTag == null) {
             return false;
         }
-        List<Node> comp = getNodeByName(compTag, "expr");
+        List<Node> comp = XmlUtil.getNodeByName(compTag, "expr");
         if (comp.size() > 0) {
             if (comp.size() == 1) {
                 return !isLiteralExpr(comp.get(0));

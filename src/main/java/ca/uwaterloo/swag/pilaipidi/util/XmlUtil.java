@@ -1,10 +1,10 @@
-package ca.uwaterloo.swag.util;
+package ca.uwaterloo.swag.pilaipidi.util;
 
-import static ca.uwaterloo.swag.SliceGenerator.IDENTIFIER_SEPARATOR;
+import static ca.uwaterloo.swag.pilaipidi.phases.SliceGenerator.IDENTIFIER_SEPARATOR;
 
-import ca.uwaterloo.swag.models.ArgumentNamePos;
-import ca.uwaterloo.swag.models.FunctionNamePos;
-import ca.uwaterloo.swag.models.NamePos;
+import ca.uwaterloo.swag.pilaipidi.models.ArgumentNamePos;
+import ca.uwaterloo.swag.pilaipidi.models.FunctionNamePos;
+import ca.uwaterloo.swag.pilaipidi.models.NamePos;
 import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Collections;

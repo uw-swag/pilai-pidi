@@ -1,12 +1,13 @@
-package ca.uwaterloo.swag;
+package ca.uwaterloo.swag.pilaipidi.util;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 @SuppressWarnings("unused")
+public
 enum MODE {
-    TESTING("testing"), NON_TESTING("non_testing");
+    TEST("test"), EXECUTE("execute");
 
     private final Boolean checkBuffer;
     private final Boolean startFromCpp;
@@ -16,7 +17,7 @@ enum MODE {
     private final List<String> lookupString;
 
     MODE(String mode) {
-        if (mode.equals("testing")) {
+        if ("test".equals(mode)) {
             this.skipSrcml = true;
             this.startFromCpp = false;
             this.exportGraph = false;

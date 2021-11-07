@@ -1,6 +1,6 @@
-package ca.uwaterloo.swag.models;
+package ca.uwaterloo.swag.pilaipidi.models;
 
-import ca.uwaterloo.swag.util.XmlUtil;
+import ca.uwaterloo.swag.pilaipidi.util.XmlUtil;
 
 public class DataTuple {
 

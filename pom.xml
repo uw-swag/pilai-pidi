@@ -55,7 +55,7 @@
                     <appendAssemblyId>false</appendAssemblyId>
                     <archive>
                         <manifest>
-                            <mainClass>ca.uwaterloo.swag.Main</mainClass>
+                            <mainClass>ca.uwaterloo.swag.pilaipidi.Main</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>

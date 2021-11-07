@@ -1,4 +1,4 @@
-package ca.uwaterloo.swag.models;
+package ca.uwaterloo.swag.pilaipidi.models;
 
 import java.util.List;
 
