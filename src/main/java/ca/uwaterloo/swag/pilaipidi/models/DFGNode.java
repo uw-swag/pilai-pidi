@@ -1,6 +1,6 @@
 package ca.uwaterloo.swag.pilaipidi.models;
 
-public final class EnclNamePosTuple {
+public final class CFGNode {
 
     private final String varName;
     private final String functionName;
@@ -8,8 +8,8 @@ public final class EnclNamePosTuple {
     private final String definedPosition;
     private final boolean isFunctionNamePos;
 
-    public EnclNamePosTuple(String varName, String functionName, String fileName,
-                            String definedPosition) {
+    public CFGNode(String varName, String functionName, String fileName,
+                   String definedPosition) {
         assert functionName != null;
         this.varName = varName;
         this.functionName = functionName;
@@ -18,8 +18,8 @@ public final class EnclNamePosTuple {
         this.isFunctionNamePos = false;
     }
 
-    public EnclNamePosTuple(String varName, String functionName, String fileName,
-                            String definedPosition, boolean isFunctionNamePos) {
+    public CFGNode(String varName, String functionName, String fileName,
+                   String definedPosition, boolean isFunctionNamePos) {
         assert functionName != null;
         this.varName = varName;
         this.functionName = functionName;
@@ -35,10 +35,10 @@ public final class EnclNamePosTuple {
 
     @Override
     public boolean equals(Object obj) {
-        if (!(obj instanceof EnclNamePosTuple)) {
+        if (!(obj instanceof CFGNode)) {
             return false;
         }
-        EnclNamePosTuple other = (EnclNamePosTuple) obj;
+        CFGNode other = (CFGNode) obj;
         return this.varName.equals(other.varName) && this.functionName.equals(other.functionName) &&
             this.fileName.equals(other.fileName) && this.definedPosition.equals(other.definedPosition);
     }
