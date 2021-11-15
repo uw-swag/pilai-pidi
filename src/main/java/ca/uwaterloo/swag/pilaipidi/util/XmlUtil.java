@@ -5,6 +5,7 @@ import static ca.uwaterloo.swag.pilaipidi.phases.SliceGenerator.IDENTIFIER_SEPAR
 import ca.uwaterloo.swag.pilaipidi.models.ArgumentNamePos;
 import ca.uwaterloo.swag.pilaipidi.models.FunctionNamePos;
 import ca.uwaterloo.swag.pilaipidi.models.NamePos;
+import ca.uwaterloo.swag.pilaipidi.models.Value;
 import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -127,7 +128,7 @@ public final class XmlUtil {
     }
 
     public static FunctionNamePos getFunctionNamePos(Node node) {
-        NamePos namePos = getNamePosTextPair(node);
+        NamePos namePos = getNameAndPos(node);
         String functionDeclName = namePos.getName();
         String nodeName = node.getNodeName();
         if (nodeName.equals("name")) {
@@ -153,8 +154,7 @@ public final class XmlUtil {
             namePos.isPointer()), functionDeclName);
     }
 
-    public static NamePos getNamePosTextPair(Node node) {
-        // TODO refactor this method
+    public static NamePos getNameAndPos(Node node) {
         NamePos namePos = new NamePos.DefaultNamePos();
         if (node == null) {
             return namePos;
@@ -163,6 +163,11 @@ public final class XmlUtil {
         StringBuilder nodeName = new StringBuilder();
         String typeName = "";
         boolean isPointer = false;
+        NamePos bufferSize = null;
+        boolean isBuffer = isBufferAccessExpr(node);
+        if (isBuffer) {
+            bufferSize = getBufferSize(node);
+        }
         NodeList nodeList = node.getChildNodes();
         for (int i = 0; i < nodeList.getLength(); i++) {
             Node currentNode = nodeList.item(i);
@@ -172,22 +177,27 @@ public final class XmlUtil {
             }
             switch (currentNode.getNodeName()) {
                 case "name":
-                    nodeName.append(getNodeName(currentNode));
-                    linePos = getNodePos(currentNode);
-                    isPointer = isPointer(currentNode);
-                    List<Node> typeNodeList = getNodeByNameAtSameLevel(currentNode.getParentNode(), "type");
-                    if (typeNodeList.size() > 0) {
-                        NodeList typeList = typeNodeList.get(0).getChildNodes();
-                        for (int j = 0; j < typeList.getLength(); j++) {
-                            Node typeNode = typeList.item(j);
-                            if (typeNode.getNodeName().equals("name")) {
-                                typeName = getNodeName(typeNode);
-                                if (!isPointer) {
-                                    isPointer = isPointer(typeNode);
-                                }
-                            }
+                    if (!isBuffer) {
+                        isBuffer = isBufferAccessExpr(currentNode);
+                        if (isBuffer) {
+                            bufferSize = getBufferSize(currentNode);
                         }
                     }
+                    String nodeNameStr = getNodeName(currentNode);
+                    nodeName.append(isBuffer ? getNameWithoutBufferSize(nodeNameStr) : nodeNameStr);
+                    linePos = getNodePos(currentNode);
+                    isPointer = isPointer(currentNode);
+                    NamePos typeNamePos = getTypeName(currentNode);
+                    if (!isPointer) {
+                        isPointer = typeNamePos.isPointer();
+                    }
+                    if (!isBuffer) {
+                        isBuffer = typeNamePos.isBuffer();
+                        if (isBuffer) {
+                            bufferSize = typeNamePos.getBufferSize();
+                        }
+                    }
+                    typeName = typeNamePos.getName();
                     break;
                 case "operator":
                     nodeName.append(currentNode.getFirstChild().getNodeValue());
@@ -197,19 +207,98 @@ public final class XmlUtil {
                         currentNode.getAttributes().getNamedItem("type").getNodeValue(), getNodePos(currentNode),
                         isPointer(currentNode));
                 case "decl":
-                    return getNamePosTextPair(currentNode);
+                    return getNameAndPos(currentNode);
             }
         }
 
         namePos = new NamePos(nodeName.toString(), typeName, linePos, isPointer);
+        if (isBuffer) {
+            namePos = new NamePos(nodeName.toString(), typeName, linePos, isPointer, true, bufferSize);
+        }
         if (node.getNodeName().equals("name") && namePos.getName().equals("")) {
-            namePos = new NamePos(node.getFirstChild().getNodeValue(), "", getNodePos(node),
-                false);
+            namePos = new NamePos(node.getFirstChild().getNodeValue(), "", getNodePos(node), false);
         }
         return namePos;
     }
 
-    private static boolean isPointer(Node node) {
+    private static NamePos getTypeName(Node node) {
+        String typeName = "";
+        boolean isPointer = false;
+        boolean isBuffer = false;
+        NamePos bufferSize = null;
+        List<Node> typeNodeList = getNodeByNameAtSameLevel(node.getParentNode(), "type");
+        if (typeNodeList.size() > 0) {
+            NodeList typeList = typeNodeList.get(0).getChildNodes();
+            for (int j = 0; j < typeList.getLength(); j++) {
+                Node typeNode = typeList.item(j);
+                if (!typeNode.getNodeName().equals("name")) {
+                    continue;
+                }
+                isPointer = isPointer(typeNode);
+                isBuffer = isBufferAccessExpr(typeNode);
+                if (isBuffer) {
+                    bufferSize = getBufferSize(typeNode);
+                }
+                String typeNameStr = getNodeName(typeNode);
+                typeName = isBuffer ? getNameWithoutBufferSize(typeNameStr) : typeNameStr;
+            }
+        }
+        return new NamePos(typeName, null, null, isPointer, isBuffer, bufferSize);
+    }
+
+    public static boolean isBufferAccessExpr(Node expr) {
+        if (!expr.getNodeName().equals("name")) {
+            return false;
+        }
+        Node compTag = XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(expr, "index"), 0);
+        if (compTag == null) {
+            return false;
+        }
+        List<Node> comp = XmlUtil.getNodeByName(compTag, "expr");
+        return comp.size() == 1;
+    }
+
+    private static String getNameWithoutBufferSize(String expr) {
+        if (expr.indexOf("]") == (expr.length() - 1) && expr.contains("[")) {
+            return expr.substring(0, expr.indexOf("["));
+        }
+        return expr;
+    }
+
+    public static NamePos getBufferSize(Node expr) {
+        Node compTag = XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(expr, "index"), 0);
+        List<Node> comp = XmlUtil.getNodeByName(compTag, "expr");
+        if (comp.size() == 1) {
+            Node indexExpr = comp.get(0);
+            String indexExprName = getNodeName(indexExpr);
+            return new NamePos(indexExprName, "", getNodePos(indexExpr), false);
+        }
+        return null;
+    }
+
+    public static boolean isLiteralExpr(Node expr) {
+        if (expr == null) {
+            return false;
+        }
+        if (expr.getFirstChild() == null) {
+            return false;
+        }
+        return "literal".equals(expr.getFirstChild().getNodeName());
+    }
+
+    public static boolean isNumeric(String stringNumber) {
+        if (stringNumber == null) {
+            return false;
+        }
+        try {
+            Integer.parseInt(stringNumber);
+        } catch (NumberFormatException nfe) {
+            return false;
+        }
+        return true;
+    }
+
+    public static boolean isPointer(Node node) {
         if (node.getNextSibling() == null || node.getNextSibling().getNodeType() != Node.ELEMENT_NODE) {
             return false;
         }
@@ -266,7 +355,7 @@ public final class XmlUtil {
                 finalParameters.add(new ArgumentNamePos("NoNameParam", "",
                     String.valueOf(finalParameters.size()), false, isOptional));
             } else {
-                finalParameters.add(new ArgumentNamePos(getNamePosTextPair(nameNode.get(0)), isOptional));
+                finalParameters.add(new ArgumentNamePos(getNameAndPos(nameNode.get(0)), isOptional));
             }
         }
         return parameters;
@@ -290,10 +379,6 @@ public final class XmlUtil {
         }
 
         return null;
-    }
-
-    public enum DataAccessType {
-        @SuppressWarnings("unused") BUFFER_READ, BUFFER_WRITE, DATA_READ, DATA_WRITE
     }
 
     static final class NodeListWrapper extends AbstractList<Node> implements RandomAccess {

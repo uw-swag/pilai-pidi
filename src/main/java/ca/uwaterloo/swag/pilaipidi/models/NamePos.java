@@ -6,12 +6,25 @@ public class NamePos {
     private final String type;
     private final String pos;
     private final boolean isPointer;
+    private final boolean isBuffer;
+    private final NamePos bufferSize;
 
     public NamePos(String name, String type, String pos, boolean isPointer) {
         this.name = name;
         this.type = type;
         this.pos = pos;
         this.isPointer = isPointer;
+        this.isBuffer = false;
+        this.bufferSize = null;
+    }
+
+    public NamePos(String name, String type, String pos, boolean isPointer, boolean isBuffer, NamePos bufferSize) {
+        this.name = name;
+        this.type = type;
+        this.pos = pos;
+        this.isPointer = isPointer;
+        this.isBuffer = isBuffer;
+        this.bufferSize = bufferSize;
     }
 
     public String getName() {
@@ -22,7 +35,6 @@ public class NamePos {
         return pos;
     }
 
-    @SuppressWarnings("unused")
     public boolean isPointer() {
         return isPointer;
     }
@@ -50,8 +62,15 @@ public class NamePos {
         return result;
     }
 
-    public static class DefaultNamePos extends NamePos {
+    public boolean isBuffer() {
+        return isBuffer;
+    }
 
+    public NamePos getBufferSize() {
+        return bufferSize;
+    }
+
+    public static class DefaultNamePos extends NamePos {
         public DefaultNamePos() {
             super("", "", "", false);
         }

@@ -113,7 +113,7 @@ public class SymbolFinder {
         if (structNode == null) {
             return;
         }
-        NamePos structNamePos = XmlUtil.getNamePosTextPair(structNode);
+        NamePos structNamePos = XmlUtil.getNameAndPos(structNode);
         String structName = structNamePos.getName();
         TypeSymbol structSymbol = new TypeSymbol(structName, structName, currentStructSymbol,
             this.fileName + ":" + structNamePos.getPos());
@@ -137,7 +137,7 @@ public class SymbolFinder {
         if (classNode == null) {
             return;
         }
-        NamePos classNamePos = XmlUtil.getNamePosTextPair(classNode);
+        NamePos classNamePos = XmlUtil.getNameAndPos(classNode);
         String className = classNamePos.getName();
         TypeSymbol structSymbol = new TypeSymbol(className, className, currentStructSymbol,
             this.fileName + ":" + classNamePos.getPos());
@@ -165,7 +165,7 @@ public class SymbolFinder {
         if (classNode == null) {
             return;
         }
-        NamePos classNamePos = XmlUtil.getNamePosTextPair(classNode);
+        NamePos classNamePos = XmlUtil.getNameAndPos(classNode);
         String className = classNamePos.getName();
         TypeSymbol typeSymbol = new TypeSymbol(className, className, currentStructSymbol,
             this.fileName + ":" + classNamePos.getPos());
@@ -216,7 +216,7 @@ public class SymbolFinder {
         if (globalDeclNode == null) {
             return null;
         }
-        NamePos namePos = XmlUtil.getNamePosTextPair(globalDeclNode);
+        NamePos namePos = XmlUtil.getNameAndPos(globalDeclNode);
 
         String previousFunctionName = currentFunctionName;
         Node previousFunctionNode = currentFunctionNode;
@@ -313,7 +313,7 @@ public class SymbolFinder {
         if (XmlUtil.isEmptyTextNode(previousSibling)) {
             return findTypeOfMacro(previousSibling);
         }
-        return XmlUtil.getNamePosTextPair(previousSibling).getName();
+        return XmlUtil.getNameAndPos(previousSibling).getName();
     }
 
     private FunctionNamePos analyzeFunction(Node function) {
@@ -442,7 +442,7 @@ public class SymbolFinder {
         if (decl == null) {
             return null;
         }
-        NamePos namePos = XmlUtil.getNamePosTextPair(decl);
+        NamePos namePos = XmlUtil.getNameAndPos(decl);
         Node init = XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(decl, "init"), 0);
         if (init != null) {
             List<Node> initExprs = XmlUtil.getNodeByName(init, "expr");
@@ -501,7 +501,7 @@ public class SymbolFinder {
     }
 
     private NamePos analyzeNameExpr(Node expr) {
-        NamePos namePos = XmlUtil.getNamePosTextPair(expr);
+        NamePos namePos = XmlUtil.getNameAndPos(expr);
         String varName = namePos.getName();
         return checkForIdentifierSeperatorAndUpdate(namePos, varName);
     }
@@ -517,7 +517,7 @@ public class SymbolFinder {
         String text;
         Node specificOpNode = XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(expr.getParentNode(), "name"), 0);
         if (specificOpNode == null) {
-            text = XmlUtil.getNamePosTextPair(expr.getParentNode()).getName();
+            text = XmlUtil.getNameAndPos(expr.getParentNode()).getName();
         } else {
             text = specificOpNode.getTextContent();
         }
@@ -558,7 +558,7 @@ public class SymbolFinder {
     }
 
     private NamePos analyzeCallExpr(Node call) {
-        NamePos cfunctionDetails = XmlUtil.getNamePosTextPair(call);
+        NamePos cfunctionDetails = XmlUtil.getNameAndPos(call);
         String cfunctionName = cfunctionDetails.getName();
         return checkForIdentifierSeperatorAndUpdate(cfunctionDetails, cfunctionName);
     }
