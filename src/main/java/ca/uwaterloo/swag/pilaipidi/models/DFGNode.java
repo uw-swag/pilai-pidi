@@ -1,6 +1,6 @@
 package ca.uwaterloo.swag.pilaipidi.models;
 
-public final class CFGNode {
+public final class DFGNode {
 
     private final String varName;
     private final String functionName;
@@ -8,7 +8,7 @@ public final class CFGNode {
     private final String definedPosition;
     private final boolean isFunctionNamePos;
 
-    public CFGNode(String varName, String functionName, String fileName,
+    public DFGNode(String varName, String functionName, String fileName,
                    String definedPosition) {
         assert functionName != null;
         this.varName = varName;
@@ -18,7 +18,7 @@ public final class CFGNode {
         this.isFunctionNamePos = false;
     }
 
-    public CFGNode(String varName, String functionName, String fileName,
+    public DFGNode(String varName, String functionName, String fileName,
                    String definedPosition, boolean isFunctionNamePos) {
         assert functionName != null;
         this.varName = varName;
@@ -35,10 +35,10 @@ public final class CFGNode {
 
     @Override
     public boolean equals(Object obj) {
-        if (!(obj instanceof CFGNode)) {
+        if (!(obj instanceof DFGNode)) {
             return false;
         }
-        CFGNode other = (CFGNode) obj;
+        DFGNode other = (DFGNode) obj;
         return this.varName.equals(other.varName) && this.functionName.equals(other.functionName) &&
             this.fileName.equals(other.fileName) && this.definedPosition.equals(other.definedPosition);
     }

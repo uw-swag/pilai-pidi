@@ -21,6 +21,8 @@ public class SliceProfile {
     public final Set<CFunction> cfunctions = new HashSet<>();
     public final Node functionNode;
     public final boolean isFunctionNameProfile;
+    public final boolean isBuffer;
+    private Value currentValue;
 
     public SliceProfile(String fileName, String functionName, String varName, String typeName,
                         String definedPosition, boolean isPointer) {
@@ -31,6 +33,20 @@ public class SliceProfile {
         this.definedPosition = definedPosition;
         this.isPointer = isPointer;
         this.functionNode = null;
+        this.isFunctionNameProfile = false;
+        this.isBuffer = false;
+    }
+
+    public SliceProfile(String fileName, String functionName, String varName, String typeName,
+                        String definedPosition, boolean isPointer, Node functionNode, boolean isBuffer) {
+        this.fileName = fileName;
+        this.functionName = functionName;
+        this.varName = varName;
+        this.typeName = typeName;
+        this.definedPosition = definedPosition;
+        this.isPointer = isPointer;
+        this.isBuffer = isBuffer;
+        this.functionNode = functionNode;
         this.isFunctionNameProfile = false;
     }
 
@@ -44,6 +60,7 @@ public class SliceProfile {
         this.isPointer = isPointer;
         this.functionNode = functionNode;
         this.isFunctionNameProfile = false;
+        this.isBuffer = false;
     }
 
     public SliceProfile(String fileName, String functionName, String varName, String typeName,
@@ -56,6 +73,7 @@ public class SliceProfile {
         this.isPointer = false;
         this.functionNode = functionNode;
         this.isFunctionNameProfile = isFunctionNameProfile;
+        this.isBuffer = false;
     }
 
     @Override
@@ -85,5 +103,13 @@ public class SliceProfile {
 
     public String toString() {
         return varName + "," + functionName + "," + fileName + ":" + definedPosition;
+    }
+
+    public Value getCurrentValue() {
+        return currentValue;
+    }
+
+    public void setCurrentValue(Value currentValue) {
+        this.currentValue = currentValue;
     }
 }

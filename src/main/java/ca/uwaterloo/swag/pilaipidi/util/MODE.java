@@ -4,9 +4,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-@SuppressWarnings("unused")
-public
-enum MODE {
+public enum MODE {
     TEST("test"), EXECUTE("execute");
 
     private final Boolean checkBuffer;

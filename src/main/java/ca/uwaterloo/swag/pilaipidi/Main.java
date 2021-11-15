@@ -1,6 +1,6 @@
 package ca.uwaterloo.swag.pilaipidi;
 
-import ca.uwaterloo.swag.pilaipidi.models.EnclNamePosTuple;
+import ca.uwaterloo.swag.pilaipidi.models.DFGNode;
 import ca.uwaterloo.swag.pilaipidi.models.SliceProfilesInfo;
 import ca.uwaterloo.swag.pilaipidi.models.TypeSymbol;
 import ca.uwaterloo.swag.pilaipidi.phases.DataFlowAnalyzer;
@@ -11,39 +11,26 @@ import ca.uwaterloo.swag.pilaipidi.phases.SymbolFinder;
 import ca.uwaterloo.swag.pilaipidi.util.ArugumentOptions;
 import ca.uwaterloo.swag.pilaipidi.util.MODE;
 import ca.uwaterloo.swag.pilaipidi.util.XmlUtil;
-import java.io.File;
 import java.io.IOException;
-import java.io.StringWriter;
 import java.net.URISyntaxException;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Optional;
 import java.util.Scanner;
 import java.util.Set;
-import java.util.Stack;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.xml.parsers.ParserConfigurationException;
-import org.apache.commons.io.FileUtils;
 import org.jgrapht.Graph;
-import org.jgrapht.GraphPath;
-import org.jgrapht.alg.shortestpath.BFSShortestPath;
 import org.jgrapht.graph.DefaultDirectedGraph;
 import org.jgrapht.graph.DefaultEdge;
-import org.jgrapht.nio.dot.DOTExporter;
-import org.jgrapht.traverse.BreadthFirstIterator;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.xml.sax.SAXException;
@@ -63,9 +50,9 @@ public class Main {
     }
 
     @SuppressWarnings("UnusedReturnValue")
-    public static Hashtable<String, Set<List<EnclNamePosTuple>>> nonCLI(String[] args) {
-        final Graph<EnclNamePosTuple, DefaultEdge> graph = new DefaultDirectedGraph<>(DefaultEdge.class);
-        final Map<EnclNamePosTuple, List<String>> detectedViolations = new Hashtable<>();
+    public static Hashtable<String, Set<List<DFGNode>>> nonCLI(String[] args) {
+        final Graph<DFGNode, DefaultEdge> graph = new DefaultDirectedGraph<>(DefaultEdge.class);
+        final Map<DFGNode, List<String>> detectedViolations = new Hashtable<>();
         long start = System.currentTimeMillis();
 
         final ArugumentOptions arugumentOptions = processArguments(args);
@@ -84,26 +71,26 @@ public class Main {
         long mid = System.currentTimeMillis();
         System.out.println("Completed analyzing slice profiles in " + (mid - start) / 1000 + "s");
 
-        final Hashtable<String, Set<List<EnclNamePosTuple>>> sourcesAndSinks = findSourcesAndSinks(graph,
+        final Hashtable<String, Set<List<DFGNode>>> sourcesAndSinks = findSourcesAndSinks(graph,
             detectedViolations, arugumentOptions);
 
         long end = System.currentTimeMillis();
-        System.out.println("No of files analyzed " + (sliceProfiles.size()));
+        System.out.println("No of files analyzed " + sliceProfiles.size());
         System.out.println("Completed analysis in " + (end - start) / 1000 + "s");
 
         return sourcesAndSinks;
     }
 
-    private static Hashtable<String, Set<List<EnclNamePosTuple>>> findSourcesAndSinks(
-        Graph<EnclNamePosTuple, DefaultEdge> graph, Map<EnclNamePosTuple, List<String>> detectedViolations,
+    private static Hashtable<String, Set<List<DFGNode>>> findSourcesAndSinks(
+        Graph<DFGNode, DefaultEdge> graph, Map<DFGNode, List<String>> detectedViolations,
         ArugumentOptions arugumentOptions) {
         SourceSinkFinder sourceSinkFinder = new SourceSinkFinder(graph, detectedViolations,
             arugumentOptions.singleTarget, mode);
         return sourceSinkFinder.invoke();
     }
 
-    private static void analyzeDataFlow(Graph<EnclNamePosTuple, DefaultEdge> graph,
-                                        Map<EnclNamePosTuple, List<String>> detectedViolations,
+    private static void analyzeDataFlow(Graph<DFGNode, DefaultEdge> graph,
+                                        Map<DFGNode, List<String>> detectedViolations,
                                         ArugumentOptions arugumentOptions,
                                         Map<String, SliceProfilesInfo> sliceProfilesInfo) {
         DataFlowAnalyzer dataFlowAnalyzer = new DataFlowAnalyzer(sliceProfilesInfo, graph, detectedViolations,

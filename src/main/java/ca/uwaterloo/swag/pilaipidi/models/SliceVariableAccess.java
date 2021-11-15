@@ -1,18 +1,19 @@
 package ca.uwaterloo.swag.pilaipidi.models;
 
 import java.util.ArrayList;
+import java.util.List;
 
 @SuppressWarnings("unused")
 public class SliceVariableAccess {
 
-    public ArrayList<DataTuple> readPositions = new ArrayList<>();
-    public ArrayList<DataTuple> writePositions = new ArrayList<>();
+    public List<DataAccess> readPositions = new ArrayList<>();
+    public List<DataAccess> writePositions = new ArrayList<>();
 
-    public void addWritePosition(DataTuple write) {
+    public void addWritePosition(DataAccess write) {
         writePositions.add(write);
     }
 
-    public void addReadPosition(DataTuple read) {
-        writePositions.add(read);
+    public void addReadPosition(DataAccess read) {
+        readPositions.add(read);
     }
 }
