@@ -1,5 +1,6 @@
 package ca.uwaterloo.swag.pilaipidi.models;
 
+import java.util.List;
 import java.util.Objects;
 import org.w3c.dom.Node;
 
@@ -12,9 +13,10 @@ public final class CFunction {
     private final Node enclFunctionNode;
     private final boolean isEmptyArgFunc;
     private final int numberOfArguments;
+    private final List<SliceProfile> argProfiles;
 
     public CFunction(String name, String position, int argPosIndex, String enclFunctionName, Node enclFunctionNode,
-                     int numberOfArguments) {
+                     int numberOfArguments, List<SliceProfile> argProfiles) {
         this.name = name;
         this.position = position;
         this.argPosIndex = argPosIndex;
@@ -22,16 +24,7 @@ public final class CFunction {
         this.enclFunctionNode = enclFunctionNode;
         this.isEmptyArgFunc = argPosIndex == -1;
         this.numberOfArguments = numberOfArguments;
-    }
-
-    public CFunction(int argPosIndex, String enclFunctionName, Node enclFunctionNode, int numberOfArguments) {
-        this.argPosIndex = argPosIndex;
-        this.enclFunctionName = enclFunctionName;
-        this.enclFunctionNode = enclFunctionNode;
-        this.name = null;
-        this.position = null;
-        this.isEmptyArgFunc = argPosIndex == -1;
-        this.numberOfArguments = numberOfArguments;
+        this.argProfiles = argProfiles;
     }
 
     public Node getEnclFunctionNode() {
@@ -60,6 +53,10 @@ public final class CFunction {
 
     public int getNumberOfArguments() {
         return numberOfArguments;
+    }
+
+    public List<SliceProfile> getArgProfiles() {
+        return argProfiles;
     }
 
     @Override

@@ -15,6 +15,7 @@ import ca.uwaterloo.swag.pilaipidi.models.SliceVariableAccess;
 import ca.uwaterloo.swag.pilaipidi.util.TypeChecker;
 import ca.uwaterloo.swag.pilaipidi.util.XmlUtil;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.LinkedList;
@@ -28,6 +29,10 @@ import org.w3c.dom.Node;
 
 public class DataFlowAnalyzer {
 
+    public static List<String> BUFFER_ACCESS_SINK_FUNCTIONS = Arrays.asList("strcat", "strdup", "strncat", "strcmp",
+        "strncmp", "strcpy", "strncpy", "strlen", "strchr", "strrchr", "index", "rindex", "strpbrk", "strspn",
+        "strcspn", "strstr", "strtok", "memccpy", "memchr", "memmove", "memcpy", "memcmp", "memset", "bcopy",
+        "bzero", "bcmp");
     private final String JNI_NATIVE_METHOD_MODIFIER = "native";
     private final Set<SliceProfile> analyzedProfiles = new HashSet<>();
     private final Map<String, SliceProfilesInfo> javaSliceProfilesInfo = new Hashtable<>();
@@ -102,7 +107,7 @@ public class DataFlowAnalyzer {
         // step-01 : analyse cfunctions of the slice variable
         DFGNode dfgNode;
         for (CFunction cFunction : profile.cfunctions) {
-            analyzeCfunction(cFunction, profile, rawProfilesInfo);
+            analyzeCFunction(cFunction, profile, rawProfilesInfo);
         }
         dfgNode = new DFGNode(profile.varName, profile.functionName, profile.fileName, profile.definedPosition);
         if (!graph.containsVertex(dfgNode)) {
@@ -161,7 +166,7 @@ public class DataFlowAnalyzer {
 //        analyzePointerAccess(profile, rawProfilesInfo, dfgNode);
     }
 
-    private void analyzeCfunction(CFunction cFunction, SliceProfile profile,
+    private void analyzeCFunction(CFunction cFunction, SliceProfile profile,
                                   Map<String, SliceProfilesInfo> sliceProfilesInfo) {
         if (singleTarget != null) {
             return;
@@ -174,12 +179,14 @@ public class DataFlowAnalyzer {
             profile.definedPosition);
 
         if (sinkFunctions.contains(cfunctionName)) {
+            if (isBufferAccessFunction(cfunctionName) && isBufferAccessFunctionWithinBound(cFunction)) {
+                return;
+            }
             graph.addVertex(dfgNode);
             ArrayList<String> cErrors = new ArrayList<>();
             cErrors.add("Use of " + cfunctionName + " at " + cfunctionPos);
-            DFGNode bufferErrorFunctionDFGNode =
-                new DFGNode(dfgNode.varName() + "#" + cfunctionName,
-                    dfgNode.functionName(), dfgNode.fileName(), cfunctionPos, true);
+            DFGNode bufferErrorFunctionDFGNode = new DFGNode(dfgNode.varName() + "#" + cfunctionName,
+                dfgNode.functionName(), dfgNode.fileName(), cfunctionPos, true);
             hasNoEdge(dfgNode, bufferErrorFunctionDFGNode);
             detectedViolations.put(bufferErrorFunctionDFGNode, cErrors);
             return;
@@ -199,6 +206,25 @@ public class DataFlowAnalyzer {
             }
             analyzeSliceProfile(dependentSliceProfile, sliceProfilesInfo);
         }
+    }
+
+    private boolean isBufferAccessFunctionWithinBound(CFunction cFunction) {
+        switch (cFunction.getName()) {
+            case "memcpy":
+                List<SliceProfile> argProfiles = cFunction.getArgProfiles();
+                if (argProfiles.size() != 3) { // TODO, size has to be 3
+                    break;
+                }
+                SliceProfile dst = argProfiles.get(0);
+                SliceProfile src = argProfiles.get(1);
+                SliceProfile bound = argProfiles.get(2);
+                return isAccessWithinBufferBound(dst.getCurrentValue(), bound.getCurrentValue());
+        }
+        return false;
+    }
+
+    private boolean isBufferAccessFunction(String cfunctionName) {
+        return BUFFER_ACCESS_SINK_FUNCTIONS.contains(cfunctionName);
     }
 
     private LinkedList<SliceProfile> findDependentSliceProfiles(CFunction cFunction, String typeName,
@@ -401,7 +427,8 @@ public class DataFlowAnalyzer {
         for (SliceVariableAccess varAccess : profile.usedPositions) {
             for (DataAccess access : varAccess.writePositions) {
                 if (DataAccessType.BUFFER_WRITE == access.accessType) {
-                    boolean isWithinBound = isAccessWithinBufferBound(profile, access);
+                    boolean isWithinBound = isAccessWithinBufferBound(profile.getCurrentValue(),
+                        access.accessedExprValue);
                     if (isWithinBound) {
                         continue;
                     }
@@ -415,7 +442,8 @@ public class DataFlowAnalyzer {
             }
             for (DataAccess access : varAccess.readPositions) {
                 if (DataAccessType.BUFFER_READ == access.accessType) {
-                    boolean isWithinBound = isAccessWithinBufferBound(profile, access);
+                    boolean isWithinBound = isAccessWithinBufferBound(profile.getCurrentValue(),
+                        access.accessedExprValue);
                     if (isWithinBound) {
                         continue;
                     }
@@ -430,9 +458,9 @@ public class DataFlowAnalyzer {
         }
     }
 
-    private boolean isAccessWithinBufferBound(SliceProfile profile, DataAccess varAccess) {
-        int bufferSize = getValue(profile.getCurrentValue(), new HashSet<>());
-        int bufferAccessedSize = getValue(varAccess.accessedExprValue, new HashSet<>());
+    private boolean isAccessWithinBufferBound(Value bufferSizeValue, Value bufferAccessValue) {
+        int bufferSize = getValue(bufferSizeValue, new HashSet<>());
+        int bufferAccessedSize = getValue(bufferAccessValue, new HashSet<>());
         if (bufferSize == 0 && bufferAccessedSize == 0) { // we did not capture the sizes properly
             return true;
         }

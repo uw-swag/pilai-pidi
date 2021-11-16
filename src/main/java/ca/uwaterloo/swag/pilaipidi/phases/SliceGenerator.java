@@ -15,8 +15,10 @@ import ca.uwaterloo.swag.pilaipidi.util.XmlUtil;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Hashtable;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 import java.util.Stack;
@@ -631,7 +633,9 @@ public class SliceGenerator {
             false, currentFunctionNode);
         sliceProfiles.put(sliceKey, profile);
         localVariables.put(literalVal, profile);
-        return new NamePos(literalVal, typeName, pos, false);
+        NamePos literalExprNamePos = new NamePos(literalVal, typeName, pos, false);
+        setVarValueToProfile(literalExprNamePos, profile);
+        return literalExprNamePos;
     }
 
     private NamePos analyzeOperatorExpr(Node expr) {
@@ -752,13 +756,16 @@ public class SliceGenerator {
                     continue;
                 }
                 String sliceKey = localVarName + "%" + cfunctionPos + "%" + currentFunctionName + "%" + fileName;
-                updateCFunctionsSliceProfile(localVarName, cfunctionName, cfunctionPos, -1, sliceKey,
-                    localVariables, argumentList);
+                SliceProfile sliceProfile = localVariables.get(localVarName);
+                CFunction cFun = new CFunction(cfunctionName, cfunctionPos, -1, currentFunctionName,
+                    currentFunctionNode, argumentList.size(), new ArrayList<>());
+                sliceProfile.cfunctions.add(cFun);
+                sliceProfiles.put(sliceKey, sliceProfile);
             }
             return;
         }
-        for (int argPosIndex = 0; argPosIndex < argumentList.size(); argPosIndex++) {
-            Node argExpr = argumentList.get(argPosIndex);
+        Map<String, SliceProfile> argProfiles = new LinkedHashMap<>();
+        for (Node argExpr : argumentList) {
             Node argExprNode = XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(argExpr, "expr"), 0);
             if (argExprNode == null) {
                 return;
@@ -775,23 +782,26 @@ public class SliceGenerator {
                     continue;
                 }
                 if (localVariables.containsKey(varName)) {
-                    updateCFunctionsSliceProfile(varName, cfunctionName, cfunctionPos, argPosIndex, sliceKey,
-                        localVariables, argumentList);
+                    argProfiles.put(sliceKey, localVariables.get(varName));
                     updateDVarSliceProfile(cfunctionIdentifier, varName, localVariables);
                 } else if (globalVariables.containsKey(varName)) {
-                    updateCFunctionsSliceProfile(varName, cfunctionName, cfunctionPos, argPosIndex, sliceKey,
-                        globalVariables, argumentList);
+                    argProfiles.put(sliceKey, globalVariables.get(varName));
                     updateDVarSliceProfile(cfunctionIdentifier, varName, globalVariables);
                 } else if (XmlUtil.isLiteralExpr(expr)) {
                     String typeName = varNamePos.getType();
                     SliceProfile sliceProfile = new SliceProfile(this.fileName, this.currentFunctionName,
                         varName, typeName, varPos, varNamePos.isPointer(), this.currentFunctionNode);
-                    CFunction cFun = new CFunction(argPosIndex, currentFunctionName, currentFunctionNode,
-                        argumentList.size());
-                    sliceProfile.cfunctions.add(cFun);
+                    setVarValueToProfile(varNamePos, sliceProfile);
                     sliceProfiles.put(sliceKey, sliceProfile);
+                    argProfiles.put(sliceKey, sliceProfile);
                 }
             }
+        }
+        int argPosIndex = 0;
+        for (Entry<String, SliceProfile> entry : argProfiles.entrySet()) {
+            updateCFunctionsSliceProfile(cfunctionName, cfunctionPos, argPosIndex, entry.getKey(), argProfiles,
+                argumentList);
+            argPosIndex++;
         }
     }
 
@@ -811,13 +821,12 @@ public class SliceGenerator {
         }
     }
 
-    private void updateCFunctionsSliceProfile(String varName, String cfunctionName, String cfunctionPos,
-                                              int argPosIndex, String sliceKey,
-                                              Map<String, SliceProfile> sliceVariables,
+    private void updateCFunctionsSliceProfile(String cfunctionName, String cfunctionPos, int argPosIndex,
+                                              String sliceKey, Map<String, SliceProfile> sliceVariables,
                                               List<Node> argumentList) {
-        SliceProfile sliceProfile = sliceVariables.get(varName);
+        SliceProfile sliceProfile = sliceVariables.get(sliceKey);
         CFunction cFun = new CFunction(cfunctionName, cfunctionPos, argPosIndex, currentFunctionName,
-            currentFunctionNode, argumentList.size());
+            currentFunctionNode, argumentList.size(), new ArrayList<>(sliceVariables.values()));
         sliceProfile.cfunctions.add(cFun);
         sliceProfiles.put(sliceKey, sliceProfile);
     }

@@ -17,7 +17,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
@@ -39,10 +38,7 @@ public class Main {
 
     private static final Logger log = Logger.getLogger(Main.class.getName());
 
-    private static List<String> SINK_FUNCTIONS = Arrays.asList("strcat", "strdup", "strncat", "strcmp",
-        "strncmp", "strcpy", "strncpy", "strlen", "strchr", "strrchr", "index", "rindex", "strpbrk", "strspn",
-        "strcspn", "strstr", "strtok", "memccpy", "memchr", "memmove", "memcpy", "memcmp", "memset", "bcopy",
-        "bzero", "bcmp");
+    private static List<String> SINK_FUNCTIONS = DataFlowAnalyzer.BUFFER_ACCESS_SINK_FUNCTIONS;
     private static MODE mode = MODE.EXECUTE;
 
     public static void main(String[] args) {
