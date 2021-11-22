@@ -27,6 +27,11 @@ import org.jgrapht.Graph;
 import org.jgrapht.graph.DefaultEdge;
 import org.w3c.dom.Node;
 
+/**
+ * {@link DataFlowAnalyzer} is responsible for analysing the slice profiles to detect possible sinks.
+ *
+ * @since 0.0.1
+ */
 public class DataFlowAnalyzer {
 
     public static List<String> BUFFER_ACCESS_SINK_FUNCTIONS = Arrays.asList("strcat", "strdup", "strncat", "strcmp",
@@ -88,15 +93,12 @@ public class DataFlowAnalyzer {
                 if (isAnalyzedProfile(profile)) {
                     continue;
                 }
-//                log.log(Level.INFO, "Source Prof -> " + profile.varName + "%" + profile.functionName +
-//                    "%" + profile.fileName + "%" + profile.definedPosition);
                 analyzeSliceProfile(profile, javaSliceProfilesInfo);
             }
         }
     }
 
     private boolean isAnalyzedProfile(SliceProfile profile) {
-//        log.log(Level.INFO, "Profile '" + profile.toString() + "'" + " analyzed : " + contains);
         return analyzedProfiles.contains(profile);
     }
 
@@ -184,7 +186,7 @@ public class DataFlowAnalyzer {
             }
             graph.addVertex(dfgNode);
             ArrayList<String> cErrors = new ArrayList<>();
-            cErrors.add("Use of " + cfunctionName + " at " + cfunctionPos);
+            cErrors.add("Use of " + cfunctionName + " at " + dfgNode.fileName() + "," + cfunctionPos);
             DFGNode bufferErrorFunctionDFGNode = new DFGNode(dfgNode.varName() + "#" + cfunctionName,
                 dfgNode.functionName(), dfgNode.fileName(), cfunctionPos, true);
             hasNoEdge(dfgNode, bufferErrorFunctionDFGNode);
@@ -436,7 +438,7 @@ public class DataFlowAnalyzer {
                     if (detectedViolations.containsKey(dfgNode)) {
                         violations = new ArrayList<>(detectedViolations.get(dfgNode));
                     }
-                    violations.add("Buffer write at " + access.accessedExprNamePos.getPos());
+                    violations.add("Buffer write at " + dfgNode.fileName() + "," + access.accessedExprNamePos.getPos());
                     detectedViolations.put(dfgNode, violations);
                 }
             }
@@ -451,7 +453,7 @@ public class DataFlowAnalyzer {
                     if (detectedViolations.containsKey(dfgNode)) {
                         violations = new ArrayList<>(detectedViolations.get(dfgNode));
                     }
-                    violations.add("Buffer read at " + access.accessedExprNamePos.getPos());
+                    violations.add("Buffer read at " + dfgNode.fileName() + "," + access.accessedExprNamePos.getPos());
                     detectedViolations.put(dfgNode, violations);
                 }
             }

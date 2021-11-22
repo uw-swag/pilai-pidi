@@ -13,6 +13,12 @@ import java.util.Stack;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
+/**
+ * {@link SymbolFinder} goes through all the source units from srcML and finds the top level symbol (name and type)
+ * information.
+ *
+ * @since 0.0.1
+ */
 public class SymbolFinder {
 
     public static final String IDENTIFIER_SEPARATOR = "[^\\w]+";

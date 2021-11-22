@@ -25,6 +25,12 @@ import java.util.Stack;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
+/**
+ * {@link SliceGenerator} goes through all the source units from srcML and generates slice profiles by perfroming
+ * forward source slicing.
+ *
+ * @since 0.0.1
+ */
 public class SliceGenerator {
 
     public static final String IDENTIFIER_SEPARATOR = "[^\\w]+";
