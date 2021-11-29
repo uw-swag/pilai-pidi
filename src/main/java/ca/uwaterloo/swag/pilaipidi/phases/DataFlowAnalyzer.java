@@ -227,7 +227,8 @@ public class DataFlowAnalyzer {
                 dependentSliceProfiles.add(profileInfo.sliceProfiles.get(key));
 
                 if (cFunction.isEmptyArgFunc() || functionNamePos.getArguments() == null ||
-                    functionNamePos.getArguments().isEmpty()) {
+                    functionNamePos.getArguments().isEmpty() ||
+                    cFunction.getArgPosIndex() >= functionNamePos.getArguments().size()) {
                     continue;
                 }
 
@@ -380,8 +381,8 @@ public class DataFlowAnalyzer {
         return possibleFunctions;
     }
 
-    private boolean typeCheckFunctionSignature(FunctionNamePos functionNamePos, int argPosIndex,
-                                               String argTypeName, CFunction cFunction) {
+    private boolean typeCheckFunctionSignature(FunctionNamePos functionNamePos, int argPosIndex, String argTypeName,
+                                               CFunction cFunction) {
         List<ArgumentNamePos> funcArgs = functionNamePos.getArguments();
         if (funcArgs.size() == 0 || argPosIndex >= funcArgs.size()) {
             return false;
@@ -410,9 +411,7 @@ public class DataFlowAnalyzer {
         for (SliceVariableAccess varAccess : profile.usedPositions) {
             for (DataAccess access : varAccess.writePositions) {
                 if (DataAccessType.BUFFER_WRITE == access.accessType) {
-                    boolean isWithinBound = isAccessWithinBufferBound(profile.getCurrentValue(),
-                        access.accessedExprValue);
-                    if (isWithinBound) {
+                    if (isAccessWithinBufferBound(profile.getCurrentValue(), access.accessedExprValue)) {
                         continue;
                     }
                     List<String> violations = new ArrayList<>();
@@ -425,9 +424,7 @@ public class DataFlowAnalyzer {
             }
             for (DataAccess access : varAccess.readPositions) {
                 if (DataAccessType.BUFFER_READ == access.accessType) {
-                    boolean isWithinBound = isAccessWithinBufferBound(profile.getCurrentValue(),
-                        access.accessedExprValue);
-                    if (isWithinBound) {
+                    if (isAccessWithinBufferBound(profile.getCurrentValue(), access.accessedExprValue)) {
                         continue;
                     }
                     List<String> violations = new ArrayList<>();
