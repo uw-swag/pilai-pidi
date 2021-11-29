@@ -1,6 +1,7 @@
 package ca.uwaterloo.swag.pilaipidi.models;
 
 public class Value {
+
     public final int literal;
     public final SliceProfile referencedProfile;
 

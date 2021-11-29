@@ -1,7 +1,7 @@
 package ca.uwaterloo.swag.pilaipidi.phases;
 
-import ca.uwaterloo.swag.pilaipidi.util.ArugumentOptions;
 import ca.uwaterloo.swag.pilaipidi.Main;
+import ca.uwaterloo.swag.pilaipidi.util.ArugumentOptions;
 import ca.uwaterloo.swag.pilaipidi.util.OsUtils;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -12,9 +12,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystemNotFoundException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.Collections;
 import java.util.List;

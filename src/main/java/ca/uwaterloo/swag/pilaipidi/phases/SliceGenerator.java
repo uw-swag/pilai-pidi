@@ -64,6 +64,26 @@ public class SliceGenerator {
         this.currentFunctionNode = null;
     }
 
+    private static boolean hasPrecedence(String op1, String op2) {
+        if (op2.equals("(") || op2.equals(")")) {
+            return false;
+        }
+        return (!op1.equals("*") && !op1.equals("/")) ||
+            (!op2.equals("+") && !op2.equals("-"));
+    }
+
+    private static boolean isArithmeticOperator(Node expr) {
+        return expr.getNodeName().equals("operator") && ARITHMETIC_OPRTS.contains(expr.getFirstChild().getNodeValue());
+    }
+
+    private static boolean isOpenBracketOperator(Node expr) {
+        return expr.getNodeName().equals("operator") && "(".equals(expr.getFirstChild().getNodeValue());
+    }
+
+    private static boolean isCloseBracketOperator(Node expr) {
+        return expr.getNodeName().equals("operator") && ")".equals(expr.getFirstChild().getNodeValue());
+    }
+
     public SliceProfilesInfo generate() {
         String langAttribute = this.unitNode.getAttributes().getNamedItem("language").getNodeValue();
         if (langAttribute.equals("Java")) {
@@ -525,8 +545,10 @@ public class SliceGenerator {
                 if (initExpr.size() > 0) {
                     NamePos initExprNamePos = evaluateExprs(initExpr);
                     checkAndUpdateDVarSliceProfile(namePos, initExprNamePos);
-                    if (sliceProfile.isBuffer && initExprNamePos.isBuffer()) {
-                        setVarValueToProfile(initExprNamePos.getBufferSize(), sliceProfile);
+                    if (sliceProfile.isBuffer) {
+                        if (initExprNamePos.isBuffer()) {
+                            setVarValueToProfile(initExprNamePos.getBufferSize(), sliceProfile);
+                        }
                     } else {
                         setVarValueToProfile(initExprNamePos, sliceProfile);
                     }
@@ -1313,25 +1335,5 @@ public class SliceGenerator {
         return operatorExpr.getNodeName().equals("operator") &&
             (operatorExpr.getFirstChild().getNodeValue().equals("=") ||
                 operatorExpr.getFirstChild().getNodeValue().equals("+="));
-    }
-
-    private static boolean hasPrecedence(String op1, String op2) {
-        if (op2.equals("(") || op2.equals(")")) {
-            return false;
-        }
-        return (!op1.equals("*") && !op1.equals("/")) ||
-            (!op2.equals("+") && !op2.equals("-"));
-    }
-
-    private static boolean isArithmeticOperator(Node expr) {
-        return expr.getNodeName().equals("operator") && ARITHMETIC_OPRTS.contains(expr.getFirstChild().getNodeValue());
-    }
-
-    private static boolean isOpenBracketOperator(Node expr) {
-        return expr.getNodeName().equals("operator") && "(".equals(expr.getFirstChild().getNodeValue());
-    }
-
-    private static boolean isCloseBracketOperator(Node expr) {
-        return expr.getNodeName().equals("operator") && ")".equals(expr.getFirstChild().getNodeValue());
     }
 }

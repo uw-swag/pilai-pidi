@@ -1,17 +1,17 @@
 package ca.uwaterloo.swag.pilaipidi.phases;
 
-import ca.uwaterloo.swag.pilaipidi.models.DataAccess.DataAccessType;
-import ca.uwaterloo.swag.pilaipidi.models.Value;
-import ca.uwaterloo.swag.pilaipidi.util.MODE;
 import ca.uwaterloo.swag.pilaipidi.models.ArgumentNamePos;
 import ca.uwaterloo.swag.pilaipidi.models.CFunction;
-import ca.uwaterloo.swag.pilaipidi.models.DataAccess;
 import ca.uwaterloo.swag.pilaipidi.models.DFGNode;
+import ca.uwaterloo.swag.pilaipidi.models.DataAccess;
+import ca.uwaterloo.swag.pilaipidi.models.DataAccess.DataAccessType;
 import ca.uwaterloo.swag.pilaipidi.models.FunctionNamePos;
 import ca.uwaterloo.swag.pilaipidi.models.NamePos;
 import ca.uwaterloo.swag.pilaipidi.models.SliceProfile;
 import ca.uwaterloo.swag.pilaipidi.models.SliceProfilesInfo;
 import ca.uwaterloo.swag.pilaipidi.models.SliceVariableAccess;
+import ca.uwaterloo.swag.pilaipidi.models.Value;
+import ca.uwaterloo.swag.pilaipidi.util.MODE;
 import ca.uwaterloo.swag.pilaipidi.util.TypeChecker;
 import ca.uwaterloo.swag.pilaipidi.util.XmlUtil;
 import java.util.ArrayList;
@@ -208,25 +208,6 @@ public class DataFlowAnalyzer {
             }
             analyzeSliceProfile(dependentSliceProfile, sliceProfilesInfo);
         }
-    }
-
-    private boolean isBufferAccessFunctionWithinBound(CFunction cFunction) {
-        switch (cFunction.getName()) {
-            case "memcpy":
-                List<SliceProfile> argProfiles = cFunction.getArgProfiles();
-                if (argProfiles.size() != 3) { // TODO, size has to be 3
-                    break;
-                }
-                SliceProfile dst = argProfiles.get(0);
-                SliceProfile src = argProfiles.get(1);
-                SliceProfile bound = argProfiles.get(2);
-                return isAccessWithinBufferBound(dst.getCurrentValue(), bound.getCurrentValue());
-        }
-        return false;
-    }
-
-    private boolean isBufferAccessFunction(String cfunctionName) {
-        return BUFFER_ACCESS_SINK_FUNCTIONS.contains(cfunctionName);
     }
 
     private LinkedList<SliceProfile> findDependentSliceProfiles(CFunction cFunction, String typeName,
@@ -469,6 +450,15 @@ public class DataFlowAnalyzer {
         return bufferSize > bufferAccessedSize;
     }
 
+    private boolean isAccessWithinOrEqualToBufferBound(Value bufferSizeValue, Value bufferAccessValue) {
+        int bufferSize = getValue(bufferSizeValue, new HashSet<>());
+        int bufferAccessedSize = getValue(bufferAccessValue, new HashSet<>());
+        if (bufferSize == 0 && bufferAccessedSize == 0) { // we did not capture the sizes properly
+            return true;
+        }
+        return bufferSize >= bufferAccessedSize;
+    }
+
     private int getValue(Value value, Set<SliceProfile> checkedProfiles) {
         if (value == null) {
             return 0;
@@ -483,6 +473,180 @@ public class DataFlowAnalyzer {
         }
         return value.literal;
     }
+
+    private boolean isBufferAccessFunctionWithinBound(CFunction cFunction) {
+        switch (cFunction.getName()) {
+            case "strcpy":
+                return checkStrCpy(cFunction);
+            case "strcat":
+                return checkStrCat(cFunction);
+            case "strncat":
+                return checkStrnCat(cFunction);
+            case "strncmp":
+                return checkStrnCmp(cFunction);
+            case "memcpy":
+                return checkMemCpy(cFunction);
+            case "memccpy":
+                return checkMemCCpy(cFunction);
+            case "memmove":
+                return checkMemMove(cFunction);
+            case "memcmp":
+                return checkMemCmp(cFunction);
+            case "memset":
+                return checkMemSet(cFunction);
+            case "bcopy":
+                return checkBCopy(cFunction);
+            case "bzero":
+                return checkBZero(cFunction);
+            case "strdup":
+            case "strcmp":
+            case "strncpy":
+            case "strlen":
+            case "strchr":
+            case "strrchr":
+            case "index":
+            case "rindex":
+            case "strpbrk":
+            case "strspn":
+            case "strcspn":
+            case "strstr":
+            case "strtok":
+            case "memchr":
+            case "bcmp":
+                break;
+        }
+        return false;
+    }
+
+    private boolean isBufferAccessFunction(String cfunctionName) {
+        return BUFFER_ACCESS_SINK_FUNCTIONS.contains(cfunctionName);
+    }
+
+    private boolean checkMemCpy(CFunction cFunction) {
+        List<SliceProfile> argProfiles = cFunction.getArgProfiles();
+        if (argProfiles.size() != 3) { // TODO, size has to be 3
+            return false;
+        }
+        SliceProfile dst = argProfiles.get(0);
+        SliceProfile src = argProfiles.get(1);
+        SliceProfile bound = argProfiles.get(2);
+        return isAccessWithinBufferBound(dst.getCurrentValue(), bound.getCurrentValue()) &&
+            isAccessWithinBufferBound(src.getCurrentValue(), bound.getCurrentValue());
+    }
+
+    private boolean checkMemCCpy(CFunction cFunction) {
+        List<SliceProfile> argProfiles = cFunction.getArgProfiles();
+        if (argProfiles.size() != 4) { // TODO, size has to be 3
+            return false;
+        }
+        SliceProfile dst = argProfiles.get(0);
+        SliceProfile src = argProfiles.get(1);
+        SliceProfile bound = argProfiles.get(3);
+        return isAccessWithinBufferBound(dst.getCurrentValue(), bound.getCurrentValue()) &&
+            isAccessWithinBufferBound(src.getCurrentValue(), bound.getCurrentValue());
+    }
+
+    private boolean checkMemMove(CFunction cFunction) {
+        List<SliceProfile> argProfiles = cFunction.getArgProfiles();
+        if (argProfiles.size() != 3) { // TODO, size has to be 3
+            return false;
+        }
+        SliceProfile dst = argProfiles.get(0);
+        SliceProfile src = argProfiles.get(1);
+        SliceProfile bound = argProfiles.get(2);
+        return isAccessWithinBufferBound(dst.getCurrentValue(), bound.getCurrentValue()) &&
+            isAccessWithinBufferBound(src.getCurrentValue(), bound.getCurrentValue());
+    }
+
+    private boolean checkMemCmp(CFunction cFunction) {
+        List<SliceProfile> argProfiles = cFunction.getArgProfiles();
+        if (argProfiles.size() != 3) { // TODO, size has to be 3
+            return false;
+        }
+        SliceProfile str1 = argProfiles.get(0);
+        SliceProfile str2 = argProfiles.get(1);
+        SliceProfile bound = argProfiles.get(2);
+        return isAccessWithinBufferBound(str1.getCurrentValue(), bound.getCurrentValue())
+            && isAccessWithinBufferBound(str2.getCurrentValue(), bound.getCurrentValue());
+    }
+
+    private boolean checkMemSet(CFunction cFunction) {
+        List<SliceProfile> argProfiles = cFunction.getArgProfiles();
+        if (argProfiles.size() != 3) { // TODO, size has to be 3
+            return false;
+        }
+        SliceProfile dst = argProfiles.get(0);
+        SliceProfile bound = argProfiles.get(2);
+        return isAccessWithinBufferBound(dst.getCurrentValue(), bound.getCurrentValue());
+    }
+
+    private boolean checkStrCpy(CFunction cFunction) {
+        List<SliceProfile> argProfiles = cFunction.getArgProfiles();
+        if (argProfiles.size() != 2) { // TODO, size has to be 2
+            return false;
+        }
+
+        SliceProfile src = argProfiles.get(0);
+        SliceProfile dst = argProfiles.get(1);
+        return isAccessWithinOrEqualToBufferBound(src.getCurrentValue(), dst.getCurrentValue());
+    }
+
+    private boolean checkStrCat(CFunction cFunction) {
+        List<SliceProfile> argProfiles = cFunction.getArgProfiles();
+        if (argProfiles.size() != 2) { // TODO, size has to be 2
+            return false;
+        }
+
+        SliceProfile src = argProfiles.get(0);
+        SliceProfile dst = argProfiles.get(1);
+        return isAccessWithinOrEqualToBufferBound(src.getCurrentValue(), dst.getCurrentValue());
+    }
+
+    private boolean checkStrnCat(CFunction cFunction) {
+        List<SliceProfile> argProfiles = cFunction.getArgProfiles();
+        if (argProfiles.size() != 3) { // TODO, size has to be 3
+            return false;
+        }
+        SliceProfile dst = argProfiles.get(0);
+        SliceProfile bound = argProfiles.get(2);
+        return isAccessWithinBufferBound(dst.getCurrentValue(), bound.getCurrentValue());
+    }
+
+    private boolean checkStrnCmp(CFunction cFunction) {
+        List<SliceProfile> argProfiles = cFunction.getArgProfiles();
+        if (argProfiles.size() != 3) { // TODO, size has to be 3
+            return false;
+        }
+        SliceProfile str1 = argProfiles.get(0);
+        SliceProfile str2 = argProfiles.get(1);
+        SliceProfile bound = argProfiles.get(2);
+        return isAccessWithinBufferBound(str1.getCurrentValue(), bound.getCurrentValue())
+            && isAccessWithinBufferBound(str2.getCurrentValue(), bound.getCurrentValue());
+    }
+
+    private boolean checkBCopy(CFunction cFunction) {
+        List<SliceProfile> argProfiles = cFunction.getArgProfiles();
+        if (argProfiles.size() != 3) { // TODO, size has to be 3
+            return false;
+        }
+        SliceProfile dst = argProfiles.get(0);
+        SliceProfile src = argProfiles.get(1);
+        SliceProfile bound = argProfiles.get(2);
+        return isAccessWithinBufferBound(dst.getCurrentValue(), bound.getCurrentValue()) &&
+            isAccessWithinBufferBound(src.getCurrentValue(), bound.getCurrentValue());
+    }
+
+    private boolean checkBZero(CFunction cFunction) {
+        List<SliceProfile> argProfiles = cFunction.getArgProfiles();
+        if (argProfiles.size() != 2) { // TODO, size has to be 2
+            return false;
+        }
+
+        SliceProfile src = argProfiles.get(0);
+        SliceProfile dst = argProfiles.get(1);
+        return isAccessWithinOrEqualToBufferBound(src.getCurrentValue(), dst.getCurrentValue());
+    }
+
 
     private void analyzePointerAccess(SliceProfile profile, Map<String, SliceProfilesInfo> rawProfilesInfo,
                                       DFGNode dfgNode) {

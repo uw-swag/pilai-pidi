@@ -45,29 +45,6 @@ public class PilaiPidi {
     private static List<String> SINK_FUNCTIONS = DataFlowAnalyzer.BUFFER_ACCESS_SINK_FUNCTIONS;
     private static MODE mode = MODE.EXECUTE;
 
-    public Hashtable<String, Set<List<DFGNode>>> invoke(String[] args) {
-        final Graph<DFGNode, DefaultEdge> graph = new DefaultDirectedGraph<>(DefaultEdge.class);
-        final Map<DFGNode, List<String>> detectedViolations = new Hashtable<>();
-        long start = System.currentTimeMillis();
-        final ArugumentOptions arugumentOptions = processArguments(args);
-        if (arugumentOptions.doubleOptsList.size() > 0 && arugumentOptions.doubleOptsList.contains("debug")) {
-            mode = MODE.TEST;
-        }
-        final Document document = generateAndParseSrcML(arugumentOptions);
-        final Set<TypeSymbol> typeSymbols = findSymbols(document);
-        final Map<String, SliceProfilesInfo> sliceProfiles = generateSliceProfiles(document, typeSymbols);
-        analyzeDataFlow(graph, detectedViolations, arugumentOptions, sliceProfiles);
-        long mid = System.currentTimeMillis();
-        System.out.println("Completed analyzing slice profiles in " + (mid - start) / 1000 + "s");
-        final Hashtable<String, Set<List<DFGNode>>> sourcesAndSinks = findSourcesAndSinks(graph,
-            detectedViolations, arugumentOptions);
-        long end = System.currentTimeMillis();
-        System.out.println("No of files analyzed " + sliceProfiles.size());
-        System.out.println("Completed analysis in " + (end - start) / 1000 + "s");
-
-        return sourcesAndSinks;
-    }
-
     private static Hashtable<String, Set<List<DFGNode>>> findSourcesAndSinks(
         Graph<DFGNode, DefaultEdge> graph, Map<DFGNode, List<String>> detectedViolations,
         ArugumentOptions arugumentOptions) {
@@ -178,5 +155,28 @@ public class PilaiPidi {
 
         String projectLocation = args[0];
         return new ArugumentOptions(argsList, optsList, doubleOptsList, projectLocation, singleTarget);
+    }
+
+    public Hashtable<String, Set<List<DFGNode>>> invoke(String[] args) {
+        final Graph<DFGNode, DefaultEdge> graph = new DefaultDirectedGraph<>(DefaultEdge.class);
+        final Map<DFGNode, List<String>> detectedViolations = new Hashtable<>();
+        long start = System.currentTimeMillis();
+        final ArugumentOptions arugumentOptions = processArguments(args);
+        if (arugumentOptions.doubleOptsList.size() > 0 && arugumentOptions.doubleOptsList.contains("debug")) {
+            mode = MODE.TEST;
+        }
+        final Document document = generateAndParseSrcML(arugumentOptions);
+        final Set<TypeSymbol> typeSymbols = findSymbols(document);
+        final Map<String, SliceProfilesInfo> sliceProfiles = generateSliceProfiles(document, typeSymbols);
+        analyzeDataFlow(graph, detectedViolations, arugumentOptions, sliceProfiles);
+        long mid = System.currentTimeMillis();
+        System.out.println("Completed analyzing slice profiles in " + (mid - start) / 1000 + "s");
+        final Hashtable<String, Set<List<DFGNode>>> sourcesAndSinks = findSourcesAndSinks(graph,
+            detectedViolations, arugumentOptions);
+        long end = System.currentTimeMillis();
+        System.out.println("No of files analyzed " + sliceProfiles.size());
+        System.out.println("Completed analysis in " + (end - start) / 1000 + "s");
+
+        return sourcesAndSinks;
     }
 }
