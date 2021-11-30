@@ -5,7 +5,6 @@ import static ca.uwaterloo.swag.pilaipidi.phases.SliceGenerator.IDENTIFIER_SEPAR
 import ca.uwaterloo.swag.pilaipidi.models.ArgumentNamePos;
 import ca.uwaterloo.swag.pilaipidi.models.FunctionNamePos;
 import ca.uwaterloo.swag.pilaipidi.models.NamePos;
-import ca.uwaterloo.swag.pilaipidi.models.Value;
 import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -381,23 +380,6 @@ public final class XmlUtil {
         return null;
     }
 
-    static final class NodeListWrapper extends AbstractList<Node> implements RandomAccess {
-
-        private final NodeList list;
-
-        NodeListWrapper(NodeList list) {
-            this.list = list;
-        }
-
-        public Node get(int index) {
-            return list.item(index);
-        }
-
-        public int size() {
-            return list.getLength();
-        }
-    }
-
     public static String getNodeName(final Node base) {
         StringBuilder value = new StringBuilder();
         NodeList nodeList = base.getChildNodes();
@@ -431,5 +413,22 @@ public final class XmlUtil {
             }
         }
         return value.toString();
+    }
+
+    static final class NodeListWrapper extends AbstractList<Node> implements RandomAccess {
+
+        private final NodeList list;
+
+        NodeListWrapper(NodeList list) {
+            this.list = list;
+        }
+
+        public Node get(int index) {
+            return list.item(index);
+        }
+
+        public int size() {
+            return list.getLength();
+        }
     }
 }

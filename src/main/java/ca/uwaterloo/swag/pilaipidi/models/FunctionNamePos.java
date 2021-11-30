@@ -17,11 +17,11 @@ public class FunctionNamePos extends NamePos {
         return functionDeclName;
     }
 
-    public void setArguments(List<ArgumentNamePos> arguments) {
-        this.arguments = arguments;
-    }
-
     public List<ArgumentNamePos> getArguments() {
         return arguments;
+    }
+
+    public void setArguments(List<ArgumentNamePos> arguments) {
+        this.arguments = arguments;
     }
 }

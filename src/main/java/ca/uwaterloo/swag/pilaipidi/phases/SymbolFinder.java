@@ -13,6 +13,12 @@ import java.util.Stack;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
+/**
+ * {@link SymbolFinder} goes through all the source units from srcML and finds the top level symbol (name and type)
+ * information.
+ *
+ * @since 0.0.1
+ */
 public class SymbolFinder {
 
     public static final String IDENTIFIER_SEPARATOR = "[^\\w]+";
@@ -32,6 +38,29 @@ public class SymbolFinder {
         this.currentStructSymbol = null;
         this.currentFunctionName = "";
         this.currentFunctionNode = null;
+    }
+
+    private static boolean hasPrecedence(String op1, String op2) {
+        if (op2.equals("(") || op2.equals(")")) {
+            return false;
+        }
+        return (!op1.equals("*") && !op1.equals("/")) ||
+            (!op2.equals("+") && !op2.equals("-"));
+    }
+
+    private static boolean isArithmeticOperator(Node expr) {
+        return expr.getNodeName().equals("operator") &&
+            ARITHMETIC_OPRTS.contains(expr.getFirstChild().getNodeValue());
+    }
+
+    private static boolean isOpenBracketOperator(Node expr) {
+        return expr.getNodeName().equals("operator") &&
+            "(".equals(expr.getFirstChild().getNodeValue());
+    }
+
+    private static boolean isCloseBracketOperator(Node expr) {
+        return expr.getNodeName().equals("operator") &&
+            ")".equals(expr.getFirstChild().getNodeValue());
     }
 
     public void invoke() {
@@ -673,7 +702,8 @@ public class SymbolFinder {
         if (expr == null) {
             return null;
         }
-        NamePos conditionNamePos = analyzeConditionExpr(XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(expr, "condition"), 0));
+        NamePos conditionNamePos = analyzeConditionExpr(
+            XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(expr, "condition"), 0));
         analyzeCompoundExpr(XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(expr, "then"), 0));
         analyzeCompoundExpr(XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(expr, "else"), 0));
         return conditionNamePos;
@@ -820,28 +850,5 @@ public class SymbolFinder {
         return operatorExpr.getNodeName().equals("operator") &&
             (operatorExpr.getFirstChild().getNodeValue().equals("=") ||
                 operatorExpr.getFirstChild().getNodeValue().equals("+="));
-    }
-
-    private static boolean hasPrecedence(String op1, String op2) {
-        if (op2.equals("(") || op2.equals(")")) {
-            return false;
-        }
-        return (!op1.equals("*") && !op1.equals("/")) ||
-            (!op2.equals("+") && !op2.equals("-"));
-    }
-
-    private static boolean isArithmeticOperator(Node expr) {
-        return expr.getNodeName().equals("operator") &&
-            ARITHMETIC_OPRTS.contains(expr.getFirstChild().getNodeValue());
-    }
-
-    private static boolean isOpenBracketOperator(Node expr) {
-        return expr.getNodeName().equals("operator") &&
-            "(".equals(expr.getFirstChild().getNodeValue());
-    }
-
-    private static boolean isCloseBracketOperator(Node expr) {
-        return expr.getNodeName().equals("operator") &&
-            ")".equals(expr.getFirstChild().getNodeValue());
     }
 }

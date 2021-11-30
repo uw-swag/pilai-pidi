@@ -25,6 +25,11 @@ import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.nio.dot.DOTExporter;
 import org.jgrapht.traverse.BreadthFirstIterator;
 
+/**
+ * {@link SourceSinkFinder} analyses the data flow graph and builds the source to sink paths.
+ *
+ * @since 0.0.1
+ */
 public class SourceSinkFinder {
 
     private final Graph<DFGNode, DefaultEdge> graph;

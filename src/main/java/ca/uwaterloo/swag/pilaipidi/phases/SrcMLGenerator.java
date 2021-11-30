@@ -1,7 +1,7 @@
 package ca.uwaterloo.swag.pilaipidi.phases;
 
-import ca.uwaterloo.swag.pilaipidi.util.ArugumentOptions;
 import ca.uwaterloo.swag.pilaipidi.Main;
+import ca.uwaterloo.swag.pilaipidi.util.ArugumentOptions;
 import ca.uwaterloo.swag.pilaipidi.util.OsUtils;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -12,9 +12,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystemNotFoundException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.Collections;
 import java.util.List;
@@ -28,6 +25,11 @@ import org.w3c.dom.Document;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
+/**
+ * {@link SrcMLGenerator} generates srcML for the whole project by invoking the relevant OS specfic srcMl executable.
+ *
+ * @since 0.0.1
+ */
 public class SrcMLGenerator {
 
     private static final String JAR = "jar";
@@ -83,8 +85,7 @@ public class SrcMLGenerator {
         if (argsList.size() > 1) {
             processBuilder = new ProcessBuilder(srcML, projectLocation, "--position");
         } else {
-            Path zipPath = Paths.get(Objects.requireNonNull(Main.class.getClassLoader().getResource(srcML)).toURI());
-            InputStream in = Files.newInputStream(zipPath);
+            InputStream in = SrcMLGenerator.class.getClassLoader().getResourceAsStream(srcML);
             file = File.createTempFile("PREFIX", "SUFFIX");
             boolean execStatus = file.setExecutable(true);
             if (!execStatus) {
@@ -92,7 +93,7 @@ public class SrcMLGenerator {
             }
             file.deleteOnExit();
             try (FileOutputStream out = new FileOutputStream(file)) {
-                IOUtils.copy(in, out);
+                IOUtils.copy(Objects.requireNonNull(in), out);
             }
             processBuilder = new ProcessBuilder(file.getAbsolutePath(), projectLocation, "--position");
         }

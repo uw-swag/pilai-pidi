@@ -71,6 +71,7 @@ public class NamePos {
     }
 
     public static class DefaultNamePos extends NamePos {
+
         public DefaultNamePos() {
             super("", "", "", false);
         }

@@ -25,6 +25,12 @@ import java.util.Stack;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
+/**
+ * {@link SliceGenerator} goes through all the source units from srcML and generates slice profiles by perfroming
+ * forward source slicing.
+ *
+ * @since 0.0.1
+ */
 public class SliceGenerator {
 
     public static final String IDENTIFIER_SEPARATOR = "[^\\w]+";
@@ -56,6 +62,26 @@ public class SliceGenerator {
         this.currentStructName = "";
         this.currentFunctionName = "";
         this.currentFunctionNode = null;
+    }
+
+    private static boolean hasPrecedence(String op1, String op2) {
+        if (op2.equals("(") || op2.equals(")")) {
+            return false;
+        }
+        return (!op1.equals("*") && !op1.equals("/")) ||
+            (!op2.equals("+") && !op2.equals("-"));
+    }
+
+    private static boolean isArithmeticOperator(Node expr) {
+        return expr.getNodeName().equals("operator") && ARITHMETIC_OPRTS.contains(expr.getFirstChild().getNodeValue());
+    }
+
+    private static boolean isOpenBracketOperator(Node expr) {
+        return expr.getNodeName().equals("operator") && "(".equals(expr.getFirstChild().getNodeValue());
+    }
+
+    private static boolean isCloseBracketOperator(Node expr) {
+        return expr.getNodeName().equals("operator") && ")".equals(expr.getFirstChild().getNodeValue());
     }
 
     public SliceProfilesInfo generate() {
@@ -370,9 +396,33 @@ public class SliceGenerator {
     }
 
     private void updateFunctionArgDependencies(NamePos functionNamePos) {
-        addFunctionNameSliceProfile(functionNamePos);
-        for (String localVarName : localVariables.keySet()) {
-            updateDVarSliceProfile(localVarName, functionNamePos.getName(), globalVariables);
+        SliceProfile functionNameProfile = addFunctionNameSliceProfile(functionNamePos);
+        String functionName = functionNamePos.getName();
+        if (functionName == null || functionName.isBlank()) {
+            return;
+        }
+        for (String lVarName : localVariables.keySet()) {
+            if (lVarName == null || lVarName.isBlank()) {
+                continue;
+            }
+
+            String lVarEnclFunctionName = currentFunctionName;
+
+            SliceProfile lVarProfile;
+            String lVarDefinedPos;
+            if (globalVariables.containsKey(lVarName)) {
+                lVarEnclFunctionName = GLOBAL;
+                lVarProfile = globalVariables.get(lVarName);
+            } else if (localVariables.containsKey(lVarName)) {
+                lVarProfile = localVariables.get(lVarName);
+            } else {
+                return;
+            }
+
+            lVarDefinedPos = lVarProfile.definedPosition;
+
+            NamePos dvarNamePos = new NamePos(lVarName, lVarEnclFunctionName, lVarDefinedPos, false);
+            functionNameProfile.dependentVars.add(dvarNamePos);
         }
     }
 
@@ -519,8 +569,10 @@ public class SliceGenerator {
                 if (initExpr.size() > 0) {
                     NamePos initExprNamePos = evaluateExprs(initExpr);
                     checkAndUpdateDVarSliceProfile(namePos, initExprNamePos);
-                    if (sliceProfile.isBuffer && initExprNamePos.isBuffer()) {
-                        setVarValueToProfile(initExprNamePos.getBufferSize(), sliceProfile);
+                    if (sliceProfile.isBuffer) {
+                        if (initExprNamePos.isBuffer()) {
+                            setVarValueToProfile(initExprNamePos.getBufferSize(), sliceProfile);
+                        }
                     } else {
                         setVarValueToProfile(initExprNamePos, sliceProfile);
                     }
@@ -730,17 +782,18 @@ public class SliceGenerator {
         return sliceProfile;
     }
 
-    private void addFunctionNameSliceProfile(NamePos functionNamePos) {
+    private SliceProfile addFunctionNameSliceProfile(NamePos functionNamePos) {
         String functionName = functionNamePos.getName();
         String functionPosition = functionNamePos.getPos();
-        if (!globalVariables.containsKey(functionName)) {
-            String sliceIdentifier = functionName + "%" + functionPosition;
-            String sliceKey = sliceIdentifier + "%" + currentFunctionName + "%" + fileName;
-            SliceProfile cfunctionProfile = new SliceProfile(fileName, currentFunctionName, functionName,
-                functionNamePos.getType(), functionPosition, currentFunctionNode, true);
-            sliceProfiles.put(sliceKey, cfunctionProfile);
-            globalVariables.put(functionName, cfunctionProfile);
+        String sliceIdentifier = functionName + "%" + functionPosition;
+        String sliceKey = sliceIdentifier + "%" + currentFunctionName + "%" + fileName;
+        if (sliceProfiles.containsKey(sliceKey)) {
+            return sliceProfiles.get(sliceKey);
         }
+        SliceProfile functionNameProfile = new SliceProfile(fileName, currentFunctionName, functionName,
+            functionNamePos.getType(), functionPosition, currentFunctionNode, true);
+        sliceProfiles.put(sliceKey, functionNameProfile);
+        return functionNameProfile;
     }
 
     private void analyzeCallArgumentList(Node call, String cfunctionName, String cfunctionPos,
@@ -1307,25 +1360,5 @@ public class SliceGenerator {
         return operatorExpr.getNodeName().equals("operator") &&
             (operatorExpr.getFirstChild().getNodeValue().equals("=") ||
                 operatorExpr.getFirstChild().getNodeValue().equals("+="));
-    }
-
-    private static boolean hasPrecedence(String op1, String op2) {
-        if (op2.equals("(") || op2.equals(")")) {
-            return false;
-        }
-        return (!op1.equals("*") && !op1.equals("/")) ||
-            (!op2.equals("+") && !op2.equals("-"));
-    }
-
-    private static boolean isArithmeticOperator(Node expr) {
-        return expr.getNodeName().equals("operator") && ARITHMETIC_OPRTS.contains(expr.getFirstChild().getNodeValue());
-    }
-
-    private static boolean isOpenBracketOperator(Node expr) {
-        return expr.getNodeName().equals("operator") && "(".equals(expr.getFirstChild().getNodeValue());
-    }
-
-    private static boolean isCloseBracketOperator(Node expr) {
-        return expr.getNodeName().equals("operator") && ")".equals(expr.getFirstChild().getNodeValue());
     }
 }
