@@ -9,6 +9,11 @@ public class TypeChecker {
         if (actualType == null) {
             return false;
         }
+
+        if ("null".equals(actualType)) {
+            return true;
+        }
+
         return expectedType.equals(actualType);
     }
 }

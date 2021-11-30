@@ -37,6 +37,22 @@ public final class XmlUtil {
         return tempNode.getAttributes().getNamedItem("pos:start").getNodeValue();
     }
 
+    public static String getJavaClassName(Node enclUnitNode) {
+        return XmlUtil.getNodeByName(XmlUtil.getNodeByName(enclUnitNode, "class").get(0),
+            "name").get(0).getTextContent();
+    }
+
+    public static boolean isFunctionOfGivenModifier(Node enclFunctionNode, String accessModifier) {
+        List<Node> specifiers = XmlUtil.getNodeByName(enclFunctionNode, "specifier");
+        for (Node specifier : specifiers) {
+            String nodeName = specifier.getTextContent();
+            if (accessModifier.equals(nodeName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static List<Node> getFunctionParamList(Node functionNode) {
         List<Node> functionParams = new ArrayList<>();
         List<Node> paramList = getNodeByName(functionNode, "parameter_list");

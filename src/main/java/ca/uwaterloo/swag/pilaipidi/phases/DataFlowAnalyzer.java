@@ -144,7 +144,7 @@ public class DataFlowAnalyzer {
         if (!profile.functionName.equals("GLOBAL") && profile.cfunctions.size() < 1
             && profile.functionNode != null) {
             Node enclFunctionNode = profile.functionNode;
-            if (isFunctionOfGivenModifier(enclFunctionNode, JNI_NATIVE_METHOD_MODIFIER)) {
+            if (XmlUtil.isFunctionOfGivenModifier(enclFunctionNode, JNI_NATIVE_METHOD_MODIFIER)) {
                 analyzeNativeFunction(profile, rawProfilesInfo, enclFunctionNode, dfgNode);
             }
         }
@@ -265,8 +265,7 @@ public class DataFlowAnalyzer {
             index++;
         }
         int jniArgPosIndex = index + 2; // first two arugments in native jni methods are env and obj
-        String clazzName = XmlUtil.getNodeByName(XmlUtil.getNodeByName(enclUnitNode, "class").get(0),
-            "name").get(0).getTextContent();
+        String clazzName = XmlUtil.getJavaClassName(enclUnitNode);
         String jniFunctionSearchStr = clazzName + "_" + jniFunctionName;
 
         for (String filePath : cppSliceProfilesInfo.keySet()) {
@@ -278,48 +277,37 @@ public class DataFlowAnalyzer {
                 if (!functionName.toLowerCase().endsWith(jniFunctionSearchStr.toLowerCase())) {
                     continue;
                 }
+
+                // 01 - Native cfunction profile
+                String sliceKey = functionName + "%" + funcNamePos.getPos() + "%" + functionName + "%" + filePath;
+                analyzeNativeSliceProfile(dfgNode, profileInfo, sliceKey);
+
+                // 02 - Function arg index based profile
                 List<ArgumentNamePos> functionArgs = XmlUtil.findFunctionParameters(functionNode);
                 if (functionArgs.size() < 1 || jniArgPosIndex > functionArgs.size() - 1) {
                     continue;
                 }
                 NamePos arg = functionArgs.get(jniArgPosIndex);
-                String sliceKey = arg.getName() + "%" + arg.getPos() + "%" + functionName + "%" + filePath;
-
-                SliceProfile possibleSliceProfile = null;
-
-                for (String cppProfileId : profileInfo.sliceProfiles.keySet()) {
-                    SliceProfile cppProfile = profileInfo.sliceProfiles.get(cppProfileId);
-                    if (cppProfileId.equals(sliceKey)) {
-                        possibleSliceProfile = cppProfile;
-                        break;
-                    }
-                }
-                if (possibleSliceProfile == null) {
-                    continue;
-                }
-                DFGNode analyzedNameDFGNode = new DFGNode(possibleSliceProfile.varName,
-                    possibleSliceProfile.functionName, possibleSliceProfile.fileName,
-                    possibleSliceProfile.definedPosition);
-                if (!hasNoEdge(dfgNode, analyzedNameDFGNode)) {
-                    continue;
-                }
-                if (isAnalyzedProfile(possibleSliceProfile)) {
-                    continue;
-                }
-                analyzeSliceProfile(possibleSliceProfile, cppSliceProfilesInfo);
+                sliceKey = arg.getName() + "%" + arg.getPos() + "%" + functionName + "%" + filePath;
+                analyzeNativeSliceProfile(dfgNode, profileInfo, sliceKey);
             }
         }
     }
 
-    private boolean isFunctionOfGivenModifier(Node enclFunctionNode, String accessModifier) {
-        List<Node> specifiers = XmlUtil.getNodeByName(enclFunctionNode, "specifier");
-        for (Node specifier : specifiers) {
-            String nodeName = specifier.getTextContent();
-            if (accessModifier.equals(nodeName)) {
-                return true;
-            }
+    private void analyzeNativeSliceProfile(DFGNode dfgNode, SliceProfilesInfo profileInfo, String sliceKey) {
+        if (!profileInfo.sliceProfiles.containsKey(sliceKey)) {
+            return;
         }
-        return false;
+        SliceProfile sliceProfile = profileInfo.sliceProfiles.get(sliceKey);
+        DFGNode analyzedNameDFGNode = new DFGNode(sliceProfile.varName, sliceProfile.functionName,
+            sliceProfile.fileName, sliceProfile.definedPosition);
+        if (!hasNoEdge(dfgNode, analyzedNameDFGNode)) {
+            return;
+        }
+        if (isAnalyzedProfile(sliceProfile)) {
+            return;
+        }
+        analyzeSliceProfile(sliceProfile, cppSliceProfilesInfo);
     }
 
     private boolean hasNoEdge(DFGNode sourceNameNode, DFGNode targetNameNode) {
