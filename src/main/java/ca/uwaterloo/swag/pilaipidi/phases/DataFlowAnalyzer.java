@@ -44,17 +44,17 @@ public class DataFlowAnalyzer {
     private final Map<String, SliceProfilesInfo> cppSliceProfilesInfo = new Hashtable<>();
     private final Map<String, SliceProfilesInfo> sliceProfilesInfo;
     private final Graph<DFGNode, DefaultEdge> graph;
-    private final Map<DFGNode, List<String>> detectedViolations;
+    private final Map<DFGNode, List<String>> dataFlowPaths;
     private final List<String> sinkFunctions;
     private final String[] singleTarget;
     private final MODE mode;
 
     public DataFlowAnalyzer(Map<String, SliceProfilesInfo> sliceProfilesInfo, Graph<DFGNode, DefaultEdge> graph,
-                            Map<DFGNode, List<String>> detectedViolations, List<String> sinkFunctions,
+                            Map<DFGNode, List<String>> dataFlowPaths, List<String> sinkFunctions,
                             String[] singleTarget, MODE mode) {
         this.sliceProfilesInfo = sliceProfilesInfo;
         this.graph = graph;
-        this.detectedViolations = detectedViolations;
+        this.dataFlowPaths = dataFlowPaths;
         this.sinkFunctions = sinkFunctions;
         this.singleTarget = singleTarget;
         this.mode = mode;
@@ -190,7 +190,7 @@ public class DataFlowAnalyzer {
             DFGNode bufferErrorFunctionDFGNode = new DFGNode(dfgNode.varName() + "#" + cfunctionName,
                 dfgNode.functionName(), dfgNode.fileName(), cfunctionPos, true);
             hasNoEdge(dfgNode, bufferErrorFunctionDFGNode);
-            detectedViolations.put(bufferErrorFunctionDFGNode, cErrors);
+            dataFlowPaths.put(bufferErrorFunctionDFGNode, cErrors);
             return;
         }
 
@@ -402,12 +402,13 @@ public class DataFlowAnalyzer {
                     if (isAccessWithinBufferBound(profile.getCurrentValue(), access.accessedExprValue)) {
                         continue;
                     }
-                    List<String> violations = new ArrayList<>();
-                    if (detectedViolations.containsKey(dfgNode)) {
-                        violations = new ArrayList<>(detectedViolations.get(dfgNode));
+                    List<String> dataFlowIssues = new ArrayList<>();
+                    if (dataFlowPaths.containsKey(dfgNode)) {
+                        dataFlowIssues = new ArrayList<>(dataFlowPaths.get(dfgNode));
                     }
-                    violations.add("Buffer write at " + dfgNode.fileName() + "," + access.accessedExprNamePos.getPos());
-                    detectedViolations.put(dfgNode, violations);
+                    dataFlowIssues.add("Buffer write at " + dfgNode.fileName() + "," +
+                        access.accessedExprNamePos.getPos());
+                    dataFlowPaths.put(dfgNode, dataFlowIssues);
                 }
             }
             for (DataAccess access : varAccess.readPositions) {
@@ -415,12 +416,13 @@ public class DataFlowAnalyzer {
                     if (isAccessWithinBufferBound(profile.getCurrentValue(), access.accessedExprValue)) {
                         continue;
                     }
-                    List<String> violations = new ArrayList<>();
-                    if (detectedViolations.containsKey(dfgNode)) {
-                        violations = new ArrayList<>(detectedViolations.get(dfgNode));
+                    List<String> dataFlowIssues = new ArrayList<>();
+                    if (dataFlowPaths.containsKey(dfgNode)) {
+                        dataFlowIssues = new ArrayList<>(dataFlowPaths.get(dfgNode));
                     }
-                    violations.add("Buffer read at " + dfgNode.fileName() + "," + access.accessedExprNamePos.getPos());
-                    detectedViolations.put(dfgNode, violations);
+                    dataFlowIssues.add("Buffer read at " + dfgNode.fileName() + "," +
+                        access.accessedExprNamePos.getPos());
+                    dataFlowPaths.put(dfgNode, dataFlowIssues);
                 }
             }
         }
@@ -655,15 +657,15 @@ public class DataFlowAnalyzer {
                 }
 
                 if (dvarSliceProfile.isPointer && DataAccessType.DATA_WRITE == access.accessType) {
-                    ArrayList<String> violations;
-                    if (detectedViolations.containsKey(dVarNameDFGNode)) {
-                        violations = new ArrayList<>(detectedViolations.get(dVarNameDFGNode));
+                    List<String> dataFlowIssues;
+                    if (dataFlowPaths.containsKey(dVarNameDFGNode)) {
+                        dataFlowIssues = new ArrayList<>(dataFlowPaths.get(dVarNameDFGNode));
                     } else {
-                        violations = new ArrayList<>();
+                        dataFlowIssues = new ArrayList<>();
                     }
-                    violations.add("Pointer data write of '" + dvarSliceProfile.varName + "' at " +
+                    dataFlowIssues.add("Pointer data write of '" + dvarSliceProfile.varName + "' at " +
                         access.accessedExprNamePos.getPos());
-                    detectedViolations.put(dVarNameDFGNode, violations);
+                    dataFlowPaths.put(dVarNameDFGNode, dataFlowIssues);
                 }
             }
         }

@@ -7,11 +7,11 @@ import java.util.List;
 public enum MODE {
     TEST("test"), EXECUTE("execute");
 
-    private final Boolean checkBuffer;
-    private final Boolean startFromCpp;
-    private final Boolean exportGraph;
-    private final Boolean skipSrcml;
-    private final Boolean skipViolations;
+    private final boolean checkBuffer;
+    private final boolean startFromCpp;
+    private final boolean exportGraph;
+    private final boolean skipSrcml;
+    private final boolean skipDataFlowAnalysis;
     private final List<String> lookupString;
 
     MODE(String mode) {
@@ -20,36 +20,36 @@ public enum MODE {
             this.startFromCpp = false;
             this.exportGraph = false;
             this.checkBuffer = false;
-            this.skipViolations = true;
+            this.skipDataFlowAnalysis = true;
             this.lookupString = Arrays.asList("shadePremulSpan");
         } else {
             this.skipSrcml = false;
             this.startFromCpp = false;
             this.exportGraph = false;
             this.checkBuffer = true;
-            this.skipViolations = false;
+            this.skipDataFlowAnalysis = false;
             this.lookupString = Collections.emptyList();
         }
     }
 
-    public Boolean checkBuffer() {
+    public boolean checkBuffer() {
         return checkBuffer;
     }
 
-    public Boolean startFromCpp() {
+    public boolean startFromCpp() {
         return startFromCpp;
     }
 
-    public Boolean exportGraph() {
+    public boolean exportGraph() {
         return exportGraph;
     }
 
-    public Boolean skipSrcml() {
+    public boolean skipSrcml() {
         return skipSrcml;
     }
 
-    public Boolean skipViolations() {
-        return skipViolations;
+    public boolean skipDataFlowAnalysis() {
+        return skipDataFlowAnalysis;
     }
 
     public List<String> lookupString() {
