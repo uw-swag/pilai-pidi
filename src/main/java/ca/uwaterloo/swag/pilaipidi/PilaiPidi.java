@@ -174,7 +174,7 @@ public class PilaiPidi {
         final Hashtable<String, Set<List<DFGNode>>> sourcesAndSinks = findSourcesAndSinks(graph,
             dataFlowPaths, arugumentOptions);
         long end = System.currentTimeMillis();
-        System.out.println("No of files analyzed " + sliceProfiles.size());
+        System.out.println("Number of files analyzed = " + sliceProfiles.size());
         System.out.println("Completed analysis in " + (end - start) / 1000 + "s");
 
         return sourcesAndSinks;

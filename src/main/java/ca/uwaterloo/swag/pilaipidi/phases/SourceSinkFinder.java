@@ -9,6 +9,7 @@ import java.nio.charset.Charset;
 import java.nio.file.FileSystems;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.List;
@@ -111,22 +112,25 @@ public class SourceSinkFinder {
                 sourceNodes.add(node);
             }
         }
+
+        if (singleTarget != null) {
+            for (DFGNode dfgNode : graph.vertexSet()) {
+                if (!(dfgNode.fileName().equals(singleTarget[1]) &&
+                    dfgNode.varName().equals(singleTarget[0]) &&
+                    dfgNode.definedPosition().equals(singleTarget[2]))) {
+                    continue;
+                }
+                dataFlowPaths.put(dfgNode,
+                    new ArrayList<>(Collections.singletonList(String.join("@AT@", singleTarget))));
+            }
+        }
+
         int dataFlowPathCount = 0;
+        int uniqueNumberOfSinks = 0;
         for (DFGNode sourceNode : sourceNodes) {
             if (mode.skipDataFlowAnalysis()) {
                 bfsSolution(sourceNode, graph, mode.lookupString());
                 continue;
-            }
-            if (singleTarget != null) {
-                for (DFGNode dfgNode : graph.vertexSet()) {
-                    if (!(dfgNode.fileName().equals(singleTarget[1]) &&
-                        dfgNode.varName().equals(singleTarget[0]) &&
-                        dfgNode.definedPosition().equals(singleTarget[2]))) {
-                        continue;
-                    }
-                    dataFlowPaths.put(dfgNode,
-                        new ArrayList<>(Collections.singletonList(String.join("@AT@", singleTarget))));
-                }
             }
 
             for (DFGNode dfgNode : dataFlowPaths.keySet()) {
@@ -156,7 +160,7 @@ public class SourceSinkFinder {
             String key = entry.getKey();
             Set<List<DFGNode>> possiblePath = entry.getValue();
             possiblePath.forEach(path -> {
-                System.err.print("Possible out-of-bounds operation path : ");
+                System.err.print("Possible data flow path : ");
                 StringBuilder vPath = new StringBuilder();
                 int size = path.size() - 1;
                 if (key.startsWith("Buffer")) {
@@ -171,10 +175,12 @@ public class SourceSinkFinder {
                 }
                 System.err.println(vPath);
             });
+            uniqueNumberOfSinks++;
             System.err.println(key + "\n");
         }
 
-        System.out.println("Detected data flow paths " + dataFlowPathCount);
+        System.out.println("Total number of data flow paths = " + dataFlowPathCount);
+        System.out.println("Unique number of sinks = " + uniqueNumberOfSinks);
         return possiblePaths;
     }
 }
