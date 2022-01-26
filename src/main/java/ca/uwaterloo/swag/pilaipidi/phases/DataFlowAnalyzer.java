@@ -44,17 +44,17 @@ public class DataFlowAnalyzer {
     private final Map<String, SliceProfilesInfo> cppSliceProfilesInfo = new Hashtable<>();
     private final Map<String, SliceProfilesInfo> sliceProfilesInfo;
     private final Graph<DFGNode, DefaultEdge> graph;
-    private final Map<DFGNode, List<String>> detectedViolations;
+    private final Map<DFGNode, List<String>> dataFlowPaths;
     private final List<String> sinkFunctions;
     private final String[] singleTarget;
     private final MODE mode;
 
     public DataFlowAnalyzer(Map<String, SliceProfilesInfo> sliceProfilesInfo, Graph<DFGNode, DefaultEdge> graph,
-                            Map<DFGNode, List<String>> detectedViolations, List<String> sinkFunctions,
+                            Map<DFGNode, List<String>> dataFlowPaths, List<String> sinkFunctions,
                             String[] singleTarget, MODE mode) {
         this.sliceProfilesInfo = sliceProfilesInfo;
         this.graph = graph;
-        this.detectedViolations = detectedViolations;
+        this.dataFlowPaths = dataFlowPaths;
         this.sinkFunctions = sinkFunctions;
         this.singleTarget = singleTarget;
         this.mode = mode;
@@ -144,7 +144,7 @@ public class DataFlowAnalyzer {
         if (!profile.functionName.equals("GLOBAL") && profile.cfunctions.size() < 1
             && profile.functionNode != null) {
             Node enclFunctionNode = profile.functionNode;
-            if (isFunctionOfGivenModifier(enclFunctionNode, JNI_NATIVE_METHOD_MODIFIER)) {
+            if (XmlUtil.isFunctionOfGivenModifier(enclFunctionNode, JNI_NATIVE_METHOD_MODIFIER)) {
                 analyzeNativeFunction(profile, rawProfilesInfo, enclFunctionNode, dfgNode);
             }
         }
@@ -190,7 +190,7 @@ public class DataFlowAnalyzer {
             DFGNode bufferErrorFunctionDFGNode = new DFGNode(dfgNode.varName() + "#" + cfunctionName,
                 dfgNode.functionName(), dfgNode.fileName(), cfunctionPos, true);
             hasNoEdge(dfgNode, bufferErrorFunctionDFGNode);
-            detectedViolations.put(bufferErrorFunctionDFGNode, cErrors);
+            dataFlowPaths.put(bufferErrorFunctionDFGNode, cErrors);
             return;
         }
 
@@ -265,8 +265,7 @@ public class DataFlowAnalyzer {
             index++;
         }
         int jniArgPosIndex = index + 2; // first two arugments in native jni methods are env and obj
-        String clazzName = XmlUtil.getNodeByName(XmlUtil.getNodeByName(enclUnitNode, "class").get(0),
-            "name").get(0).getTextContent();
+        String clazzName = XmlUtil.getJavaClassName(enclUnitNode);
         String jniFunctionSearchStr = clazzName + "_" + jniFunctionName;
 
         for (String filePath : cppSliceProfilesInfo.keySet()) {
@@ -278,48 +277,37 @@ public class DataFlowAnalyzer {
                 if (!functionName.toLowerCase().endsWith(jniFunctionSearchStr.toLowerCase())) {
                     continue;
                 }
+
+                // 01 - Native cfunction profile
+                String sliceKey = functionName + "%" + funcNamePos.getPos() + "%" + functionName + "%" + filePath;
+                analyzeNativeSliceProfile(dfgNode, profileInfo, sliceKey);
+
+                // 02 - Function arg index based profile
                 List<ArgumentNamePos> functionArgs = XmlUtil.findFunctionParameters(functionNode);
                 if (functionArgs.size() < 1 || jniArgPosIndex > functionArgs.size() - 1) {
                     continue;
                 }
                 NamePos arg = functionArgs.get(jniArgPosIndex);
-                String sliceKey = arg.getName() + "%" + arg.getPos() + "%" + functionName + "%" + filePath;
-
-                SliceProfile possibleSliceProfile = null;
-
-                for (String cppProfileId : profileInfo.sliceProfiles.keySet()) {
-                    SliceProfile cppProfile = profileInfo.sliceProfiles.get(cppProfileId);
-                    if (cppProfileId.equals(sliceKey)) {
-                        possibleSliceProfile = cppProfile;
-                        break;
-                    }
-                }
-                if (possibleSliceProfile == null) {
-                    continue;
-                }
-                DFGNode analyzedNameDFGNode = new DFGNode(possibleSliceProfile.varName,
-                    possibleSliceProfile.functionName, possibleSliceProfile.fileName,
-                    possibleSliceProfile.definedPosition);
-                if (!hasNoEdge(dfgNode, analyzedNameDFGNode)) {
-                    continue;
-                }
-                if (isAnalyzedProfile(possibleSliceProfile)) {
-                    continue;
-                }
-                analyzeSliceProfile(possibleSliceProfile, cppSliceProfilesInfo);
+                sliceKey = arg.getName() + "%" + arg.getPos() + "%" + functionName + "%" + filePath;
+                analyzeNativeSliceProfile(dfgNode, profileInfo, sliceKey);
             }
         }
     }
 
-    private boolean isFunctionOfGivenModifier(Node enclFunctionNode, String accessModifier) {
-        List<Node> specifiers = XmlUtil.getNodeByName(enclFunctionNode, "specifier");
-        for (Node specifier : specifiers) {
-            String nodeName = specifier.getTextContent();
-            if (accessModifier.equals(nodeName)) {
-                return true;
-            }
+    private void analyzeNativeSliceProfile(DFGNode dfgNode, SliceProfilesInfo profileInfo, String sliceKey) {
+        if (!profileInfo.sliceProfiles.containsKey(sliceKey)) {
+            return;
         }
-        return false;
+        SliceProfile sliceProfile = profileInfo.sliceProfiles.get(sliceKey);
+        DFGNode analyzedNameDFGNode = new DFGNode(sliceProfile.varName, sliceProfile.functionName,
+            sliceProfile.fileName, sliceProfile.definedPosition);
+        if (!hasNoEdge(dfgNode, analyzedNameDFGNode)) {
+            return;
+        }
+        if (isAnalyzedProfile(sliceProfile)) {
+            return;
+        }
+        analyzeSliceProfile(sliceProfile, cppSliceProfilesInfo);
     }
 
     private boolean hasNoEdge(DFGNode sourceNameNode, DFGNode targetNameNode) {
@@ -414,12 +402,13 @@ public class DataFlowAnalyzer {
                     if (isAccessWithinBufferBound(profile.getCurrentValue(), access.accessedExprValue)) {
                         continue;
                     }
-                    List<String> violations = new ArrayList<>();
-                    if (detectedViolations.containsKey(dfgNode)) {
-                        violations = new ArrayList<>(detectedViolations.get(dfgNode));
+                    List<String> dataFlowIssues = new ArrayList<>();
+                    if (dataFlowPaths.containsKey(dfgNode)) {
+                        dataFlowIssues = new ArrayList<>(dataFlowPaths.get(dfgNode));
                     }
-                    violations.add("Buffer write at " + dfgNode.fileName() + "," + access.accessedExprNamePos.getPos());
-                    detectedViolations.put(dfgNode, violations);
+                    dataFlowIssues.add("Buffer write at " + dfgNode.fileName() + "," +
+                        access.accessedExprNamePos.getPos());
+                    dataFlowPaths.put(dfgNode, dataFlowIssues);
                 }
             }
             for (DataAccess access : varAccess.readPositions) {
@@ -427,12 +416,13 @@ public class DataFlowAnalyzer {
                     if (isAccessWithinBufferBound(profile.getCurrentValue(), access.accessedExprValue)) {
                         continue;
                     }
-                    List<String> violations = new ArrayList<>();
-                    if (detectedViolations.containsKey(dfgNode)) {
-                        violations = new ArrayList<>(detectedViolations.get(dfgNode));
+                    List<String> dataFlowIssues = new ArrayList<>();
+                    if (dataFlowPaths.containsKey(dfgNode)) {
+                        dataFlowIssues = new ArrayList<>(dataFlowPaths.get(dfgNode));
                     }
-                    violations.add("Buffer read at " + dfgNode.fileName() + "," + access.accessedExprNamePos.getPos());
-                    detectedViolations.put(dfgNode, violations);
+                    dataFlowIssues.add("Buffer read at " + dfgNode.fileName() + "," +
+                        access.accessedExprNamePos.getPos());
+                    dataFlowPaths.put(dfgNode, dataFlowIssues);
                 }
             }
         }
@@ -667,15 +657,15 @@ public class DataFlowAnalyzer {
                 }
 
                 if (dvarSliceProfile.isPointer && DataAccessType.DATA_WRITE == access.accessType) {
-                    ArrayList<String> violations;
-                    if (detectedViolations.containsKey(dVarNameDFGNode)) {
-                        violations = new ArrayList<>(detectedViolations.get(dVarNameDFGNode));
+                    List<String> dataFlowIssues;
+                    if (dataFlowPaths.containsKey(dVarNameDFGNode)) {
+                        dataFlowIssues = new ArrayList<>(dataFlowPaths.get(dVarNameDFGNode));
                     } else {
-                        violations = new ArrayList<>();
+                        dataFlowIssues = new ArrayList<>();
                     }
-                    violations.add("Pointer data write of '" + dvarSliceProfile.varName + "' at " +
+                    dataFlowIssues.add("Pointer data write of '" + dvarSliceProfile.varName + "' at " +
                         access.accessedExprNamePos.getPos());
-                    detectedViolations.put(dVarNameDFGNode, violations);
+                    dataFlowPaths.put(dVarNameDFGNode, dataFlowIssues);
                 }
             }
         }
