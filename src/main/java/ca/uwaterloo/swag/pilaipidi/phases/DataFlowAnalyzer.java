@@ -34,10 +34,6 @@ import org.w3c.dom.Node;
  */
 public class DataFlowAnalyzer {
 
-    public static List<String> BUFFER_ACCESS_SINK_FUNCTIONS = Arrays.asList("strcat", "strdup", "strncat", "strcmp",
-        "strncmp", "strcpy", "strncpy", "strlen", "strchr", "strrchr", "index", "rindex", "strpbrk", "strspn",
-        "strcspn", "strstr", "strtok", "memccpy", "memchr", "memmove", "memcpy", "memcmp", "memset", "bcopy",
-        "bzero", "bcmp");
     private final String JNI_NATIVE_METHOD_MODIFIER = "native";
     private final Set<SliceProfile> analyzedProfiles = new HashSet<>();
     private final Map<String, SliceProfilesInfo> javaSliceProfilesInfo = new Hashtable<>();
@@ -506,7 +502,7 @@ public class DataFlowAnalyzer {
     }
 
     private boolean isBufferAccessFunction(String cfunctionName) {
-        return BUFFER_ACCESS_SINK_FUNCTIONS.contains(cfunctionName);
+        return sinkFunctions.contains(cfunctionName);
     }
 
     private boolean checkMemCpy(CFunction cFunction) {
@@ -634,7 +630,6 @@ public class DataFlowAnalyzer {
         return isAccessWithinOrEqualToBufferBound(src.getCurrentValue(), dst.getCurrentValue());
     }
 
-
     private void analyzePointerAccess(SliceProfile profile, Map<String, SliceProfilesInfo> rawProfilesInfo,
                                       DFGNode dfgNode) {
         for (SliceVariableAccess varAccess : profile.dataAccess) {
@@ -670,4 +665,5 @@ public class DataFlowAnalyzer {
             }
         }
     }
+
 }
