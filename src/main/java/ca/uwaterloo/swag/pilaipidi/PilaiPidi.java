@@ -12,7 +12,11 @@ import ca.uwaterloo.swag.pilaipidi.util.ArugumentOptions;
 import ca.uwaterloo.swag.pilaipidi.util.MODE;
 import ca.uwaterloo.swag.pilaipidi.util.XmlUtil;
 
-import java.io.*;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.File;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -176,7 +180,8 @@ public class PilaiPidi {
                 SINK_FUNCTIONS.add(functionName);
             }
         } catch (ParserConfigurationException | SAXException | IOException e) {
-            e.printStackTrace();
+            log.log(Level.SEVERE, "Error loading buffer access sink functions list from XML", e.getStackTrace());
+            throw new RuntimeException(e);
         }
     }
 
