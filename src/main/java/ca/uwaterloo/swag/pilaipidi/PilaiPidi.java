@@ -11,27 +11,33 @@ import ca.uwaterloo.swag.pilaipidi.phases.SymbolFinder;
 import ca.uwaterloo.swag.pilaipidi.util.ArugumentOptions;
 import ca.uwaterloo.swag.pilaipidi.util.MODE;
 import ca.uwaterloo.swag.pilaipidi.util.XmlUtil;
+
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.File;
 import java.net.URISyntaxException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
-import java.util.Scanner;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+
 import org.jgrapht.Graph;
 import org.jgrapht.graph.DefaultDirectedGraph;
 import org.jgrapht.graph.DefaultEdge;
 import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
 /**
@@ -42,14 +48,15 @@ import org.xml.sax.SAXException;
 public class PilaiPidi {
 
     private static final Logger log = Logger.getLogger(PilaiPidi.class.getName());
-    private static List<String> SINK_FUNCTIONS = DataFlowAnalyzer.BUFFER_ACCESS_SINK_FUNCTIONS;
+    private static List<String> SINK_FUNCTIONS;
     private static MODE mode = MODE.EXECUTE;
+    private static final String DEFAULT_SINK_FUNCTIONS_FILE = "common/sink_functions.xml";
 
     private static Hashtable<String, Set<List<DFGNode>>> findSourcesAndSinks(Graph<DFGNode, DefaultEdge> graph,
                                                                              Map<DFGNode, List<String>> dataFlowPaths,
                                                                              ArugumentOptions arugumentOptions) {
         SourceSinkFinder sourceSinkFinder = new SourceSinkFinder(graph, dataFlowPaths,
-            arugumentOptions.singleTarget, mode);
+                arugumentOptions.singleTarget, mode);
         return sourceSinkFinder.invoke();
     }
 
@@ -58,7 +65,7 @@ public class PilaiPidi {
                                         ArugumentOptions arugumentOptions,
                                         Map<String, SliceProfilesInfo> sliceProfilesInfo) {
         DataFlowAnalyzer dataFlowAnalyzer = new DataFlowAnalyzer(sliceProfilesInfo, graph, dataFlowPaths,
-            SINK_FUNCTIONS, arugumentOptions.singleTarget, mode);
+                SINK_FUNCTIONS, arugumentOptions.singleTarget, mode);
         dataFlowAnalyzer.analyze();
     }
 
@@ -134,20 +141,6 @@ public class PilaiPidi {
                 argsList.add(args[i]);
             }
         }
-        if (optsList.containsKey("-functions")) {
-            String functionsFile = optsList.get("-functions");
-            Path functionFilePath = Path.of(functionsFile);
-            if (Files.exists(functionFilePath)) {
-                try (Scanner sc = new Scanner(functionFilePath.toFile(), StandardCharsets.UTF_8)) {
-                    SINK_FUNCTIONS = new ArrayList<>();
-                    while (sc.hasNextLine()) {
-                        SINK_FUNCTIONS.add(sc.nextLine());
-                    }
-                } catch (IOException e) {
-                    //ignore
-                }
-            }
-        }
         String[] singleTarget = null;
         if (optsList.containsKey("-node")) {
             singleTarget = optsList.get("-node").split("@AT@");
@@ -155,6 +148,41 @@ public class PilaiPidi {
 
         String projectLocation = args[0];
         return new ArugumentOptions(argsList, optsList, doubleOptsList, projectLocation, singleTarget);
+    }
+
+    private static void loadBufferAccessSinkFunctions(ArugumentOptions arugumentOptions) {
+        InputStream functionsInputStream = null;
+        if (arugumentOptions.optsList.containsKey("-functions")) {
+            String functionsFile = arugumentOptions.optsList.get("-functions");
+            try {
+                functionsInputStream = new FileInputStream(new File(functionsFile));
+            } catch (FileNotFoundException e) {
+                throw new IllegalArgumentException("Unable to find XML file of sink functions. Please check that the " +
+                        "-functions param is correct.");
+            }
+
+        } else {
+            functionsInputStream = PilaiPidi.class.getClassLoader().getResourceAsStream(DEFAULT_SINK_FUNCTIONS_FILE);
+        }
+
+        SINK_FUNCTIONS = new ArrayList<>();
+        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+        try {
+            DocumentBuilder db = dbf.newDocumentBuilder();
+            Document sinkFunctionsXmlDoc = db.parse(functionsInputStream);
+            sinkFunctionsXmlDoc.getDocumentElement().normalize();
+
+            NodeList list = sinkFunctionsXmlDoc.getElementsByTagName("function");
+            for (int i = 0; i < list.getLength(); i++) {
+                Node node = list.item(i);
+                Element element = (Element) node;
+                String functionName = element.getElementsByTagName("name").item(0).getTextContent().strip();
+                SINK_FUNCTIONS.add(functionName);
+            }
+        } catch (ParserConfigurationException | SAXException | IOException e) {
+            log.log(Level.SEVERE, "Error loading buffer access sink functions list from XML", e.getStackTrace());
+            throw new RuntimeException(e);
+        }
     }
 
     public Hashtable<String, Set<List<DFGNode>>> invoke(String[] args) {
@@ -165,6 +193,7 @@ public class PilaiPidi {
         if (arugumentOptions.doubleOptsList.size() > 0 && arugumentOptions.doubleOptsList.contains("debug")) {
             mode = MODE.TEST;
         }
+        loadBufferAccessSinkFunctions(arugumentOptions);
         final Document document = generateAndParseSrcML(arugumentOptions);
         final Set<TypeSymbol> typeSymbols = findSymbols(document);
         final Map<String, SliceProfilesInfo> sliceProfiles = generateSliceProfiles(document, typeSymbols);
@@ -172,7 +201,7 @@ public class PilaiPidi {
         long mid = System.currentTimeMillis();
         System.out.println("Completed analyzing slice profiles in " + (mid - start) / 1000 + "s");
         final Hashtable<String, Set<List<DFGNode>>> sourcesAndSinks = findSourcesAndSinks(graph,
-            dataFlowPaths, arugumentOptions);
+                dataFlowPaths, arugumentOptions);
         long end = System.currentTimeMillis();
         System.out.println("Number of files analyzed = " + sliceProfiles.size());
         System.out.println("Completed analysis in " + (end - start) / 1000 + "s");
