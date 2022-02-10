@@ -1,16 +1,221 @@
 <functions>
     <function>
+        <name>scanf</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>sscanf</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>fscanf</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>vscanf</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>vfscanf</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>vsscanf</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>wscanf</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>fwscanf</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>swscanf</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>vwscanf</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>vfwscanf</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>fread</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>fgetc</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>fgets</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>getchar</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>gets</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>memcpy</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>memmove</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
         <name>strcat</name>
         <severity>1</severity>
         <category>Uncategorized</category>
     </function>
     <function>
-        <name>strdup</name>
+        <name>strncat</name>
         <severity>1</severity>
         <category>Uncategorized</category>
     </function>
     <function>
-        <name>strncat</name>
+        <name>wcscat</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>wcsncat</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>strcpy</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>wcscpy</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>strncpy</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>wcsncpy</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>strxfrm</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>fwrite</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>fprintf</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>printf</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>sprintf</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>sprintnf</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>vfprintf</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>vprintf</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>vsprintf</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>vsprintnf</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>fputc</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>fputs</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>putc</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>putchar</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>puts</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>ungetc</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>perror</name>
+        <severity>1</severity>
+        <category>Uncategorized</category>
+    </function>
+    <function>
+        <name>strdup</name>
         <severity>1</severity>
         <category>Uncategorized</category>
     </function>
@@ -21,16 +226,6 @@
     </function>
     <function>
         <name>strncmp</name>
-        <severity>1</severity>
-        <category>Uncategorized</category>
-    </function>
-    <function>
-        <name>strcpy</name>
-        <severity>1</severity>
-        <category>Uncategorized</category>
-    </function>
-    <function>
-        <name>strncpy</name>
         <severity>1</severity>
         <category>Uncategorized</category>
     </function>
@@ -91,16 +286,6 @@
     </function>
     <function>
         <name>memchr</name>
-        <severity>1</severity>
-        <category>Uncategorized</category>
-    </function>
-    <function>
-        <name>memmove</name>
-        <severity>1</severity>
-        <category>Uncategorized</category>
-    </function>
-    <function>
-        <name>memcpy</name>
         <severity>1</severity>
         <category>Uncategorized</category>
     </function>
