@@ -550,7 +550,11 @@ public class SymbolFinder {
         } else {
             text = specificOpNode.getTextContent();
         }
-        return new NamePos(text.split(IDENTIFIER_SEPARATOR)[0], "", XmlUtil.getNodePos(expr), false);
+        String[] split = text.split(IDENTIFIER_SEPARATOR);
+        if (split.length == 0) {
+            return null;
+        }
+        return new NamePos(split[0], "", XmlUtil.getNodePos(expr), false);
     }
 
     private void analyzeTryBlock(Node stmt) {
