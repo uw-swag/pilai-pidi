@@ -1,6 +1,5 @@
 package ca.uwaterloo.swag.pilaipidi.models;
 
-import java.util.ArrayList;
 
 public class DFGNode {
 
