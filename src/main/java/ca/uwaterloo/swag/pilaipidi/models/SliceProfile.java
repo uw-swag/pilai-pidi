@@ -24,6 +24,7 @@ public class SliceProfile {
     public final boolean isBuffer;
     private Value currentValue;
 
+
     public SliceProfile(String fileName, String functionName, String varName, String typeName,
                         String definedPosition, boolean isPointer) {
         this.fileName = fileName;

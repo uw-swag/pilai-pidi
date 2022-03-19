@@ -49,10 +49,11 @@ public class PilaiPidi {
 
     private static final Logger log = Logger.getLogger(PilaiPidi.class.getName());
     private static List<String> SINK_FUNCTIONS;
-    private static List<String> SOURCE_FUNCTIONS;
+    private static HashMap<String, Integer> SOURCE_FUNCTIONS; // maps source function names to their number of
+    // parameters
     private static MODE mode = MODE.EXECUTE;
     private static final String DEFAULT_SINK_FUNCTIONS_FILE = "common/sink_functions.xml";
-    private static final String DEFAULT_SOURCE_FUNCTIONS_FILE = "common/source_functions.xml";
+    private static final String DEFAULT_SOURCE_FUNCTIONS_FILE = "common/android_17_source_withParams_list.xml";
 
     private static Hashtable<String, Set<List<DFGNode>>> findSourcesAndSinks(Graph<DFGNode, DefaultEdge> graph,
                                                                              Map<DFGNode, List<String>> dataFlowPaths,
@@ -152,7 +153,7 @@ public class PilaiPidi {
         return new ArugumentOptions(argsList, optsList, doubleOptsList, projectLocation, singleTarget);
     }
 
-    private static void loadFunctiosFromXmlInputStream(List<String> functionList, InputStream xmlInputStream) throws ParserConfigurationException, IOException, SAXException {
+    private static void loadFunctionsFromXmlInputStream(List<String> functionList, InputStream xmlInputStream) throws ParserConfigurationException, IOException, SAXException {
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
         DocumentBuilder db = dbf.newDocumentBuilder();
         Document sinkFunctionsXmlDoc = db.parse(xmlInputStream);
@@ -164,6 +165,23 @@ public class PilaiPidi {
             Element element = (Element) node;
             String functionName = element.getElementsByTagName("name").item(0).getTextContent().strip();
             functionList.add(functionName);
+        }
+    }
+
+    private static void loadFunctionsWithParamsFromXmlInputStream(HashMap<String, Integer> functionList,
+                                                                  InputStream xmlInputStream) throws ParserConfigurationException, IOException, SAXException {
+        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+        DocumentBuilder db = dbf.newDocumentBuilder();
+        Document sinkFunctionsXmlDoc = db.parse(xmlInputStream);
+        sinkFunctionsXmlDoc.getDocumentElement().normalize();
+
+        NodeList list = sinkFunctionsXmlDoc.getElementsByTagName("function");
+        for (int i = 0; i < list.getLength(); i++) {
+            Node node = list.item(i);
+            Element element = (Element) node;
+            String functionName = element.getElementsByTagName("name").item(0).getTextContent().strip();
+            int numParams = element.getElementsByTagName("param").getLength();
+            functionList.put(functionName, numParams);
         }
     }
 
@@ -184,7 +202,7 @@ public class PilaiPidi {
 
         SINK_FUNCTIONS = new ArrayList<>();
         try {
-            loadFunctiosFromXmlInputStream(SINK_FUNCTIONS, functionsInputStream);
+            loadFunctionsFromXmlInputStream(SINK_FUNCTIONS, functionsInputStream);
         } catch (ParserConfigurationException | SAXException | IOException e) {
             log.log(Level.SEVERE, "Error loading buffer access sink functions list from XML", e.getStackTrace());
             throw new RuntimeException(e);
@@ -207,9 +225,9 @@ public class PilaiPidi {
             functionsInputStream = PilaiPidi.class.getClassLoader().getResourceAsStream(DEFAULT_SOURCE_FUNCTIONS_FILE);
         }
 
-        SOURCE_FUNCTIONS = new ArrayList<>();
+        SOURCE_FUNCTIONS = new HashMap<>();
         try {
-            loadFunctiosFromXmlInputStream(SOURCE_FUNCTIONS, functionsInputStream);
+            loadFunctionsWithParamsFromXmlInputStream(SOURCE_FUNCTIONS, functionsInputStream);
         } catch (ParserConfigurationException | SAXException | IOException e) {
             log.log(Level.SEVERE, "Error loading source functions list from XML", e.getStackTrace());
             throw new RuntimeException(e);
