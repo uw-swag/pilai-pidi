@@ -153,7 +153,8 @@ public class PilaiPidi {
         return new ArugumentOptions(argsList, optsList, doubleOptsList, projectLocation, singleTarget);
     }
 
-    private static void loadFunctionsFromXmlInputStream(List<String> functionList, InputStream xmlInputStream) throws ParserConfigurationException, IOException, SAXException {
+    private static void loadFunctionsFromXmlInputStream(List<String> functionList, InputStream xmlInputStream)
+            throws ParserConfigurationException, IOException, SAXException {
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
         DocumentBuilder db = dbf.newDocumentBuilder();
         Document sinkFunctionsXmlDoc = db.parse(xmlInputStream);
@@ -169,7 +170,8 @@ public class PilaiPidi {
     }
 
     private static void loadFunctionsWithParamsFromXmlInputStream(HashMap<String, Integer> functionList,
-                                                                  InputStream xmlInputStream) throws ParserConfigurationException, IOException, SAXException {
+                                                                  InputStream xmlInputStream)
+            throws ParserConfigurationException, IOException, SAXException {
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
         DocumentBuilder db = dbf.newDocumentBuilder();
         Document sinkFunctionsXmlDoc = db.parse(xmlInputStream);
