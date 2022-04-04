@@ -24,7 +24,7 @@ public final class DFGNodeCFunction extends DFGNode {
         return this.isLocalCall;
     }
 
-    public int numParameters() {
+    public int numArguments() {
         return this.numArguments;
     }
 }

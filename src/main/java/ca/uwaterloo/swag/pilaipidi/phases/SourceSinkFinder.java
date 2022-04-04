@@ -166,7 +166,7 @@ public class SourceSinkFinder {
                         if (node.isCFunctionNode()) {
                             DFGNodeCFunction cFunctionNode = (DFGNodeCFunction) node;
                             value = new SourceNode(node.functionName(),
-                                    sourceFunctionsMapping.get(node.functionName()) == cFunctionNode.numParameters(),
+                                    sourceFunctionsMapping.get(node.functionName()) == cFunctionNode.numArguments(),
                                     !cFunctionNode.isLocalCall());
                         } else {
                             value = new SourceNode(node.functionName(), true, true);
