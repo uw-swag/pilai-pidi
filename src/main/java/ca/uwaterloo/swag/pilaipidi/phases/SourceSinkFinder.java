@@ -1,6 +1,8 @@
 package ca.uwaterloo.swag.pilaipidi.phases;
 
 import ca.uwaterloo.swag.pilaipidi.models.DFGNode;
+import ca.uwaterloo.swag.pilaipidi.models.DFGNodeCFunction;
+import ca.uwaterloo.swag.pilaipidi.models.SourceNode;
 import ca.uwaterloo.swag.pilaipidi.util.MODE;
 
 import java.io.File;
@@ -38,15 +40,15 @@ public class SourceSinkFinder {
     private final Map<DFGNode, List<String>> dataFlowPaths;
     private final String[] singleTarget;
     private final MODE mode;
-    private final List<String> sourceFunctions;
+    private final HashMap<String, Integer> sourceFunctionsMapping; // maps functions to their num of parameters
 
     public SourceSinkFinder(Graph<DFGNode, DefaultEdge> graph, Map<DFGNode, List<String>> dataFlowPaths,
-                            List<String> sourceFunctions, String[] singleTarget, MODE mode) {
+                            HashMap<String, Integer> sourceFunctions, String[] singleTarget, MODE mode) {
         this.graph = graph;
         this.dataFlowPaths = dataFlowPaths;
         this.singleTarget = singleTarget;
         this.mode = mode;
-        this.sourceFunctions = sourceFunctions;
+        this.sourceFunctionsMapping = sourceFunctions;
     }
 
     public Hashtable<String, Set<List<DFGNode>>> invoke() {
@@ -58,8 +60,7 @@ public class SourceSinkFinder {
 
     private void exportGraph(Graph<DFGNode, DefaultEdge> graph) {
         System.out.println("Exporting graph...");
-        DOTExporter<DFGNode, DefaultEdge> exporter = new DOTExporter<>(
-                DFGNode::toString);
+        DOTExporter<DFGNode, DefaultEdge> exporter = new DOTExporter<>(DFGNode::toString);
         StringWriter writer = new StringWriter();
         exporter.exportGraph(graph, writer);
         final File file = new File(FileSystems.getDefault().getPath(".").toString(), "graph.dot");
@@ -119,19 +120,17 @@ public class SourceSinkFinder {
 
         if (singleTarget != null) {
             for (DFGNode dfgNode : graph.vertexSet()) {
-                if (!(dfgNode.fileName().equals(singleTarget[1]) &&
-                        dfgNode.varName().equals(singleTarget[0]) &&
-                        dfgNode.definedPosition().equals(singleTarget[2]))) {
+                if (!(dfgNode.fileName().equals(singleTarget[1]) && dfgNode.varName().equals(singleTarget[0]) && dfgNode.definedPosition().equals(singleTarget[2]))) {
                     continue;
                 }
-                dataFlowPaths.put(dfgNode,
-                        new ArrayList<>(Collections.singletonList(String.join("@AT@", singleTarget))));
+                dataFlowPaths.put(dfgNode, new ArrayList<>(Collections.singletonList(String.join("@AT@",
+                        singleTarget))));
             }
         }
 
         int dataFlowPathCount = 0;
         int uniqueNumberOfSinks = 0;
-        HashMap<String, String> sourceFunctionsMap = new HashMap<>();
+        HashMap<String, SourceNode> sourceFunctionsMap = new HashMap<>();
         for (DFGNode sourceNode : sourceNodes) {
             if (mode.skipDataFlowAnalysis()) {
                 bfsSolution(sourceNode, graph, mode.lookupString());
@@ -161,9 +160,17 @@ public class SourceSinkFinder {
 
                 // Check for identified Android sources along requiredPath
                 for (DFGNode node : vertexList) {
-                    if (sourceFunctions.contains(node.functionName())) {
+                    if (sourceFunctionsMapping.containsKey(node.functionName())) {
                         String key = node.fileName() + ":" + node.definedPosition();
-                        String value = node.functionName();
+                        SourceNode value;
+                        if (node.isCFunctionNode()) {
+                            DFGNodeCFunction cFunctionNode = (DFGNodeCFunction) node;
+                            value = new SourceNode(node.functionName(),
+                                    sourceFunctionsMapping.get(node.functionName()) == cFunctionNode.numArguments(),
+                                    !cFunctionNode.isLocalCall());
+                        } else {
+                            value = new SourceNode(node.functionName(), true, true);
+                        }
                         sourceFunctionsMap.put(key, value);
                     }
                 }
@@ -195,6 +202,17 @@ public class SourceSinkFinder {
 
         System.out.println("Total number of data flow paths = " + dataFlowPathCount);
         System.out.println("Unique number of sinks = " + uniqueNumberOfSinks);
+
+        int totalSourceFuncCount = 0;
+        int totalSourceFuncProbableMatchCount = 0;
+        for (SourceNode sourceNode : sourceFunctionsMap.values()) {
+            if (sourceNode.possibleFrameworkCall && sourceNode.possibleParamMatch) {
+                totalSourceFuncProbableMatchCount++;
+            }
+            totalSourceFuncCount++;
+        }
+        System.out.println("Number of all sources in data flow paths = " + totalSourceFuncCount);
+        System.out.println("Number of sources in data flow paths with probable matches = " + totalSourceFuncProbableMatchCount);
         return possiblePaths;
     }
 }

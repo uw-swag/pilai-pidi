@@ -10,6 +10,10 @@ public class NamePos {
     private final NamePos bufferSize;
 
     public NamePos(String name, String type, String pos, boolean isPointer) {
+        this(name, type, pos, isPointer, false);
+    }
+
+    public NamePos(String name, String type, String pos, boolean isPointer, boolean isLocalCall) {
         this.name = name;
         this.type = type;
         this.pos = pos;
@@ -50,7 +54,7 @@ public class NamePos {
         }
         NamePos other = (NamePos) obj;
         return this.name.equals(other.name) && this.type.equals(other.type) &&
-            this.pos.equals(other.pos) && this.isPointer == other.isPointer;
+                this.pos.equals(other.pos) && this.isPointer == other.isPointer;
     }
 
     @Override

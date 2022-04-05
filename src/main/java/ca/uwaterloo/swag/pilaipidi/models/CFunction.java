@@ -2,6 +2,7 @@ package ca.uwaterloo.swag.pilaipidi.models;
 
 import java.util.List;
 import java.util.Objects;
+
 import org.w3c.dom.Node;
 
 public final class CFunction {
@@ -9,22 +10,27 @@ public final class CFunction {
     private final int argPosIndex;
     private final String name;
     private final String position;
+    private final String identifier;
     private final String enclFunctionName;
     private final Node enclFunctionNode;
     private final boolean isEmptyArgFunc;
     private final int numberOfArguments;
     private final List<SliceProfile> argProfiles;
+    private final boolean isLocalCall;
 
-    public CFunction(String name, String position, int argPosIndex, String enclFunctionName, Node enclFunctionNode,
+    public CFunction(String name, String position, String identifier, int argPosIndex, String enclFunctionName,
+                     Node enclFunctionNode,
                      int numberOfArguments, List<SliceProfile> argProfiles) {
         this.name = name;
         this.position = position;
+        this.identifier = identifier;
         this.argPosIndex = argPosIndex;
         this.enclFunctionName = enclFunctionName;
         this.enclFunctionNode = enclFunctionNode;
         this.isEmptyArgFunc = argPosIndex == -1;
         this.numberOfArguments = numberOfArguments;
         this.argProfiles = argProfiles;
+        this.isLocalCall = identifier.equals("this") || identifier.equals(name);
     }
 
     public Node getEnclFunctionNode() {
@@ -43,6 +49,10 @@ public final class CFunction {
         return position;
     }
 
+    public String getIdentifier() {
+        return identifier;
+    }
+
     public String getName() {
         return name;
     }
@@ -59,6 +69,10 @@ public final class CFunction {
         return argProfiles;
     }
 
+    public boolean getIsLocalCall() {
+        return isLocalCall;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (!(obj instanceof CFunction)) {
@@ -71,8 +85,8 @@ public final class CFunction {
         }
         assert this.position != null;
         return this.position.equals(other.position) &&
-            this.argPosIndex == other.argPosIndex && this.enclFunctionName.equals(other.enclFunctionName) &&
-            this.enclFunctionNode == other.enclFunctionNode;
+                this.argPosIndex == other.argPosIndex && this.enclFunctionName.equals(other.enclFunctionName) &&
+                this.enclFunctionNode == other.enclFunctionNode;
     }
 
     @Override

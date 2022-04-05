@@ -1,31 +1,38 @@
 package ca.uwaterloo.swag.pilaipidi.models;
 
-public final class DFGNode {
+
+public class DFGNode {
 
     private final String varName;
     private final String functionName;
     private final String fileName;
     private final String definedPosition;
     private final boolean isFunctionNamePos;
+    private final String varType;
+    protected boolean isCFunctionNode;
 
     public DFGNode(String varName, String functionName, String fileName,
-                   String definedPosition) {
+                   String definedPosition, String varType) {
         assert functionName != null;
         this.varName = varName;
         this.functionName = functionName;
         this.fileName = fileName;
         this.definedPosition = definedPosition;
         this.isFunctionNamePos = false;
+        this.varType = varType;
+        this.isCFunctionNode = false;
     }
 
     public DFGNode(String varName, String functionName, String fileName,
-                   String definedPosition, boolean isFunctionNamePos) {
+                   String definedPosition, boolean isFunctionNamePos, String varType) {
         assert functionName != null;
         this.varName = varName;
         this.functionName = functionName;
         this.fileName = fileName;
         this.definedPosition = definedPosition;
         this.isFunctionNamePos = isFunctionNamePos;
+        this.varType = varType;
+        this.isCFunctionNode = false;
     }
 
     @Override
@@ -40,7 +47,7 @@ public final class DFGNode {
         }
         DFGNode other = (DFGNode) obj;
         return this.varName.equals(other.varName) && this.functionName.equals(other.functionName) &&
-            this.fileName.equals(other.fileName) && this.definedPosition.equals(other.definedPosition);
+                this.fileName.equals(other.fileName) && this.definedPosition.equals(other.definedPosition);
     }
 
     @Override
@@ -65,6 +72,10 @@ public final class DFGNode {
         return this.fileName;
     }
 
+    public String varType() {
+        return this.varType;
+    }
+
     @SuppressWarnings("unused")
     public String definedPosition() {
         return this.definedPosition;
@@ -72,5 +83,9 @@ public final class DFGNode {
 
     public boolean isFunctionNamePos() {
         return isFunctionNamePos;
+    }
+
+    public boolean isCFunctionNode() {
+        return isCFunctionNode;
     }
 }
