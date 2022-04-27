@@ -309,4 +309,24 @@
 		<severity>1</severity>
 		<category>output</category>
 	</function>
+	<function>
+		<name>realpath</name>
+		<severity>1</severity>
+		<category>utility</category>
+	</function>
+	<function>
+		<name>getwd</name>
+		<severity>1</severity>
+		<category>utility</category>
+	</function>
+	<function>
+		<name>getopt</name>
+		<severity>1</severity>
+		<category>utility</category>
+	</function>
+	<function>
+		<name>getpass</name>
+		<severity>1</severity>
+		<category>utility</category>
+	</function>
 </functions>
