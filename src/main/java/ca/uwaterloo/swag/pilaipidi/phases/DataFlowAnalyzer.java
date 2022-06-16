@@ -255,11 +255,7 @@ public class DataFlowAnalyzer {
     private void analyzeNativeFunction(SliceProfile profile, Map<String, SliceProfilesInfo> profilesInfo,
                                        Node enclFunctionNode, DFGNode dfgNode) {
         Node enclUnitNode = profilesInfo.get(profile.fileName).unitNode;
-        String jniFunctionName = profile.functionName;
-        if (jniFunctionName.length() > 2 && jniFunctionName.startsWith("n") &&
-                Character.isUpperCase(jniFunctionName.charAt(1))) {
-            jniFunctionName = jniFunctionName.substring(1);
-        }
+        String jniFunctionName = getJNIFunctionNameString(profile);
         String jniArgName = profile.varName;
         List<ArgumentNamePos> parameters = XmlUtil.findFunctionParameters(enclFunctionNode);
         int index = 0;
@@ -279,7 +275,14 @@ public class DataFlowAnalyzer {
             for (FunctionNamePos funcNamePos : profileInfo.functionNodes.keySet()) {
                 Node functionNode = profileInfo.functionNodes.get(funcNamePos);
                 String functionName = funcNamePos.getName();
-                if (!functionName.toLowerCase().endsWith(jniFunctionSearchStr.toLowerCase())) {
+
+                if (!functionName.toLowerCase().contains(clazzName.toLowerCase())) {
+                    continue;
+                }
+
+                String cleanedFunctionName = cleanUpJNIFunctionName(functionName);
+
+                if (!cleanedFunctionName.toLowerCase().endsWith(jniFunctionSearchStr.toLowerCase())) {
                     continue;
                 }
 
@@ -297,6 +300,19 @@ public class DataFlowAnalyzer {
                 analyzeNativeSliceProfile(dfgNode, profileInfo, sliceKey);
             }
         }
+    }
+
+    private String cleanUpJNIFunctionName(String functionName) {
+        return functionName.replaceAll("_[0-9]", "_");
+    }
+
+    private String getJNIFunctionNameString(SliceProfile profile) {
+        String jniFunctionName = profile.functionName;
+        if (jniFunctionName.length() > 2 && jniFunctionName.startsWith("n") &&
+                Character.isUpperCase(jniFunctionName.charAt(1))) {
+            jniFunctionName = jniFunctionName.substring(1);
+        }
+        return jniFunctionName;
     }
 
     private void analyzeNativeSliceProfile(DFGNode dfgNode, SliceProfilesInfo profileInfo, String sliceKey) {
