@@ -23,6 +23,9 @@ public class SliceProfile {
     public final boolean isFunctionNameProfile;
     public final boolean isBuffer;
     private Value currentValue;
+    private SliceProfile assignedProfile;
+    private SliceProfile enclosingConditionProfile;
+    private Value conditionalValue;
 
 
     public SliceProfile(String fileName, String functionName, String varName, String typeName,
@@ -111,6 +114,33 @@ public class SliceProfile {
     }
 
     public void setCurrentValue(Value currentValue) {
+        if (this.currentValue != null && this.currentValue.getBufferSize() != null) {
+            currentValue.setBufferSize(this.currentValue.getBufferSize());
+        }
         this.currentValue = currentValue;
+    }
+
+    public SliceProfile getEnclosingConditionProfile() {
+        return enclosingConditionProfile;
+    }
+
+    public void setEnclosingConditionProfile(SliceProfile enclosingConditionProfile) {
+        this.enclosingConditionProfile = enclosingConditionProfile;
+    }
+
+    public SliceProfile getAssignedProfile() {
+        return assignedProfile;
+    }
+
+    public void setAssignedProfile(SliceProfile assignedProfile) {
+        this.assignedProfile = assignedProfile;
+    }
+
+    public Value getConditionalValue() {
+        return conditionalValue;
+    }
+
+    public void setConditionalValue(Value conditionalValue) {
+        this.conditionalValue = conditionalValue;
     }
 }

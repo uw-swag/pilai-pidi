@@ -234,11 +234,11 @@
 		<severity>1</severity>
 		<category>output</category>
 	</function>
-	<function>
-		<name>fprintf</name>
-		<severity>1</severity>
-		<category>output</category>
-	</function>
+<!--	<function>-->
+<!--		<name>fprintf</name>-->
+<!--		<severity>1</severity>-->
+<!--		<category>output</category>-->
+<!--	</function>-->
 	<function>
 		<name>printf</name>
 		<severity>1</severity>

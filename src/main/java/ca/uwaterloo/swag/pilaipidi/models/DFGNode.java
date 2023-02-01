@@ -37,7 +37,8 @@ public class DFGNode {
 
     @Override
     public String toString() {
-        return this.varName + "," + this.functionName + "," + this.fileName + "," + this.definedPosition;
+        return this.varName + ":" + this.varType + "," + this.functionName + "," + this.fileName + "," +
+            this.definedPosition;
     }
 
     @Override

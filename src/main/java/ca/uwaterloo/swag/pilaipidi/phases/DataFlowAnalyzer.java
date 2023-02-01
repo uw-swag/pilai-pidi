@@ -15,7 +15,6 @@ import ca.uwaterloo.swag.pilaipidi.models.Value;
 import ca.uwaterloo.swag.pilaipidi.util.MODE;
 import ca.uwaterloo.swag.pilaipidi.util.TypeChecker;
 import ca.uwaterloo.swag.pilaipidi.util.XmlUtil;
-
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Hashtable;
@@ -24,7 +23,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-
 import org.jgrapht.Graph;
 import org.jgrapht.graph.DefaultEdge;
 import org.w3c.dom.Node;
@@ -72,6 +70,8 @@ public class DataFlowAnalyzer {
         } else {
             analyzeJavaProfiles(javaSliceProfilesInfo);
         }
+
+//        printDFGNodes(graph);
     }
 
     private void analyzeCppProfiles(Map<String, SliceProfilesInfo> cppSliceProfilesInfo) {
@@ -109,12 +109,9 @@ public class DataFlowAnalyzer {
         for (CFunction cFunction : profile.cfunctions) {
             analyzeCFunction(cFunction, profile, rawProfilesInfo);
         }
-        ArrayList<String> paramsList = new ArrayList<>();
-        for (NamePos param : profile.dependentVars) {
-            paramsList.add(param.getName());
-        }
+
         dfgNode = new DFGNode(profile.varName, profile.functionName, profile.fileName, profile.definedPosition,
-                profile.typeName);
+                profile.isFunctionNameProfile, profile.typeName);
         if (!graph.containsVertex(dfgNode)) {
             graph.addVertex(dfgNode);
         }
@@ -131,9 +128,11 @@ public class DataFlowAnalyzer {
                 continue;
             }
             SliceProfile dvarSliceProfile = sourceSliceProfiles.get(sliceKey);
+            checkAndUpdateDependentProfileValue(dvarSliceProfile, profile);
             DFGNode dVarDFGNode = new DFGNode(dvarSliceProfile.varName,
                     dvarSliceProfile.functionName, dvarSliceProfile.fileName,
-                    dvarSliceProfile.definedPosition, dvarSliceProfile.typeName);
+                    dvarSliceProfile.definedPosition, dvarSliceProfile.isFunctionNameProfile,
+                dvarSliceProfile.typeName);
             if (!hasNoEdge(dfgNode, dVarDFGNode)) {
                 continue;
             }
@@ -141,6 +140,7 @@ public class DataFlowAnalyzer {
                 continue;
             }
             analyzeSliceProfile(dvarSliceProfile, rawProfilesInfo);
+            checkForBufferAssignment(dvarSliceProfile, profile, dfgNode, dvarPos);
         }
 
         // step-03 : analyze if given function node is a native method
@@ -169,6 +169,36 @@ public class DataFlowAnalyzer {
 
         // step-05 : check pointer reads and writes for this profile
 //        analyzePointerAccess(profile, rawProfilesInfo, dfgNode);
+    }
+
+    private void checkForBufferAssignment(SliceProfile lhsProfile, SliceProfile rhsProfile, DFGNode dfgNode,
+                                          String dvarPos) {
+        if (rhsProfile.fileName.endsWith(".java")) {
+            return;
+        }
+
+        if (!lhsProfile.isBuffer || lhsProfile.getAssignedProfile() != rhsProfile) {
+            return;
+        }
+
+        if (isWithinConditionalBound(lhsProfile)) {
+            return;
+        } else if (isAccessWithinBufferBound(lhsProfile.getCurrentValue().getBufferSize(),
+            rhsProfile.getCurrentValue())) {
+            return;
+        }
+        List<String> dataFlowIssues = new ArrayList<>();
+        if (dataFlowPaths.containsKey(dfgNode)) {
+            dataFlowIssues = new ArrayList<>(dataFlowPaths.get(dfgNode));
+        }
+        dataFlowIssues.add("Buffer overflow assing at " + dfgNode.fileName() + "," + dvarPos);
+        dataFlowPaths.put(dfgNode, dataFlowIssues);
+    }
+
+    private void printDFGNodes(Graph<DFGNode, DefaultEdge> graph) {
+        for (DFGNode dfgNode : graph.vertexSet()) {
+            System.out.println(dfgNode);
+        }
     }
 
     private void analyzeCFunction(CFunction cFunction, SliceProfile profile,
@@ -201,6 +231,7 @@ public class DataFlowAnalyzer {
         LinkedList<SliceProfile> dependentSliceProfiles = findDependentSliceProfiles(cFunction, profile.typeName,
                 sliceProfilesInfo);
         for (SliceProfile dependentSliceProfile : dependentSliceProfiles) {
+            checkAndUpdateDependentProfileValue(dependentSliceProfile, profile);
             DFGNode depNameDFGNode = new DFGNodeCFunction(dependentSliceProfile.varName,
                     dependentSliceProfile.functionName, dependentSliceProfile.fileName,
                     dependentSliceProfile.definedPosition, dependentSliceProfile.isFunctionNameProfile,
@@ -215,6 +246,23 @@ public class DataFlowAnalyzer {
         }
     }
 
+    private void checkAndUpdateDependentProfileValue(SliceProfile rhsProfile, SliceProfile lhsProfile) {
+        if (rhsProfile.isFunctionNameProfile || lhsProfile.isFunctionNameProfile) {
+            return;
+        }
+
+        if (rhsProfile.isBuffer && rhsProfile.getCurrentValue() != null &&
+            !rhsProfile.getCurrentValue().isReferenced()) { // already has a literal value
+            return;
+        }
+
+        if (rhsProfile.getCurrentValue() != null && !rhsProfile.getCurrentValue().isReferenced()) {
+            rhsProfile.setCurrentValue(new Value(rhsProfile.getCurrentValue().literal, lhsProfile));
+        } else {
+            rhsProfile.setCurrentValue(new Value(lhsProfile));
+        }
+    }
+
     private LinkedList<SliceProfile> findDependentSliceProfiles(CFunction cFunction, String typeName,
                                                                 Map<String, SliceProfilesInfo> profilesInfoMap) {
         LinkedList<SliceProfile> dependentSliceProfiles = new LinkedList<>();
@@ -223,25 +271,25 @@ public class DataFlowAnalyzer {
             List<FunctionNamePos> possibleFunctions = findPossibleFunctions(profileInfo.functionNodes,
                     profileInfo.functionDeclMap, cFunction, typeName);
             for (FunctionNamePos functionNamePos : possibleFunctions) {
-                // 01 - Add cfunction profile
-                String key = functionNamePos.getName() + "%" + functionNamePos.getPos() + "%" +
-                        functionNamePos.getName() + "%" + filePath;
-                if (!profileInfo.sliceProfiles.containsKey(key)) {
-                    continue;
-                }
-                dependentSliceProfiles.add(profileInfo.sliceProfiles.get(key));
-
                 if (cFunction.isEmptyArgFunc() || functionNamePos.getArguments() == null ||
                         functionNamePos.getArguments().isEmpty() ||
                         cFunction.getArgPosIndex() >= functionNamePos.getArguments().size()) {
                     continue;
                 }
 
-                // 02 - Add function arg index based profile
+                // 01 - Add function arg index based profile
                 NamePos param = functionNamePos.getArguments().get(cFunction.getArgPosIndex());
                 String param_name = param.getName();
                 String param_pos = param.getPos();
-                key = param_name + "%" + param_pos + "%" + functionNamePos.getName() + "%" + filePath;
+                String key = param_name + "%" + param_pos + "%" + functionNamePos.getName() + "%" + filePath;
+                if (!profileInfo.sliceProfiles.containsKey(key)) {
+                    continue;
+                }
+                dependentSliceProfiles.add(profileInfo.sliceProfiles.get(key));
+
+                // 02 - Add cfunction profile
+                key = functionNamePos.getName() + "%" + functionNamePos.getPos() + "%" +
+                    functionNamePos.getName() + "%" + filePath;
                 if (!profileInfo.sliceProfiles.containsKey(key)) {
                     continue;
                 }
@@ -281,24 +329,30 @@ public class DataFlowAnalyzer {
                 }
 
                 String cleanedFunctionName = cleanUpJNIFunctionName(functionName);
-
                 if (!cleanedFunctionName.toLowerCase().endsWith(jniFunctionSearchStr.toLowerCase())) {
                     continue;
                 }
 
-                // 01 - Native cfunction profile
-                String sliceKey = functionName + "%" + funcNamePos.getPos() + "%" + functionName + "%" + filePath;
-                analyzeNativeSliceProfile(dfgNode, profileInfo, sliceKey);
-
-                // 02 - Function arg index based profile
+                // 01 - Function arg index based profile
                 List<ArgumentNamePos> functionArgs = XmlUtil.findFunctionParameters(functionNode);
                 if (functionArgs.size() < 1 || jniArgPosIndex > functionArgs.size() - 1) {
                     continue;
                 }
+
                 NamePos arg = functionArgs.get(jniArgPosIndex);
-                sliceKey = arg.getName() + "%" + arg.getPos() + "%" + functionName + "%" + filePath;
-                analyzeNativeSliceProfile(dfgNode, profileInfo, sliceKey);
+                String sliceKey = arg.getName() + "%" + arg.getPos() + "%" + functionName + "%" + filePath;
+                analyzeNativeSliceProfile(dfgNode, profileInfo, sliceKey, profile);
+
+                // 02 - Native cfunction profile
+                sliceKey = functionName + "%" + funcNamePos.getPos() + "%" + functionName + "%" + filePath;
+                analyzeNativeSliceProfile(dfgNode, profileInfo, sliceKey, profile);
             }
+        }
+    }
+
+    private void checkAndUpdateNativeArrayValue(SliceProfile lhsProfile, SliceProfile rhsProifle) {
+        if (rhsProifle.cfunctions.stream().anyMatch(c -> c.getName().equals("GetPrimitiveArrayCritical"))) {
+            rhsProifle.setCurrentValue(new Value(lhsProfile));
         }
     }
 
@@ -315,13 +369,16 @@ public class DataFlowAnalyzer {
         return jniFunctionName;
     }
 
-    private void analyzeNativeSliceProfile(DFGNode dfgNode, SliceProfilesInfo profileInfo, String sliceKey) {
+    private void analyzeNativeSliceProfile(DFGNode dfgNode, SliceProfilesInfo profileInfo, String sliceKey,
+                                                   SliceProfile parentProfile) {
         if (!profileInfo.sliceProfiles.containsKey(sliceKey)) {
             return;
         }
         SliceProfile sliceProfile = profileInfo.sliceProfiles.get(sliceKey);
+        checkAndUpdateDependentProfileValue(sliceProfile, parentProfile);
         DFGNode analyzedNameDFGNode = new DFGNode(sliceProfile.varName, sliceProfile.functionName,
-                sliceProfile.fileName, sliceProfile.definedPosition, sliceProfile.typeName);
+                sliceProfile.fileName, sliceProfile.definedPosition, sliceProfile.isFunctionNameProfile,
+            sliceProfile.typeName);
         if (!hasNoEdge(dfgNode, analyzedNameDFGNode)) {
             return;
         }
@@ -452,18 +509,18 @@ public class DataFlowAnalyzer {
     private boolean isAccessWithinBufferBound(Value bufferSizeValue, Value bufferAccessValue) {
         int bufferSize = getValue(bufferSizeValue, new HashSet<>());
         int bufferAccessedSize = getValue(bufferAccessValue, new HashSet<>());
-        if (bufferSize == 0 && bufferAccessedSize == 0) { // we did not capture the sizes properly
-            return true;
-        }
+//        if (bufferSize == 0 && bufferAccessedSize == 0) { // we did not capture the sizes properly
+//            return false;
+//        }
         return bufferSize > bufferAccessedSize;
     }
 
     private boolean isAccessWithinOrEqualToBufferBound(Value bufferSizeValue, Value bufferAccessValue) {
         int bufferSize = getValue(bufferSizeValue, new HashSet<>());
         int bufferAccessedSize = getValue(bufferAccessValue, new HashSet<>());
-        if (bufferSize == 0 && bufferAccessedSize == 0) { // we did not capture the sizes properly
-            return true;
-        }
+//        if (bufferSize == 0 && bufferAccessedSize == 0) { // we did not capture the sizes properly
+//            return false;
+//        }
         return bufferSize >= bufferAccessedSize;
     }
 
@@ -538,6 +595,11 @@ public class DataFlowAnalyzer {
         SliceProfile dst = argProfiles.get(0);
         SliceProfile src = argProfiles.get(1);
         SliceProfile bound = argProfiles.get(2);
+
+        if (isWithinConditionalBound(src) || isWithinConditionalBound(dst)) {
+            return true;
+        }
+
         return isAccessWithinBufferBound(dst.getCurrentValue(), bound.getCurrentValue()) &&
                 isAccessWithinBufferBound(src.getCurrentValue(), bound.getCurrentValue());
     }
@@ -596,7 +658,16 @@ public class DataFlowAnalyzer {
 
         SliceProfile src = argProfiles.get(0);
         SliceProfile dst = argProfiles.get(1);
+        if (isWithinConditionalBound(src) || isWithinConditionalBound(dst)) {
+            return true;
+        }
         return isAccessWithinOrEqualToBufferBound(src.getCurrentValue(), dst.getCurrentValue());
+    }
+
+    private boolean isWithinConditionalBound(SliceProfile src) {
+        return src.getEnclosingConditionProfile() != null && src.getCurrentValue() != null &&
+            isAccessWithinBufferBound(src.getCurrentValue().getBufferSize(),
+                src.getEnclosingConditionProfile().getCurrentValue());
     }
 
     private boolean checkStrCat(CFunction cFunction) {
@@ -671,7 +742,8 @@ public class DataFlowAnalyzer {
                 SliceProfile dvarSliceProfile = sourceSliceProfiles.get(sliceKey);
                 DFGNode dVarNameDFGNode = new DFGNode(dvarSliceProfile.varName,
                         dvarSliceProfile.functionName, dvarSliceProfile.fileName,
-                        dvarSliceProfile.definedPosition, dvarSliceProfile.typeName);
+                        dvarSliceProfile.definedPosition, dvarSliceProfile.isFunctionNameProfile,
+                    dvarSliceProfile.typeName);
                 if (hasNoEdge(dfgNode, dVarNameDFGNode) && !isAnalyzedProfile(dvarSliceProfile)) {
                     analyzeSliceProfile(dvarSliceProfile, rawProfilesInfo);
                 }

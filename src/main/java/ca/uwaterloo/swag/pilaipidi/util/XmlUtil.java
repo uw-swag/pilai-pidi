@@ -250,11 +250,11 @@ public final class XmlUtil {
                     continue;
                 }
                 isPointer = isPointer(typeNode);
-                isBuffer = isBufferAccessExpr(typeNode);
+                String typeNameStr = getNodeName(typeNode);
+                isBuffer = isBufferAccessExpr(typeNode) || nameContainsIndexExpr(typeNameStr);
                 if (isBuffer) {
                     bufferSize = getBufferSize(typeNode);
                 }
-                String typeNameStr = getNodeName(typeNode);
                 typeName = isBuffer ? getNameWithoutBufferSize(typeNameStr) : typeNameStr;
             }
         }
@@ -278,6 +278,10 @@ public final class XmlUtil {
             return expr.substring(0, expr.indexOf("["));
         }
         return expr;
+    }
+
+    private static boolean nameContainsIndexExpr(String expr) {
+        return expr.indexOf("]") == (expr.length() - 1) && expr.contains("[");
     }
 
     public static NamePos getBufferSize(Node expr) {

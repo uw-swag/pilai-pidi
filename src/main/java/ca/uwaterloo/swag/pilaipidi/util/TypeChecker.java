@@ -5,10 +5,10 @@ public class TypeChecker {
     public static boolean isAssignable(String expectedType, String actualType) {
         return true; // TODO: Fix a bug
 //        if (expectedType == null) {
-//            return false;
+//            return true;
 //        }
 //        if (actualType == null) {
-//            return false;
+//            return true;
 //        }
 //
 //        if ("null".equals(actualType)) {

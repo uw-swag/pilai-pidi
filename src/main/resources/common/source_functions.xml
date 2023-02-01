@@ -3,11 +3,13 @@
         <name>getCellSignalStrength</name>
         <severity>1</severity>
         <category>Uncategorized</category>
+        <!-- Not potential as it returns an int -->
     </function>
     <function>
         <name>getCellLocation</name>
         <severity>1</severity>
         <category>Uncategorized</category>
+        <!-- potential -->
     </function>
     <function>
         <name>get</name>
@@ -18,16 +20,19 @@
         <name>takeAudioCall</name>
         <severity>1</severity>
         <category>Uncategorized</category>
+        <!-- potential -->
     </function>
     <function>
         <name>getPeriodicSyncs</name>
         <severity>1</severity>
         <category>Uncategorized</category>
+        <!-- potential -->
     </function>
     <function>
         <name>query</name>
         <severity>1</severity>
         <category>Uncategorized</category>
+        <!-- potential -->
     </function>
     <function>
         <name>getName</name>
@@ -38,31 +43,44 @@
         <name>getCurrentSync</name>
         <severity>1</severity>
         <category>Uncategorized</category>
+        <!-- potential -->
     </function>
     <function>
         <name>getConnectionInfo</name>
         <severity>1</severity>
         <category>Uncategorized</category>
+        <!-- potential -->
+        <!--
+        Extra filtering on these functions
+        Case 01
+            1. if function returns true or false?
+            2. function returs a predefined string
+              2.1. if the return string size is one char, would it lead to buffer overlflow?
+        -->
     </function>
     <function>
         <name>getConnectionState</name>
         <severity>1</severity>
         <category>Uncategorized</category>
+        <!-- Not potential as it returns an int -->
     </function>
     <function>
         <name>getAccountsByTypeAndFeatures</name>
         <severity>1</severity>
         <category>Uncategorized</category>
+        <!-- potential -->
     </function>
     <function>
         <name>getLeastSignificantBits</name>
         <severity>1</severity>
         <category>Uncategorized</category>
+        <!-- potential -->
     </function>
     <function>
         <name>peekAuthToken</name>
         <severity>1</severity>
         <category>Uncategorized</category>
+        <!-- potential -->
     </function>
     <function>
         <name>getSize</name>
@@ -73,6 +91,7 @@
         <name>getSharedElementReturnTransition</name>
         <severity>1</severity>
         <category>Uncategorized</category>
+        <!-- potential -->
     </function>
     <function>
         <name>getMax</name>
@@ -83,16 +102,19 @@
         <name>getDesiredWidth</name>
         <severity>1</severity>
         <category>Uncategorized</category>
+        <!-- potential -->
     </function>
     <function>
         <name>getMotionRanges</name>
         <severity>1</severity>
         <category>Uncategorized</category>
+        <!-- potential -->
     </function>
     <function>
         <name>getReturnTransition</name>
         <severity>1</severity>
         <category>Uncategorized</category>
+        <!-- potential -->
     </function>
     <function>
         <name>getIntValue</name>
@@ -108,61 +130,73 @@
         <name>getWifiState</name>
         <severity>1</severity>
         <category>Uncategorized</category>
+        <!-- Not potential -->
     </function>
     <function>
         <name>getFile</name>
         <severity>1</severity>
         <category>Uncategorized</category>
+        <!-- potential -->
     </function>
     <function>
         <name>getInstallingPackageName</name>
         <severity>1</severity>
         <category>Uncategorized</category>
+        <!-- potential -->
     </function>
     <function>
         <name>getColor</name>
         <severity>1</severity>
         <category>Uncategorized</category>
+        <!-- potential -->
     </function>
     <function>
         <name>getMainExecutor</name>
         <severity>1</severity>
         <category>Uncategorized</category>
+        <!-- potential -->
     </function>
     <function>
         <name>getOverScrollMode</name>
         <severity>1</severity>
         <category>Uncategorized</category>
+        <!-- potential -->
     </function>
     <function>
         <name>getManufacturerSpecificData</name>
         <severity>1</severity>
         <category>Uncategorized</category>
+        <!-- potential -->
     </function>
     <function>
         <name>getUser</name>
         <severity>1</severity>
         <category>Uncategorized</category>
+        <!-- potential -->
     </function>
     <function>
         <name>getTextLocales</name>
         <severity>1</severity>
         <category>Uncategorized</category>
+        <!-- potential -->
     </function>
     <function>
         <name>getActionIndices</name>
         <severity>1</severity>
         <category>Uncategorized</category>
+        <!-- potential -->
     </function>
     <function>
         <name>getLocalContentProvider</name>
         <severity>1</severity>
         <category>Uncategorized</category>
+        <!-- potential -->
     </function>
     <function>
         <name>getErrorHandler</name>
         <severity>1</severity>
         <category>Uncategorized</category>
+        <!-- potential -->
     </function>
     <function>
         <name>getHeaderFieldKey</name>
@@ -173,16 +207,19 @@
         <name>getSource</name>
         <severity>1</severity>
         <category>Uncategorized</category>
+        <!-- potential -->
     </function>
     <function>
         <name>getMessagesFromIntent</name>
         <severity>1</severity>
         <category>Uncategorized</category>
+        <!-- potential -->
     </function>
     <function>
         <name>getSubject</name>
         <severity>1</severity>
         <category>Uncategorized</category>
+        <!-- potential -->
     </function>
     <function>
         <name>getString</name>
@@ -203,6 +240,7 @@
         <name>getWindowManager</name>
         <severity>1</severity>
         <category>Uncategorized</category>
+        <!-- potential -->
     </function>
     <function>
         <name>getInstance</name>
@@ -233,6 +271,7 @@
         <name>getTransitions</name>
         <severity>1</severity>
         <category>Uncategorized</category>
+        <!-- potential -->
     </function>
     <function>
         <name>newViewStructure</name>
@@ -243,11 +282,13 @@
         <name>getWidth</name>
         <severity>1</severity>
         <category>Uncategorized</category>
+        <!-- potential -->
     </function>
     <function>
         <name>getParticipants</name>
         <severity>1</severity>
         <category>Uncategorized</category>
+        <!-- potential -->
     </function>
     <function>
         <name>getFont</name>
@@ -263,6 +304,7 @@
         <name>getSupportedPreviewFpsRange</name>
         <severity>1</severity>
         <category>Uncategorized</category>
+        <!-- potential -->
     </function>
     <function>
         <name>getDayOfWeek</name>
@@ -298,6 +340,7 @@
         <name>getAnimatedValue</name>
         <severity>1</severity>
         <category>Uncategorized</category>
+        <!-- potential -->
     </function>
     <function>
         <name>getPermissions</name>
@@ -328,11 +371,13 @@
         <name>getAsByte</name>
         <severity>1</severity>
         <category>Uncategorized</category>
+        <!-- potential -->
     </function>
     <function>
         <name>getExtraRenderingInfo</name>
         <severity>1</severity>
         <category>Uncategorized</category>
+        <!-- potential -->
     </function>
     <function>
         <name>getPrimaryError</name>
@@ -353,6 +398,7 @@
         <name>getRecordCount</name>
         <severity>1</severity>
         <category>Uncategorized</category>
+        <!-- potential -->
     </function>
     <function>
         <name>getAnimation</name>

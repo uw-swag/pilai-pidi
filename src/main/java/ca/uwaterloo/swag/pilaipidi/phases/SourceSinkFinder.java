@@ -4,7 +4,6 @@ import ca.uwaterloo.swag.pilaipidi.models.DFGNode;
 import ca.uwaterloo.swag.pilaipidi.models.DFGNodeCFunction;
 import ca.uwaterloo.swag.pilaipidi.models.SourceNode;
 import ca.uwaterloo.swag.pilaipidi.util.MODE;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.StringWriter;
@@ -20,7 +19,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.Stack;
-
 import org.apache.commons.io.FileUtils;
 import org.jgrapht.Graph;
 import org.jgrapht.GraphPath;
@@ -113,8 +111,20 @@ public class SourceSinkFinder {
         Hashtable<String, Set<List<DFGNode>>> possiblePaths = new Hashtable<>();
         List<DFGNode> sourceNodes = new ArrayList<>();
         for (DFGNode node : graph.vertexSet()) {
+            if (notAValidSourceNode(node)) {
+                continue;
+            }
+
             if (graph.inDegreeOf(node) == 0 && node.fileName().endsWith(".java")) {
-                sourceNodes.add(node);
+                if (node.isFunctionNamePos()) {
+                    graph.outgoingEdgesOf(node)
+                        .stream()
+                        .map(graph::getEdgeTarget)
+                        .filter(out -> !notAValidSourceNode(out))
+                        .forEach(sourceNodes::add);
+                } else {
+                    sourceNodes.add(node);
+                }
             }
         }
 
@@ -214,5 +224,25 @@ public class SourceSinkFinder {
         System.out.println("Number of all sources in data flow paths = " + totalSourceFuncCount);
         System.out.println("Number of sources in data flow paths with probable matches = " + totalSourceFuncProbableMatchCount);
         return possiblePaths;
+    }
+
+    private boolean notAValidSourceNode(DFGNode node) {
+        if (boolean.class.getName().equals(node.varType()) || "true".equals(node.varName()) ||
+            "false".equals(node.varName())) {
+            return true;
+        }
+
+        String varName = node.varName();
+        if ("string".equals(node.varType()) && varName.startsWith("\"") && varName.endsWith("\"") &
+            varName.length() == 3) {
+            return true;
+        }
+
+        if ("number".equals(node.varType())) {
+            return true;
+        }
+
+        return "null".equals(node.varType()) || "null".equals(node.varName()) || node.varType() == null ||
+            node.varName() == null;
     }
 }

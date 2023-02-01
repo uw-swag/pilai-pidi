@@ -51,6 +51,7 @@ public class SliceGenerator {
     private Node currentFunctionNode;
     private boolean isLhsExpr;
     private boolean withinDeclStmt;
+    private SliceProfile enclConditionProfile;
 
     public SliceGenerator(Node unitNode, String fileName, Set<TypeSymbol> typeSymbols) {
         this.unitNode = unitNode;
@@ -558,8 +559,12 @@ public class SliceGenerator {
         sliceProfiles.put(sliceKey, sliceProfile);
         localVariables.put(varName, sliceProfile);
 
+        if (enclConditionProfile != null) {
+            sliceProfile.setEnclosingConditionProfile(enclConditionProfile);
+        }
+
         if (isBuffer) {
-            setVarValueToProfile(namePos.getBufferSize(), sliceProfile);
+            setBufferValueSize(namePos.getBufferSize(), sliceProfile);
         }
 
         Node init = XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(decl, "init"), 0);
@@ -611,6 +616,13 @@ public class SliceGenerator {
         }
 
         return namePos;
+    }
+
+    private void setBufferValueSize(NamePos bufferSizeNamePos, SliceProfile sliceProfile) {
+        setVarValueToProfile(bufferSizeNamePos, sliceProfile);
+        if (bufferSizeNamePos != null && XmlUtil.isNumeric(bufferSizeNamePos.getName())) {
+            sliceProfile.getCurrentValue().setBufferSize(new Value(Integer.parseInt(bufferSizeNamePos.getName())));
+        }
     }
 
     private void analyzeExprAndUpdateDVar(NamePos namePos, Node expr) {
@@ -745,8 +757,28 @@ public class SliceGenerator {
         String cfunctionName = cfunctionDetails.getName();
         String cfunctionPos = cfunctionDetails.getPos();
         String cfunctionIdentifier = cfunctionName.split(IDENTIFIER_SEPARATOR)[0];
-        NamePos namePos = checkForIdentifierSeperatorAndUpdate(cfunctionDetails, cfunctionName);
+        NamePos namePos = checkForCallFunctionAndUpdate(cfunctionDetails, cfunctionName);
         analyzeCallArgumentList(call, namePos.getName(), cfunctionPos, cfunctionIdentifier);
+        return namePos;
+    }
+
+    private NamePos checkForCallFunctionAndUpdate(NamePos namePos, String varName) {
+        String[] varNameParts = varName.split(IDENTIFIER_SEPARATOR);
+        if (varNameParts.length > 1) {
+            for (int i = 0; i < varNameParts.length; i++) {
+                String varNamePartCurrent = varNameParts[i];
+//                addSliceProfile(varNamePartCurrent, namePos.getPos(), namePos.isPointer());
+                namePos = new NamePos(varNamePartCurrent, namePos.getType(), namePos.getPos(), namePos.isPointer(),
+                    false);
+                if (i + 1 >= varNameParts.length) {
+                    continue;
+                }
+                String varNamePartNext = varNameParts[i + 1];
+//                addSliceProfile(varNamePartNext, namePos.getPos(), namePos.isPointer());
+//                updateDVarSliceProfile(varNamePartNext, varNamePartCurrent, localVariables);
+                namePos = new NamePos(varNamePartNext, namePos.getType(), namePos.getPos(), namePos.isPointer(), false);
+            }
+        }
         return namePos;
     }
 
@@ -843,10 +875,16 @@ public class SliceGenerator {
                 }
                 if (localVariables.containsKey(varName)) {
                     argProfiles.put(sliceKey, localVariables.get(varName));
-                    updateDVarSliceProfile(cfunctionIdentifier, varName, localVariables);
+                    SliceProfile argProfile = updateDVarSliceProfile(cfunctionIdentifier, varName, localVariables);
+                    if (argProfile != null) {
+                        argProfile.setEnclosingConditionProfile(enclConditionProfile);
+                    }
                 } else if (globalVariables.containsKey(varName)) {
                     argProfiles.put(sliceKey, globalVariables.get(varName));
-                    updateDVarSliceProfile(cfunctionIdentifier, varName, globalVariables);
+                    SliceProfile argProfile = updateDVarSliceProfile(cfunctionIdentifier, varName, globalVariables);
+                    if (argProfile != null) {
+                        argProfile.setEnclosingConditionProfile(enclConditionProfile);
+                    }
                 } else if (XmlUtil.isLiteralExpr(expr)) {
                     String typeName = varNamePos.getType();
                     SliceProfile sliceProfile = new SliceProfile(this.fileName, this.currentFunctionName,
@@ -916,8 +954,24 @@ public class SliceGenerator {
         if (stmt == null) {
             return;
         }
-        analyzeCompoundExpr(XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(stmt, "condition"), 0));
+        NamePos conditionExpr = analyzeCompoundExpr(XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(stmt, "condition"),
+            0));
+        assert conditionExpr != null;
+        SliceProfile currentEnclCondProfile = enclConditionProfile;
+        enclConditionProfile = getProfileFromNameExpr(conditionExpr);
         analyzeBlock(XmlUtil.nodeAtIndex(XmlUtil.getNodeByName(stmt, "block"), 0));
+        enclConditionProfile = currentEnclCondProfile;
+    }
+
+    private SliceProfile getProfileFromNameExpr(NamePos namePos) {
+        String exprName = namePos.getName();
+        SliceProfile lhsVarProfile = null;
+        if (localVariables.containsKey(exprName)) {
+            lhsVarProfile = localVariables.get(exprName);
+        } else if (globalVariables.containsKey(exprName)) {
+            lhsVarProfile = globalVariables.get(exprName);
+        }
+        return lhsVarProfile;
     }
 
     private void analyzeReturnStmt(Node stmt) {
@@ -1126,6 +1180,9 @@ public class SliceGenerator {
 
             if (lhsVarProfile != null) {
                 setVarValueToProfile(rhsExprNamePos, lhsVarProfile);
+                if (enclConditionProfile != null) {
+                    lhsVarProfile.setEnclosingConditionProfile(enclConditionProfile);
+                }
             }
         } else if (">".equals(operator) || ">=".equals(operator)) {
             SliceProfile lhsVarProfile = null;
@@ -1137,6 +1194,9 @@ public class SliceGenerator {
 
             if (lhsVarProfile != null) {
                 setVarValueToProfile(rhsExprNamePos, lhsVarProfile);
+                if (enclConditionProfile != null) {
+                    lhsVarProfile.setEnclosingConditionProfile(enclConditionProfile);
+                }
             }
         }
 
@@ -1198,9 +1258,6 @@ public class SliceGenerator {
             }
         }
 
-        if (!isBufferWrite) {
-            return;
-        }
 
         if (localVariables.containsKey(lhsExprVarName)) {
             lhsVarProfile = localVariables.get(lhsExprVarName);
@@ -1223,6 +1280,19 @@ public class SliceGenerator {
             return;
         }
 
+        if (!lhsExprVarName.equals(rhsExprVarName)) {
+            lhsVarProfile.setAssignedProfile(rhsVarProfile);
+        }
+
+        if (enclConditionProfile != null) {
+            lhsVarProfile.setEnclosingConditionProfile(enclConditionProfile);
+            rhsVarProfile.setEnclosingConditionProfile(enclConditionProfile);
+        }
+
+        if (!isBufferWrite) {
+            return;
+        }
+
         DataAccess bufferWrite = new DataAccess(DataAccessType.BUFFER_WRITE, lhsExprNamePos,
                 getBufferSizeAsValue(lhsExprNamePos.getBufferSize()));
         SliceVariableAccess varAccess = new SliceVariableAccess();
@@ -1231,6 +1301,9 @@ public class SliceGenerator {
     }
 
     private void setVarValueToProfile(NamePos rhsExprNamePos, SliceProfile lhsVarProfile) {
+        if (rhsExprNamePos == null) {
+            return;
+        }
         if (XmlUtil.isNumeric(rhsExprNamePos.getName())) { // if literal expr, then set the value
             lhsVarProfile.setCurrentValue(new Value(Integer.parseInt(rhsExprNamePos.getName())));
         } else { // else this is a referenced value
@@ -1335,30 +1408,32 @@ public class SliceGenerator {
         rVarProfile.dataAccess.add(varAccess);
     }
 
-    private void updateDVarSliceProfile(String lVarName, String rVarName,
+    private SliceProfile updateDVarSliceProfile(String lVarName, String rVarName,
                                         Map<String, SliceProfile> sliceVariables) {
         if ((lVarName == null || lVarName.isBlank()) && (rVarName == null || rVarName.isBlank())) {
-            return;
+            return null;
         }
 
-        SliceProfile profile = sliceVariables.get(rVarName);
-        String lVarEnclFunctionName = currentFunctionName;
+        SliceProfile rVarProfile = sliceVariables.get(rVarName);
+        String dVarEnclFunctionName = currentFunctionName;
 
-        SliceProfile lVarProfile;
-        String lVarDefinedPos;
+        SliceProfile dVarProfile;
+        String dVarDefinedPos;
         if (globalVariables.containsKey(lVarName)) {
-            lVarEnclFunctionName = GLOBAL;
-            lVarProfile = globalVariables.get(lVarName);
+            dVarEnclFunctionName = GLOBAL;
+            dVarProfile = globalVariables.get(lVarName);
         } else if (localVariables.containsKey(lVarName)) {
-            lVarProfile = localVariables.get(lVarName);
+            dVarProfile = localVariables.get(lVarName);
         } else {
-            return;
+            return rVarProfile;
         }
 
-        lVarDefinedPos = lVarProfile.definedPosition;
+        dVarDefinedPos = dVarProfile.definedPosition;
 
-        NamePos dvarNamePos = new NamePos(lVarName, lVarEnclFunctionName, lVarDefinedPos, false);
-        profile.dependentVars.add(dvarNamePos);
+        NamePos dvarNamePos = new NamePos(lVarName, dVarEnclFunctionName, dVarDefinedPos, false);
+        rVarProfile.dependentVars.add(dvarNamePos);
+
+        return rVarProfile;
     }
 
     private boolean isAssignmentExpr(List<Node> exprs) {
