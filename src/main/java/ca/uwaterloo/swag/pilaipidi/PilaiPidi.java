@@ -194,7 +194,7 @@ public class PilaiPidi {
             try {
                 functionsInputStream = new FileInputStream(new File(functionsFile));
             } catch (FileNotFoundException e) {
-                throw new IllegalArgumentException("Unable to find XML file of sink functions. Please check that the " +
+                throw new IllegalArgumentException("Unable to find XML RecursiveJavaFileProcessor.java of sink functions. Please check that the " +
                         "-functions param is correct.");
             }
 
@@ -218,7 +218,7 @@ public class PilaiPidi {
             try {
                 functionsInputStream = new FileInputStream(new File(functionsFile));
             } catch (FileNotFoundException e) {
-                throw new IllegalArgumentException("Unable to find XML file of source functions. Please check that " +
+                throw new IllegalArgumentException("Unable to find XML RecursiveJavaFileProcessor.java of source functions. Please check that " +
                         "the " +
                         "-sourcefunctions param is correct.");
             }
